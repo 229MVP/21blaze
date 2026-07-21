@@ -75,7 +75,7 @@ export function GameScreen({ navigation }: GameScreenProps) {
       <View style={styles.activeSection}>
         <Text style={styles.chooseLabel}>Choose a Lane</Text>
         {activeCard ? (
-          <PlayingCard card={activeCard} />
+          <PlayingCard card={activeCard} size="large" />
         ) : (
           <View style={styles.activePlaceholder}>
             <Text style={styles.placeholderText}>No card</Text>
@@ -175,8 +175,8 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   activePlaceholder: {
-    width: 92,
-    height: 128,
+    width: 124,
+    height: 172,
     borderRadius: 10,
     borderWidth: 1,
     borderColor: colors.border,

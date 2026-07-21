@@ -38,7 +38,7 @@ export function GameLane({ lane, disabled = false, onPress }: GameLaneProps) {
           <Text style={styles.empty}>Empty</Text>
         ) : (
           lane.cards.map((card) => (
-            <PlayingCard key={card.id} card={card} compact />
+            <PlayingCard key={card.id} card={card} size="small" />
           ))
         )}
       </View>
@@ -49,7 +49,7 @@ export function GameLane({ lane, disabled = false, onPress }: GameLaneProps) {
 const styles = StyleSheet.create({
   lane: {
     flex: 1,
-    minHeight: 110,
+    minHeight: 130,
     backgroundColor: colors.backgroundSecondary,
     borderColor: colors.border,
     borderWidth: 1,
@@ -83,7 +83,7 @@ const styles = StyleSheet.create({
     flexWrap: 'wrap',
     gap: spacing.xs,
     alignItems: 'center',
-    minHeight: 62,
+    minHeight: 82,
   },
   empty: {
     ...typography.label,
