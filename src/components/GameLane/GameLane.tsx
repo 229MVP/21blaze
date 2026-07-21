@@ -194,9 +194,13 @@ const styles = StyleSheet.create({
     marginLeft: -12,
   },
   empty: {
-    ...typography.label,
+    fontFamily: typography.label.fontFamily,
     fontSize: 9,
+    fontWeight: '600',
+    letterSpacing: 0.5,
     color: colors.textDisabled,
     fontStyle: 'italic',
+    textTransform: 'none',
   },
 });
+

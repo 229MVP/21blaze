@@ -1,3 +1,4 @@
+import { useId } from 'react';
 import Svg, { Defs, LinearGradient, Path, Stop } from 'react-native-svg';
 
 import { colors } from '../../theme/colors';
@@ -18,7 +19,8 @@ export function FlameIcon({
   active = true,
   accessibilityHidden = true,
 }: FlameIconProps) {
-  const gradientId = `flameGrad-${Math.round(width)}-${Math.round(height)}`;
+  const reactId = useId().replace(/:/g, '');
+  const gradientId = `flameGrad-${reactId}`;
 
   return (
     <Svg
