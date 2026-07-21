@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 
@@ -9,6 +10,7 @@ import { MAX_BUSTS } from '../game/constants';
 import { formatTimerSeconds } from '../game/timerEngine';
 import type { GameOverReason } from '../game/types';
 import type { ResultsScreenProps } from '../navigation/navigationTypes';
+import { findLocalRank, useScoreHistoryStore } from '../store/useScoreHistoryStore';
 import { useGameStore } from '../store/useGameStore';
 import { colors } from '../theme/colors';
 import { radius } from '../theme/radius';
@@ -54,9 +56,20 @@ export function ResultsScreen({ navigation, route }: ResultsScreenProps) {
   const cardsPlayed = resolveParam(route.params?.cardsPlayed);
   const timeRemainingSeconds = resolveParam(route.params?.timeRemainingSeconds);
   const gameOverReason = route.params?.gameOverReason;
+  const matchId = route.params?.matchId;
+
+  const entries = useScoreHistoryStore((state) => state.entries);
+  const isHydrated = useScoreHistoryStore((state) => state.isHydrated);
+  const hydrateScoreHistory = useScoreHistoryStore((state) => state.hydrateScoreHistory);
+
+  useEffect(() => {
+    void hydrateScoreHistory();
+  }, [hydrateScoreHistory]);
 
   const isNewHighScore = score > 0 && score >= highScore;
   const title = getResultTitle(gameOverReason, isNewHighScore);
+  const localRank =
+    isHydrated && matchId ? findLocalRank(entries, matchId) : null;
 
   const playAgain = () => {
     restartGame();
@@ -81,6 +94,14 @@ export function ResultsScreen({ navigation, route }: ResultsScreenProps) {
           <Text style={styles.title}>{title}</Text>
           {isNewHighScore ? (
             <Text style={styles.newHigh}>NEW HIGH SCORE!</Text>
+          ) : null}
+          {localRank ? (
+            <Text
+              style={styles.localRank}
+              accessibilityLabel={`New local rank number ${localRank}`}
+            >
+              NEW LOCAL RANK #{localRank}
+            </Text>
           ) : null}
         </View>
 
@@ -113,12 +134,18 @@ export function ResultsScreen({ navigation, route }: ResultsScreenProps) {
         />
 
         <View style={styles.actions}>
-          <BlazeButton title="PLAY AGAIN" onPress={playAgain} style={styles.actionBtn} />
+          <BlazeButton title="PLAY AGAIN" onPress={playAgain} fullWidth />
+          <BlazeButton
+            title="VIEW HIGH SCORES"
+            variant="outline"
+            onPress={() => navigation.navigate('HighScores')}
+            fullWidth
+          />
           <BlazeButton
             title="RETURN HOME"
-            variant="outline"
+            variant="secondary"
             onPress={returnHome}
-            style={styles.actionBtn}
+            fullWidth
           />
         </View>
       </ScrollView>
@@ -160,6 +187,12 @@ const styles = StyleSheet.create({
     color: colors.gold,
     fontSize: 14,
   },
+  localRank: {
+    fontFamily: fontFamilies.bodyBold,
+    fontSize: 13,
+    letterSpacing: 1,
+    color: colors.brightOrange,
+  },
   scoreCard: {
     width: '100%',
     borderRadius: radius.lg,
@@ -184,11 +217,7 @@ const styles = StyleSheet.create({
   },
   actions: {
     width: '100%',
-    flexDirection: 'row',
     gap: 10,
     marginTop: spacing.xs,
-  },
-  actionBtn: {
-    flex: 1,
   },
 });

@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { Alert, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
+import { Pressable, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import Svg, { Path } from 'react-native-svg';
 
 import { BlazeLogo } from '../components/branding/BlazeLogo';
@@ -10,6 +10,8 @@ import { APP_VERSION } from '../game/constants';
 import type { HomeScreenProps } from '../navigation/navigationTypes';
 import { loadHighScore } from '../storage/highScoreStorage';
 import { useGameStore } from '../store/useGameStore';
+import { useScoreHistoryStore } from '../store/useScoreHistoryStore';
+import { useSettingsStore } from '../store/useSettingsStore';
 import { colors } from '../theme/colors';
 import { radius } from '../theme/radius';
 import { spacing } from '../theme/spacing';
@@ -37,37 +39,46 @@ export function HomeScreen({ navigation }: HomeScreenProps) {
   const logoSize = width < 360 ? 'md' : 'lg';
   const highScore = useGameStore((state) => state.highScore);
   const setHighScore = useGameStore((state) => state.setHighScore);
+  const hydrateSettings = useSettingsStore((state) => state.hydrateSettings);
+  const hydrateScoreHistory = useScoreHistoryStore((state) => state.hydrateScoreHistory);
 
   useEffect(() => {
     let isMounted = true;
 
-    const hydrateHighScore = async () => {
+    const hydrate = async () => {
       const savedScore = await loadHighScore();
+      await hydrateSettings();
+      await hydrateScoreHistory();
 
       if (isMounted) {
         setHighScore(savedScore);
       }
     };
 
-    void hydrateHighScore();
+    void hydrate();
 
     return () => {
       isMounted = false;
     };
-  }, [setHighScore]);
+  }, [hydrateScoreHistory, hydrateSettings, setHighScore]);
 
   return (
     <ScreenContainer style={styles.container} intensity="intense">
       <View style={styles.content}>
         <BlazeLogo size={logoSize} showTagline />
 
-        <View style={styles.highScoreBox}>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={`High score ${highScore}. Open high scores.`}
+          onPress={() => navigation.navigate('HighScores')}
+          style={({ pressed }) => [styles.highScoreBox, pressed && styles.pressed]}
+        >
           <View style={styles.highScoreLabelRow}>
             <TrophyIcon />
             <Text style={styles.highScoreLabel}>HIGH SCORE</Text>
           </View>
           <Text style={styles.highScoreValue}>{highScore.toLocaleString()}</Text>
-        </View>
+        </Pressable>
 
         <View style={styles.actions}>
           <BlazeButton
@@ -80,23 +91,13 @@ export function HomeScreen({ navigation }: HomeScreenProps) {
             <BlazeButton
               title="HOW TO PLAY"
               variant="secondary"
-              onPress={() =>
-                Alert.alert(
-                  'Coming Soon',
-                  'How to Play will be available in a later update.',
-                )
-              }
+              onPress={() => navigation.navigate('HowToPlay')}
               style={styles.halfButton}
             />
             <BlazeButton
               title="SETTINGS"
               variant="secondary"
-              onPress={() =>
-                Alert.alert(
-                  'Coming Soon',
-                  'Settings will be available in a later update.',
-                )
-              }
+              onPress={() => navigation.navigate('Settings')}
               style={styles.halfButton}
             />
           </View>
@@ -134,6 +135,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.lg,
     alignItems: 'center',
     marginTop: spacing.md,
+    minHeight: 88,
+    justifyContent: 'center',
+  },
+  pressed: {
+    opacity: 0.9,
   },
   highScoreLabelRow: {
     flexDirection: 'row',

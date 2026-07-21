@@ -34,3 +34,11 @@ export async function saveHighScore(score: number): Promise<void> {
     // Ignore persistence failures so gameplay can continue.
   }
 }
+
+export async function clearHighScore(): Promise<void> {
+  try {
+    await AsyncStorage.setItem(HIGH_SCORE_KEY, '0');
+  } catch {
+    // Ignore persistence failures.
+  }
+}

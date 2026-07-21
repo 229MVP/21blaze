@@ -8,6 +8,7 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated';
 
+import { useReducedMotionSetting } from '../../hooks/useReducedMotionSetting';
 import { formatTimerSeconds } from '../../game/timerEngine';
 import { colors } from '../../theme/colors';
 import { radius } from '../../theme/radius';
@@ -25,11 +26,12 @@ export function TimerDisplay({
   warningThreshold,
   isPaused,
 }: TimerDisplayProps) {
+  const reduceMotion = useReducedMotionSetting();
   const pulse = useSharedValue(1);
   const isWarning = seconds <= warningThreshold;
 
   useEffect(() => {
-    if (!isWarning || isPaused) {
+    if (!isWarning || isPaused || reduceMotion) {
       pulse.value = 1;
       return;
     }
@@ -42,7 +44,7 @@ export function TimerDisplay({
       -1,
       false,
     );
-  }, [isPaused, isWarning, pulse]);
+  }, [isPaused, isWarning, pulse, reduceMotion]);
 
   const animatedStyle = useAnimatedStyle(() => ({
     transform: [{ scale: pulse.value }],

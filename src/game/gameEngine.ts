@@ -60,6 +60,7 @@ export function createInitialGameState(
     totalPausedMilliseconds: 0,
     gameOverReason: activeCard ? null : 'deckEmpty',
     startCountdownValue: START_COUNTDOWN_SECONDS,
+    matchId: null,
   };
 }
 

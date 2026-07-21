@@ -13,9 +13,22 @@ export type RootStackParamList = {
     gameOverReason?: GameOverReason;
     timeRemainingSeconds?: number;
     cardsPlayed?: number;
+    matchId?: string;
   };
+  HowToPlay: undefined;
+  Settings: undefined;
+  HighScores: undefined;
 };
 
 export type HomeScreenProps = NativeStackScreenProps<RootStackParamList, 'Home'>;
 export type GameScreenProps = NativeStackScreenProps<RootStackParamList, 'Game'>;
 export type ResultsScreenProps = NativeStackScreenProps<RootStackParamList, 'Results'>;
+export type HowToPlayScreenProps = NativeStackScreenProps<
+  RootStackParamList,
+  'HowToPlay'
+>;
+export type SettingsScreenProps = NativeStackScreenProps<RootStackParamList, 'Settings'>;
+export type HighScoresScreenProps = NativeStackScreenProps<
+  RootStackParamList,
+  'HighScores'
+>;

@@ -8,6 +8,7 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated';
 
+import { useReducedMotionSetting } from '../../hooks/useReducedMotionSetting';
 import { colors } from '../../theme/colors';
 import { spacing } from '../../theme/spacing';
 import { fontFamilies } from '../../theme/typography';
@@ -21,29 +22,36 @@ type GameStartCountdownProps = {
 const FLAME_ANGLES = [0, 72, 144, 216, 288];
 
 export function GameStartCountdown({ value, visible }: GameStartCountdownProps) {
+  const reduceMotion = useReducedMotionSetting();
   const opacity = useSharedValue(0);
   const scale = useSharedValue(0.7);
 
   useEffect(() => {
     if (!visible) {
       opacity.value = 0;
-      scale.value = 0.7;
+      scale.value = reduceMotion ? 1 : 0.7;
       return;
     }
 
     opacity.value = 0;
-    scale.value = 0.7;
     opacity.value = withSequence(
-      withTiming(1, { duration: 140, easing: Easing.out(Easing.cubic) }),
-      withTiming(1, { duration: 520 }),
-      withTiming(0.2, { duration: 180 }),
+      withTiming(1, { duration: reduceMotion ? 80 : 140, easing: Easing.out(Easing.cubic) }),
+      withTiming(1, { duration: reduceMotion ? 700 : 520 }),
+      withTiming(0.2, { duration: reduceMotion ? 100 : 180 }),
     );
+
+    if (reduceMotion) {
+      scale.value = 1;
+      return;
+    }
+
+    scale.value = 0.7;
     scale.value = withSequence(
       withTiming(1.12, { duration: 160, easing: Easing.out(Easing.cubic) }),
       withTiming(1, { duration: 180 }),
       withTiming(0.94, { duration: 180 }),
     );
-  }, [opacity, scale, value, visible]);
+  }, [opacity, reduceMotion, scale, value, visible]);
 
   const animatedStyle = useAnimatedStyle(() => ({
     opacity: opacity.value,
@@ -69,17 +77,19 @@ export function GameStartCountdown({ value, visible }: GameStartCountdownProps) 
             { borderColor: isBlaze ? 'rgba(255,182,41,0.4)' : 'rgba(255,101,0,0.4)' },
           ]}
         />
-        {FLAME_ANGLES.map((deg) => (
-          <View
-            key={deg}
-            style={[styles.flameOrbit, { transform: [{ rotate: `${deg}deg` }] }]}
-            pointerEvents="none"
-          >
-            <View style={styles.flameSlot}>
-              <FlameIcon width={12} height={16} />
-            </View>
-          </View>
-        ))}
+        {!reduceMotion
+          ? FLAME_ANGLES.map((deg) => (
+              <View
+                key={deg}
+                style={[styles.flameOrbit, { transform: [{ rotate: `${deg}deg` }] }]}
+                pointerEvents="none"
+              >
+                <View style={styles.flameSlot}>
+                  <FlameIcon width={12} height={16} />
+                </View>
+              </View>
+            ))
+          : null}
         <Text style={[styles.label, isBlaze && styles.blazeLabel]}>{label}</Text>
       </Animated.View>
     </View>
