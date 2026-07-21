@@ -1,16 +1,55 @@
+import { useEffect } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 
 import { BlazeButton } from '../components/BlazeButton';
+import { PlayingCard } from '../components/Card/PlayingCard';
+import { GameLane } from '../components/GameLane/GameLane';
 import { ScreenContainer } from '../components/ScreenContainer';
-import { APP_NAME, LANE_COUNT, MAX_BUSTS, TEST_GAME_RESULT } from '../game/constants';
+import { APP_NAME, LANE_IDS, MAX_BUSTS } from '../game/constants';
 import type { GameScreenProps } from '../navigation/navigationTypes';
+import { useGameStore } from '../store/useGameStore';
 import { colors } from '../theme/colors';
 import { spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
 
-const LANES = Array.from({ length: LANE_COUNT }, (_, index) => index + 1);
-
 export function GameScreen({ navigation }: GameScreenProps) {
+  const status = useGameStore((state) => state.status);
+  const score = useGameStore((state) => state.score);
+  const multiplier = useGameStore((state) => state.multiplier);
+  const busts = useGameStore((state) => state.busts);
+  const clearedLanes = useGameStore((state) => state.clearedLanes);
+  const highScore = useGameStore((state) => state.highScore);
+  const activeCard = useGameStore((state) => state.activeCard);
+  const deckLength = useGameStore((state) => state.deck.length);
+  const lanes = useGameStore((state) => state.lanes);
+  const isProcessingMove = useGameStore((state) => state.isProcessingMove);
+  const startGame = useGameStore((state) => state.startGame);
+  const restartGame = useGameStore((state) => state.restartGame);
+  const playCardToLane = useGameStore((state) => state.playCardToLane);
+
+  const cardsRemaining = deckLength + (activeCard ? 1 : 0);
+
+  useEffect(() => {
+    // Start only on mount when no game is currently active.
+    // Preserve an in-progress game across remounts/rerenders.
+    if (useGameStore.getState().status !== 'playing') {
+      startGame();
+    }
+  }, [startGame]);
+
+  useEffect(() => {
+    if (status !== 'finished') {
+      return;
+    }
+
+    navigation.replace('Results', {
+      score,
+      highScore,
+      clearedLanes,
+      busts,
+    });
+  }, [busts, clearedLanes, highScore, navigation, score, status]);
+
   const returnHome = () => {
     navigation.reset({
       index: 0,
@@ -18,49 +57,53 @@ export function GameScreen({ navigation }: GameScreenProps) {
     });
   };
 
-  const endTestGame = () => {
-    navigation.navigate('Results', {
-      score: TEST_GAME_RESULT.score,
-      highScore: TEST_GAME_RESULT.highScore,
-      clearedLanes: TEST_GAME_RESULT.clearedLanes,
-      busts: TEST_GAME_RESULT.busts,
-    });
-  };
+  const canPlay = status === 'playing' && activeCard !== null && !isProcessingMove;
 
   return (
     <ScreenContainer>
       <View style={styles.header}>
         <Text style={styles.title}>{APP_NAME}</Text>
-        <Text style={styles.subtitle}>Game Foundation</Text>
       </View>
 
       <View style={styles.statsRow}>
-        <View style={styles.statCard}>
-          <Text style={styles.statLabel}>SCORE</Text>
-          <Text style={styles.statValue}>0</Text>
-        </View>
-        <View style={styles.statCard}>
-          <Text style={styles.statLabel}>MULTIPLIER</Text>
-          <Text style={styles.statValue}>x1</Text>
-        </View>
-        <View style={styles.statCard}>
-          <Text style={styles.statLabel}>BUSTS</Text>
-          <Text style={styles.statValue}>
-            0/{MAX_BUSTS}
-          </Text>
-        </View>
+        <StatCard label="SCORE" value={String(score)} />
+        <StatCard label="MULTIPLIER" value={`x${multiplier}`} />
+        <StatCard label="BUSTS" value={`${busts}/${MAX_BUSTS}`} />
+        <StatCard label="CARDS" value={String(cardsRemaining)} />
       </View>
 
-      <View style={styles.lanes}>
-        {LANES.map((lane) => (
-          <View key={lane} style={styles.laneBox}>
-            <Text style={styles.laneLabel}>Lane {lane}</Text>
+      <View style={styles.activeSection}>
+        <Text style={styles.chooseLabel}>Choose a Lane</Text>
+        {activeCard ? (
+          <PlayingCard card={activeCard} size="large" />
+        ) : (
+          <View style={styles.activePlaceholder}>
+            <Text style={styles.placeholderText}>No card</Text>
           </View>
-        ))}
+        )}
+      </View>
+
+      <View style={styles.lanesGrid}>
+        {LANE_IDS.map((laneId) => {
+          const lane = lanes.find((item) => item.id === laneId) ?? {
+            id: laneId,
+            cards: [],
+          };
+
+          return (
+            <View key={laneId} style={styles.laneCell}>
+              <GameLane
+                lane={lane}
+                disabled={!canPlay}
+                onPress={() => playCardToLane(laneId)}
+              />
+            </View>
+          );
+        })}
       </View>
 
       <View style={styles.actions}>
-        <BlazeButton title="END TEST GAME" onPress={endTestGame} />
+        <BlazeButton title="RESTART GAME" onPress={restartGame} />
         <BlazeButton
           title="RETURN HOME"
           variant="secondary"
@@ -71,66 +114,92 @@ export function GameScreen({ navigation }: GameScreenProps) {
   );
 }
 
+type StatCardProps = {
+  label: string;
+  value: string;
+};
+
+function StatCard({ label, value }: StatCardProps) {
+  return (
+    <View style={styles.statCard}>
+      <Text style={styles.statLabel}>{label}</Text>
+      <Text style={styles.statValue}>{value}</Text>
+    </View>
+  );
+}
+
 const styles = StyleSheet.create({
   header: {
     alignItems: 'center',
-    marginTop: spacing.md,
-    marginBottom: spacing.lg,
-    gap: spacing.xs,
+    marginTop: spacing.sm,
+    marginBottom: spacing.md,
   },
   title: {
     ...typography.title,
     color: colors.primary,
   },
-  subtitle: {
-    ...typography.subtitle,
-  },
   statsRow: {
     flexDirection: 'row',
-    gap: spacing.sm,
-    marginBottom: spacing.lg,
+    gap: spacing.xs,
+    marginBottom: spacing.md,
   },
   statCard: {
     flex: 1,
     backgroundColor: colors.backgroundSecondary,
     borderColor: colors.border,
     borderWidth: 1,
-    borderRadius: 12,
+    borderRadius: 10,
     paddingVertical: spacing.sm,
-    paddingHorizontal: spacing.sm,
+    paddingHorizontal: spacing.xs,
     alignItems: 'center',
   },
   statLabel: {
     ...typography.label,
-    fontSize: 11,
+    fontSize: 10,
     marginBottom: spacing.xs,
   },
   statValue: {
     ...typography.body,
+    fontSize: 14,
     fontWeight: '700',
     color: colors.secondary,
   },
-  lanes: {
-    flex: 1,
+  activeSection: {
+    alignItems: 'center',
     gap: spacing.sm,
-    marginBottom: spacing.lg,
+    marginBottom: spacing.md,
   },
-  laneBox: {
-    flex: 1,
-    backgroundColor: colors.backgroundSecondary,
-    borderColor: colors.border,
+  chooseLabel: {
+    ...typography.subtitle,
+    color: colors.textPrimary,
+    fontWeight: '600',
+  },
+  activePlaceholder: {
+    width: 124,
+    height: 172,
+    borderRadius: 10,
     borderWidth: 1,
-    borderRadius: 12,
+    borderColor: colors.border,
+    backgroundColor: colors.backgroundSecondary,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  laneLabel: {
-    ...typography.body,
-    fontWeight: '600',
-    color: colors.textSecondary,
+  placeholderText: {
+    ...typography.label,
+  },
+  lanesGrid: {
+    flex: 1,
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: spacing.sm,
+    marginBottom: spacing.md,
+  },
+  laneCell: {
+    width: '48%',
+    flexGrow: 1,
   },
   actions: {
     gap: spacing.sm,
-    marginBottom: spacing.md,
+    marginBottom: spacing.sm,
   },
 });

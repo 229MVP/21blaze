@@ -10,6 +10,9 @@ export const colors = {
   border: '#2A2A2A',
   overlay: 'rgba(0, 0, 0, 0.5)',
   buttonDisabled: '#3A3A3A',
+  cardFace: '#FFFFFF',
+  cardInk: '#111111',
+  cardBorder: '#D0D0D0',
 } as const;
 
 export type ColorName = keyof typeof colors;
