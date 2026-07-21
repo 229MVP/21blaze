@@ -1,12 +1,29 @@
 import { create } from 'zustand';
 
-import { SCORE_CLEAR_21, SCORE_CLEAR_FIVE } from '../game/constants';
+import {
+  GAME_DURATION_SECONDS,
+  MAX_BUSTS,
+  SCORE_CLEAR_21,
+  SCORE_CLEAR_FIVE,
+  START_COUNTDOWN_SECONDS,
+} from '../game/constants';
 import {
   createInitialGameState,
   getCardsRemaining,
   placeCardInLane,
 } from '../game/gameEngine';
-import type { GameState, LaneId, MoveEvent, MoveEventType } from '../game/types';
+import {
+  calculateElapsedGameMilliseconds,
+  calculateTimeRemainingSeconds,
+  isTimerExpired,
+} from '../game/timerEngine';
+import type {
+  GameOverReason,
+  GameState,
+  LaneId,
+  MoveEvent,
+  MoveEventType,
+} from '../game/types';
 import { saveHighScore } from '../storage/highScoreStorage';
 
 type GameStore = GameState & {
@@ -17,6 +34,14 @@ type GameStore = GameState & {
   startGame: () => void;
   restartGame: () => void;
   resetGame: () => void;
+  beginStartCountdown: () => void;
+  updateStartCountdown: (value: number) => void;
+  beginTimedGame: (now: number) => void;
+  synchronizeTimer: (now: number) => void;
+  pauseGame: (now: number) => void;
+  resumeGame: (now: number) => void;
+  endGame: (reason: GameOverReason) => void;
+  quitGame: () => void;
   playCardToLane: (laneId: LaneId) => void;
   clearLastMoveEvent: () => void;
   getCardsRemaining: () => number;
@@ -31,6 +56,14 @@ const idleGameState: GameState = {
   multiplier: 1,
   busts: 0,
   clearedLanes: 0,
+  cardsPlayed: 0,
+  timeRemainingSeconds: GAME_DURATION_SECONDS,
+  timerStatus: 'ready',
+  gameStartedAt: null,
+  pauseStartedAt: null,
+  totalPausedMilliseconds: 0,
+  gameOverReason: null,
+  startCountdownValue: START_COUNTDOWN_SECONDS,
 };
 
 let moveEventSequence = 0;
@@ -95,6 +128,20 @@ function createMoveEvent(
   };
 }
 
+function withFreshMatchState(base: GameState): GameState {
+  return {
+    ...base,
+    cardsPlayed: 0,
+    timeRemainingSeconds: GAME_DURATION_SECONDS,
+    timerStatus: base.activeCard ? 'countdown' : 'expired',
+    gameStartedAt: null,
+    pauseStartedAt: null,
+    totalPausedMilliseconds: 0,
+    gameOverReason: base.activeCard ? null : 'deckEmpty',
+    startCountdownValue: START_COUNTDOWN_SECONDS,
+  };
+}
+
 export const useGameStore = create<GameStore>((set, get) => ({
   ...idleGameState,
   highScore: 0,
@@ -107,7 +154,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
   },
 
   startGame: () => {
-    const next = createInitialGameState();
+    const next = withFreshMatchState(createInitialGameState());
     set({
       ...next,
       isProcessingMove: false,
@@ -116,7 +163,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
   },
 
   restartGame: () => {
-    const next = createInitialGameState();
+    const next = withFreshMatchState(createInitialGameState());
     set({
       ...next,
       isProcessingMove: false,
@@ -132,6 +179,151 @@ export const useGameStore = create<GameStore>((set, get) => ({
     });
   },
 
+  beginStartCountdown: () => {
+    const current = get();
+    if (current.status !== 'playing' || !current.activeCard) {
+      return;
+    }
+
+    set({
+      timerStatus: 'countdown',
+      startCountdownValue: START_COUNTDOWN_SECONDS,
+      gameStartedAt: null,
+      pauseStartedAt: null,
+      totalPausedMilliseconds: 0,
+      timeRemainingSeconds: GAME_DURATION_SECONDS,
+      gameOverReason: null,
+    });
+  },
+
+  updateStartCountdown: (value) => {
+    set({
+      startCountdownValue: Math.max(0, value),
+    });
+  },
+
+  beginTimedGame: (now) => {
+    const current = get();
+    if (current.status !== 'playing' || current.timerStatus === 'running') {
+      return;
+    }
+
+    set({
+      timerStatus: 'running',
+      gameStartedAt: now,
+      pauseStartedAt: null,
+      totalPausedMilliseconds: 0,
+      timeRemainingSeconds: GAME_DURATION_SECONDS,
+      startCountdownValue: 0,
+      gameOverReason: null,
+    });
+  },
+
+  synchronizeTimer: (now) => {
+    const current = get();
+
+    if (
+      current.status !== 'playing' ||
+      current.timerStatus !== 'running' ||
+      current.gameStartedAt === null
+    ) {
+      return;
+    }
+
+    const elapsed = calculateElapsedGameMilliseconds(
+      now,
+      current.gameStartedAt,
+      current.totalPausedMilliseconds,
+    );
+    const remaining = calculateTimeRemainingSeconds(
+      GAME_DURATION_SECONDS,
+      elapsed,
+    );
+
+    if (isTimerExpired(remaining)) {
+      get().endGame('timeExpired');
+      return;
+    }
+
+    if (remaining !== current.timeRemainingSeconds) {
+      set({ timeRemainingSeconds: remaining });
+    }
+  },
+
+  pauseGame: (now) => {
+    const current = get();
+
+    if (
+      current.status !== 'playing' ||
+      current.timerStatus !== 'running' ||
+      current.pauseStartedAt !== null
+    ) {
+      return;
+    }
+
+    set({
+      timerStatus: 'paused',
+      pauseStartedAt: now,
+    });
+  },
+
+  resumeGame: (now) => {
+    const current = get();
+
+    if (
+      current.status !== 'playing' ||
+      current.timerStatus !== 'paused' ||
+      current.pauseStartedAt === null
+    ) {
+      return;
+    }
+
+    const pauseDuration = Math.max(0, now - current.pauseStartedAt);
+
+    set({
+      timerStatus: 'running',
+      pauseStartedAt: null,
+      totalPausedMilliseconds: current.totalPausedMilliseconds + pauseDuration,
+    });
+  },
+
+  endGame: (reason) => {
+    const current = get();
+
+    if (current.status === 'finished' && current.gameOverReason !== null) {
+      return;
+    }
+
+    const nextHighScore = maybePersistHighScore(current.score, current.highScore);
+
+    set({
+      status: 'finished',
+      timerStatus: reason === 'timeExpired' ? 'expired' : current.timerStatus,
+      gameOverReason: reason,
+      isProcessingMove: false,
+      highScore: nextHighScore,
+      pauseStartedAt: null,
+    });
+  },
+
+  quitGame: () => {
+    const current = get();
+    if (current.status === 'playing' && current.gameOverReason === null) {
+      get().endGame('quit');
+    }
+
+    const highScore = get().highScore;
+    set({
+      ...idleGameState,
+      highScore,
+      isProcessingMove: false,
+      lastMoveEvent: null,
+      gameOverReason: 'quit',
+      status: 'idle',
+      timerStatus: 'ready',
+    });
+  },
+
   clearLastMoveEvent: () => {
     set({ lastMoveEvent: null });
   },
@@ -142,6 +334,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
     if (
       current.isProcessingMove ||
       current.status !== 'playing' ||
+      current.timerStatus !== 'running' ||
       current.activeCard === null
     ) {
       return;
@@ -159,6 +352,14 @@ export const useGameStore = create<GameStore>((set, get) => ({
       multiplier: current.multiplier,
       busts: current.busts,
       clearedLanes: current.clearedLanes,
+      cardsPlayed: current.cardsPlayed,
+      timeRemainingSeconds: current.timeRemainingSeconds,
+      timerStatus: current.timerStatus,
+      gameStartedAt: current.gameStartedAt,
+      pauseStartedAt: current.pauseStartedAt,
+      totalPausedMilliseconds: current.totalPausedMilliseconds,
+      gameOverReason: current.gameOverReason,
+      startCountdownValue: current.startCountdownValue,
     };
 
     const nextState = placeCardInLane(before, laneId);
@@ -169,14 +370,23 @@ export const useGameStore = create<GameStore>((set, get) => ({
     }
 
     const lastMoveEvent = createMoveEvent(before, nextState, laneId, cardId);
-    const nextHighScore = maybePersistHighScore(nextState.score, get().highScore);
+    const cardsPlayed = current.cardsPlayed + 1;
 
     set({
       ...nextState,
-      highScore: nextHighScore,
+      cardsPlayed,
       lastMoveEvent,
       isProcessingMove: false,
     });
+
+    if (nextState.busts >= MAX_BUSTS) {
+      get().endGame('busts');
+      return;
+    }
+
+    if (nextState.activeCard === null) {
+      get().endGame('deckEmpty');
+    }
   },
 
   getCardsRemaining: () => getCardsRemaining(get()),

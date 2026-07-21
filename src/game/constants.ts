@@ -13,6 +13,10 @@ export const FIVE_CARD_CLEAR_COUNT = 5;
 export const SCORE_CLEAR_21 = 100;
 export const SCORE_CLEAR_FIVE = 150;
 
+export const GAME_DURATION_SECONDS = 120;
+export const FINAL_WARNING_SECONDS = 10;
+export const START_COUNTDOWN_SECONDS = 3;
+
 export const LANE_IDS: LaneId[] = [1, 2, 3, 4];
 
 export const SUITS: Suit[] = ['hearts', 'diamonds', 'clubs', 'spades'];

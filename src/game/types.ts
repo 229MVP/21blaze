@@ -32,6 +32,10 @@ export type GameStatus = 'idle' | 'playing' | 'finished';
 
 export type LaneOutcome = 'continue' | 'clear21' | 'clearFive' | 'bust';
 
+export type TimerStatus = 'ready' | 'countdown' | 'running' | 'paused' | 'expired';
+
+export type GameOverReason = 'busts' | 'deckEmpty' | 'timeExpired' | 'quit';
+
 export type GameState = {
   status: GameStatus;
   deck: Card[];
@@ -41,6 +45,14 @@ export type GameState = {
   multiplier: number;
   busts: number;
   clearedLanes: number;
+  cardsPlayed: number;
+  timeRemainingSeconds: number;
+  timerStatus: TimerStatus;
+  gameStartedAt: number | null;
+  pauseStartedAt: number | null;
+  totalPausedMilliseconds: number;
+  gameOverReason: GameOverReason | null;
+  startCountdownValue: number;
 };
 
 export type GameResultParams = {
@@ -48,6 +60,9 @@ export type GameResultParams = {
   highScore?: number;
   clearedLanes?: number;
   busts?: number;
+  gameOverReason?: GameOverReason;
+  timeRemainingSeconds?: number;
+  cardsPlayed?: number;
 };
 
 export type MoveEventType =

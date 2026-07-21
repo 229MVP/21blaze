@@ -1,11 +1,12 @@
 import { calculateHandTotal } from './cardValues';
 import {
   FIVE_CARD_CLEAR_COUNT,
+  GAME_DURATION_SECONDS,
   LANE_IDS,
-  MAX_BUSTS,
   MAX_MULTIPLIER,
   SCORE_CLEAR_21,
   SCORE_CLEAR_FIVE,
+  START_COUNTDOWN_SECONDS,
   TARGET_TOTAL,
 } from './constants';
 import { createShuffledDeck, drawCard } from './deck';
@@ -51,6 +52,14 @@ export function createInitialGameState(
     multiplier: 1,
     busts: 0,
     clearedLanes: 0,
+    cardsPlayed: 0,
+    timeRemainingSeconds: GAME_DURATION_SECONDS,
+    timerStatus: activeCard ? 'countdown' : 'expired',
+    gameStartedAt: null,
+    pauseStartedAt: null,
+    totalPausedMilliseconds: 0,
+    gameOverReason: activeCard ? null : 'deckEmpty',
+    startCountdownValue: START_COUNTDOWN_SECONDS,
   };
 }
 
@@ -81,7 +90,11 @@ function withCardInLane(
 }
 
 export function placeCardInLane(state: GameState, laneId: LaneId): GameState {
-  if (state.status !== 'playing' || state.activeCard === null) {
+  if (
+    state.status !== 'playing' ||
+    state.timerStatus !== 'running' ||
+    state.activeCard === null
+  ) {
     return state;
   }
 
@@ -118,13 +131,10 @@ export function placeCardInLane(state: GameState, laneId: LaneId): GameState {
   }
 
   const { card: nextCard, remainingDeck } = drawCard(state.deck);
-  const deckExhausted = nextCard === null;
-  const reachedBustLimit = busts >= MAX_BUSTS;
-  const status =
-    reachedBustLimit || deckExhausted ? 'finished' : state.status;
 
   return {
-    status,
+    ...state,
+    status: 'playing',
     deck: remainingDeck,
     activeCard: nextCard,
     lanes,

@@ -1,5 +1,13 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Alert, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
+import {
+  Alert,
+  AppState,
+  type AppStateStatus,
+  StyleSheet,
+  Text,
+  View,
+  useWindowDimensions,
+} from 'react-native';
 import Animated, {
   Easing,
   interpolateColor,
@@ -14,8 +22,16 @@ import { PlayingCard } from '../components/Card/PlayingCard';
 import { GameFeedbackBanner } from '../components/GameFeedback/GameFeedbackBanner';
 import { GameLane } from '../components/GameLane/GameLane';
 import { StreakMeter } from '../components/GameHUD/StreakMeter';
+import { GameStartCountdown } from '../components/GameTimer/GameStartCountdown';
+import { PauseOverlay } from '../components/GameTimer/PauseOverlay';
+import { TimerDisplay } from '../components/GameTimer/TimerDisplay';
 import { ScreenContainer } from '../components/ScreenContainer';
-import { APP_NAME, LANE_IDS, MAX_BUSTS } from '../game/constants';
+import {
+  APP_NAME,
+  FINAL_WARNING_SECONDS,
+  LANE_IDS,
+  MAX_BUSTS,
+} from '../game/constants';
 import type { Card } from '../game/types';
 import type { GameScreenProps } from '../navigation/navigationTypes';
 import { useGameStore } from '../store/useGameStore';
@@ -38,13 +54,27 @@ export function GameScreen({ navigation }: GameScreenProps) {
   const lanes = useGameStore((state) => state.lanes);
   const isProcessingMove = useGameStore((state) => state.isProcessingMove);
   const lastMoveEvent = useGameStore((state) => state.lastMoveEvent);
+  const timerStatus = useGameStore((state) => state.timerStatus);
+  const timeRemainingSeconds = useGameStore((state) => state.timeRemainingSeconds);
+  const startCountdownValue = useGameStore((state) => state.startCountdownValue);
+  const gameOverReason = useGameStore((state) => state.gameOverReason);
+  const cardsPlayed = useGameStore((state) => state.cardsPlayed);
+
   const startGame = useGameStore((state) => state.startGame);
   const restartGame = useGameStore((state) => state.restartGame);
   const playCardToLane = useGameStore((state) => state.playCardToLane);
   const clearLastMoveEvent = useGameStore((state) => state.clearLastMoveEvent);
+  const updateStartCountdown = useGameStore((state) => state.updateStartCountdown);
+  const beginTimedGame = useGameStore((state) => state.beginTimedGame);
+  const synchronizeTimer = useGameStore((state) => state.synchronizeTimer);
+  const pauseGame = useGameStore((state) => state.pauseGame);
+  const resumeGame = useGameStore((state) => state.resumeGame);
+  const quitGame = useGameStore((state) => state.quitGame);
 
   const cardsRemaining = deckLength + (activeCard ? 1 : 0);
   const hasNavigatedToResults = useRef(false);
+  const countdownSessionId = useRef(0);
+  const appStateRef = useRef<AppStateStatus>(AppState.currentState);
 
   const previousScore = useRef(score);
   const previousMultiplier = useRef(multiplier);
@@ -55,19 +85,94 @@ export function GameScreen({ navigation }: GameScreenProps) {
   const [bustPulseToken, setBustPulseToken] = useState(0);
 
   useEffect(() => {
-    if (useGameStore.getState().status !== 'playing') {
+    const current = useGameStore.getState();
+    if (current.status !== 'playing' || current.timerStatus === 'ready') {
       startGame();
+      countdownSessionId.current += 1;
     }
   }, [startGame]);
 
   useEffect(() => {
-    if (status === 'playing') {
+    if (status === 'playing' && timerStatus === 'countdown') {
       hasNavigatedToResults.current = false;
     }
-  }, [status]);
+  }, [status, timerStatus]);
+
+  // 3-2-1-BLAZE countdown driven by GameScreen effects (not component timers).
+  useEffect(() => {
+    if (timerStatus !== 'countdown' || status !== 'playing') {
+      return;
+    }
+
+    const delayMs = startCountdownValue === 0 ? 550 : 1000;
+    const session = countdownSessionId.current;
+
+    const timeoutId = setTimeout(() => {
+      if (countdownSessionId.current !== session) {
+        return;
+      }
+
+      if (startCountdownValue > 0) {
+        updateStartCountdown(startCountdownValue - 1);
+        return;
+      }
+
+      beginTimedGame(Date.now());
+    }, delayMs);
+
+    return () => {
+      clearTimeout(timeoutId);
+    };
+  }, [
+    beginTimedGame,
+    startCountdownValue,
+    status,
+    timerStatus,
+    updateStartCountdown,
+  ]);
+
+  // Timestamp-based sync; interval is only a tick, not the source of truth.
+  useEffect(() => {
+    if (timerStatus !== 'running' || status !== 'playing') {
+      return;
+    }
+
+    synchronizeTimer(Date.now());
+    const intervalId = setInterval(() => {
+      synchronizeTimer(Date.now());
+    }, 250);
+
+    return () => {
+      clearInterval(intervalId);
+    };
+  }, [status, synchronizeTimer, timerStatus]);
+
+  useEffect(() => {
+    const onAppStateChange = (nextState: AppStateStatus) => {
+      const wasActive = appStateRef.current === 'active';
+      appStateRef.current = nextState;
+
+      if (
+        wasActive &&
+        nextState !== 'active' &&
+        useGameStore.getState().timerStatus === 'running'
+      ) {
+        pauseGame(Date.now());
+      }
+    };
+
+    const subscription = AppState.addEventListener('change', onAppStateChange);
+    return () => {
+      subscription.remove();
+    };
+  }, [pauseGame]);
 
   useEffect(() => {
     if (status !== 'finished' || hasNavigatedToResults.current) {
+      return;
+    }
+
+    if (!gameOverReason || gameOverReason === 'quit') {
       return;
     }
 
@@ -77,8 +182,21 @@ export function GameScreen({ navigation }: GameScreenProps) {
       highScore,
       clearedLanes,
       busts,
+      gameOverReason,
+      timeRemainingSeconds,
+      cardsPlayed,
     });
-  }, [busts, clearedLanes, highScore, navigation, score, status]);
+  }, [
+    busts,
+    cardsPlayed,
+    clearedLanes,
+    gameOverReason,
+    highScore,
+    navigation,
+    score,
+    status,
+    timeRemainingSeconds,
+  ]);
 
   useEffect(() => {
     if (score > previousScore.current) {
@@ -109,26 +227,29 @@ export function GameScreen({ navigation }: GameScreenProps) {
     clearLastMoveEvent();
   }, [clearLastMoveEvent]);
 
-  const confirmRestart = () => {
-    Alert.alert('Restart Game', 'Start a fresh run from a new shuffled deck?', [
+  const confirmRestart = useCallback(() => {
+    Alert.alert('Restart Game', 'Start a fresh timed run from 2:00?', [
       { text: 'Cancel', style: 'cancel' },
       {
         text: 'Restart',
         style: 'destructive',
         onPress: () => {
           hasNavigatedToResults.current = false;
+          countdownSessionId.current += 1;
           restartGame();
         },
       },
     ]);
-  };
+  }, [restartGame]);
 
-  const confirmReturnHome = () => {
-    Alert.alert('Return Home', 'Leave this run and return to the home screen?', [
+  const confirmQuitToHome = useCallback(() => {
+    Alert.alert('Quit Match', 'Leave this timed run and return home?', [
       { text: 'Cancel', style: 'cancel' },
       {
-        text: 'Return Home',
+        text: 'Quit',
+        style: 'destructive',
         onPress: () => {
+          quitGame();
           navigation.reset({
             index: 0,
             routes: [{ name: 'Home' }],
@@ -136,9 +257,27 @@ export function GameScreen({ navigation }: GameScreenProps) {
         },
       },
     ]);
+  }, [navigation, quitGame]);
+
+  const handlePause = () => {
+    if (timerStatus === 'running') {
+      pauseGame(Date.now());
+    }
   };
 
-  const canPlay = status === 'playing' && activeCard !== null && !isProcessingMove;
+  const handleResume = () => {
+    resumeGame(Date.now());
+  };
+
+  const isCountdown = timerStatus === 'countdown';
+  const isPaused = timerStatus === 'paused';
+  const canPlay =
+    status === 'playing' &&
+    timerStatus === 'running' &&
+    activeCard !== null &&
+    !isProcessingMove;
+  const showFinalBlaze =
+    timerStatus === 'running' && timeRemainingSeconds <= FINAL_WARNING_SECONDS;
 
   return (
     <ScreenContainer style={styles.screen}>
@@ -170,39 +309,73 @@ export function GameScreen({ navigation }: GameScreenProps) {
         <HudStat label="CARDS" value={String(cardsRemaining)} pulseToken={0} mode="none" />
       </View>
 
-      <StreakMeter multiplier={multiplier} />
-
-      <View style={styles.activeSection}>
-        <Text style={styles.chooseLabel}>Choose a Lane</Text>
-        {activeCard ? (
-          <ActiveCardStage card={activeCard} compact={isCompact} />
-        ) : (
-          <View style={[styles.activePlaceholder, isCompact && styles.activePlaceholderCompact]}>
-            <Text style={styles.placeholderText}>No card</Text>
-          </View>
-        )}
+      <View style={styles.timerRow}>
+        <TimerDisplay
+          seconds={timeRemainingSeconds}
+          warningThreshold={FINAL_WARNING_SECONDS}
+          isPaused={isPaused}
+        />
+        <BlazeButton
+          title="PAUSE"
+          variant="secondary"
+          onPress={handlePause}
+          disabled={timerStatus !== 'running'}
+          style={styles.pauseButton}
+        />
       </View>
 
-      <View style={styles.lanesGrid}>
-        {LANE_IDS.map((laneId) => {
-          const lane = lanes.find((item) => item.id === laneId) ?? {
-            id: laneId,
-            cards: [],
-          };
-          const isEventLane = lastMoveEvent?.laneId === laneId;
+      {showFinalBlaze ? (
+        <Text style={styles.finalBlaze}>FINAL BLAZE</Text>
+      ) : null}
 
-          return (
-            <View key={laneId} style={styles.laneCell}>
-              <GameLane
-                lane={lane}
-                disabled={!canPlay}
-                onPress={() => playCardToLane(laneId)}
-                feedbackType={isEventLane ? lastMoveEvent?.type ?? null : null}
-                feedbackEventId={isEventLane ? lastMoveEvent?.id ?? null : null}
-              />
+      <StreakMeter multiplier={multiplier} />
+
+      <View style={styles.playArea}>
+        <View style={styles.activeSection}>
+          <Text style={styles.chooseLabel}>Choose a Lane</Text>
+          {activeCard ? (
+            <ActiveCardStage card={activeCard} compact={isCompact} />
+          ) : (
+            <View
+              style={[
+                styles.activePlaceholder,
+                isCompact && styles.activePlaceholderCompact,
+              ]}
+            >
+              <Text style={styles.placeholderText}>No card</Text>
             </View>
-          );
-        })}
+          )}
+        </View>
+
+        <View style={styles.lanesGrid}>
+          {LANE_IDS.map((laneId) => {
+            const lane = lanes.find((item) => item.id === laneId) ?? {
+              id: laneId,
+              cards: [],
+            };
+            const isEventLane = lastMoveEvent?.laneId === laneId;
+
+            return (
+              <View key={laneId} style={styles.laneCell}>
+                <GameLane
+                  lane={lane}
+                  disabled={!canPlay}
+                  onPress={() => playCardToLane(laneId)}
+                  feedbackType={isEventLane ? lastMoveEvent?.type ?? null : null}
+                  feedbackEventId={isEventLane ? lastMoveEvent?.id ?? null : null}
+                />
+              </View>
+            );
+          })}
+        </View>
+
+        <GameStartCountdown value={startCountdownValue} visible={isCountdown} />
+        <PauseOverlay
+          visible={isPaused}
+          onResume={handleResume}
+          onRestart={confirmRestart}
+          onQuit={confirmQuitToHome}
+        />
       </View>
 
       <View style={styles.actions}>
@@ -210,7 +383,7 @@ export function GameScreen({ navigation }: GameScreenProps) {
         <BlazeButton
           title="RETURN HOME"
           variant="secondary"
-          onPress={confirmReturnHome}
+          onPress={confirmQuitToHome}
         />
       </View>
     </ScreenContainer>
@@ -338,6 +511,28 @@ const styles = StyleSheet.create({
     gap: spacing.xs,
     marginBottom: spacing.sm,
   },
+  timerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    marginBottom: spacing.sm,
+  },
+  pauseButton: {
+    flex: 1,
+    minHeight: 48,
+  },
+  finalBlaze: {
+    ...typography.label,
+    color: colors.danger,
+    textAlign: 'center',
+    marginBottom: spacing.sm,
+    letterSpacing: 1,
+  },
+  playArea: {
+    flex: 1,
+    position: 'relative',
+    minHeight: 280,
+  },
   statCard: {
     flex: 1,
     minWidth: 0,
@@ -364,7 +559,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: spacing.sm,
     marginBottom: spacing.md,
-    minHeight: 150,
+    minHeight: 140,
   },
   chooseLabel: {
     ...typography.subtitle,
@@ -394,7 +589,7 @@ const styles = StyleSheet.create({
     flexWrap: 'wrap',
     gap: spacing.sm,
     marginBottom: spacing.md,
-    minHeight: 220,
+    minHeight: 200,
   },
   laneCell: {
     width: '48%',
