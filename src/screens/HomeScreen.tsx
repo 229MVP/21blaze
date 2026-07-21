@@ -3,6 +3,7 @@ import { Alert, StyleSheet, Text, View, useWindowDimensions } from 'react-native
 import Svg, { Path } from 'react-native-svg';
 
 import { BlazeLogo } from '../components/branding/BlazeLogo';
+import { FlameIcon } from '../components/branding/FlameIcon';
 import { BlazeButton } from '../components/buttons/BlazeButton';
 import { ScreenContainer } from '../components/ScreenContainer';
 import { APP_VERSION } from '../game/constants';
@@ -13,7 +14,6 @@ import { colors } from '../theme/colors';
 import { radius } from '../theme/radius';
 import { spacing } from '../theme/spacing';
 import { fontFamilies, typography } from '../theme/typography';
-import { FlameIcon } from '../components/branding/FlameIcon';
 
 function TrophyIcon({ size = 14 }: { size?: number }) {
   return (

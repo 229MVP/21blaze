@@ -1,11 +1,24 @@
-import { TextStyle } from 'react-native';
+import { Platform, TextStyle } from 'react-native';
 
 import { colors } from './colors';
 
-const displayFamily = 'Anton_400Regular';
-const bodyFamily = 'RobotoCondensed_400Regular';
-const bodyBoldFamily = 'RobotoCondensed_700Bold';
-const bodySemiFamily = 'RobotoCondensed_600SemiBold';
+/** Custom faces when loaded; web gets CSS fallbacks if the face is missing. */
+const displayFamily = Platform.select({
+  web: 'Anton_400Regular, Impact, Haettenschweiler, sans-serif',
+  default: 'Anton_400Regular',
+}) as string;
+const bodyFamily = Platform.select({
+  web: 'RobotoCondensed_400Regular, "Arial Narrow", Arial, sans-serif',
+  default: 'RobotoCondensed_400Regular',
+}) as string;
+const bodyBoldFamily = Platform.select({
+  web: 'RobotoCondensed_700Bold, "Arial Narrow", Arial, sans-serif',
+  default: 'RobotoCondensed_700Bold',
+}) as string;
+const bodySemiFamily = Platform.select({
+  web: 'RobotoCondensed_600SemiBold, "Arial Narrow", Arial, sans-serif',
+  default: 'RobotoCondensed_600SemiBold',
+}) as string;
 
 export const typography = {
   heroTitle: {

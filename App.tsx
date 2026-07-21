@@ -1,7 +1,7 @@
 import 'react-native-gesture-handler';
 
 import { useEffect } from 'react';
-import { Text, View } from 'react-native';
+import { View } from 'react-native';
 import { DarkTheme, NavigationContainer } from '@react-navigation/native';
 import { Anton_400Regular, useFonts } from '@expo-google-fonts/anton';
 import {
@@ -15,7 +15,6 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { AppNavigator } from './src/navigation/AppNavigator';
 import { colors } from './src/theme/colors';
-import { fontFamilies } from './src/theme/typography';
 
 SplashScreen.preventAutoHideAsync().catch(() => undefined);
 
@@ -46,6 +45,7 @@ export default function App() {
     }
   }, [fontsLoaded, fontError]);
 
+  // Proceed with system-font fallbacks if custom fonts fail to load.
   if (!fontsLoaded && !fontError) {
     return <View style={{ flex: 1, backgroundColor: colors.background }} />;
   }
@@ -54,18 +54,6 @@ export default function App() {
     <SafeAreaProvider>
       <NavigationContainer theme={navigationTheme}>
         <StatusBar style="light" />
-        {/* System-font fallback path still mounts navigation if fonts fail */}
-        {fontError ? (
-          <Text
-            style={{
-              position: 'absolute',
-              opacity: 0,
-              fontFamily: fontFamilies.display,
-            }}
-          >
-            {' '}
-          </Text>
-        ) : null}
         <AppNavigator />
       </NavigationContainer>
     </SafeAreaProvider>
