@@ -1,14 +1,18 @@
 import { StyleSheet, Text, View } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 
 import { SUIT_SYMBOLS } from '../../game/constants';
 import type { Card, Rank, Suit } from '../../game/types';
 import { colors } from '../../theme/colors';
+import { fontFamilies } from '../../theme/typography';
+import { shadows } from '../../theme/shadows';
 
 export type PlayingCardSize = 'small' | 'medium' | 'large';
 
 type PlayingCardProps = {
   card: Card;
   size?: PlayingCardSize;
+  glowing?: boolean;
   /** @deprecated Prefer size="small". Kept for existing call sites. */
   compact?: boolean;
 };
@@ -17,6 +21,7 @@ type SizeConfig = {
   width: number;
   height: number;
   rankFontSize: number;
+  suitFontSize: number;
   centerSuitFontSize: number;
   padding: number;
   borderRadius: number;
@@ -24,28 +29,31 @@ type SizeConfig = {
 
 const SIZE_CONFIG: Record<PlayingCardSize, SizeConfig> = {
   small: {
-    width: 58,
-    height: 82,
-    rankFontSize: 16,
-    centerSuitFontSize: 24,
-    padding: 4,
-    borderRadius: 6,
+    width: 36,
+    height: 50,
+    rankFontSize: 10,
+    suitFontSize: 9,
+    centerSuitFontSize: 18,
+    padding: 3,
+    borderRadius: 4,
   },
   medium: {
-    width: 90,
-    height: 126,
-    rankFontSize: 22,
+    width: 72,
+    height: 100,
+    rankFontSize: 16,
+    suitFontSize: 14,
     centerSuitFontSize: 34,
-    padding: 6,
-    borderRadius: 8,
+    padding: 5,
+    borderRadius: 6,
   },
   large: {
-    width: 124,
-    height: 172,
-    rankFontSize: 28,
+    width: 100,
+    height: 140,
+    rankFontSize: 22,
+    suitFontSize: 18,
     centerSuitFontSize: 48,
-    padding: 8,
-    borderRadius: 10,
+    padding: 7,
+    borderRadius: 8,
   },
 };
 
@@ -68,7 +76,7 @@ const VALID_RANKS: readonly Rank[] = [
 
 function getSuitColor(suit: Suit): string {
   if (suit === 'hearts' || suit === 'diamonds') {
-    return colors.danger;
+    return colors.cardInkRed;
   }
 
   return colors.cardInk;
@@ -103,6 +111,7 @@ function resolveCardDisplay(card: Card): {
 export function PlayingCard({
   card,
   size,
+  glowing = false,
   compact = false,
 }: PlayingCardProps) {
   const resolvedSize: PlayingCardSize = size ?? (compact ? 'small' : 'medium');
@@ -114,71 +123,103 @@ export function PlayingCard({
     <View
       accessibilityLabel={accessibilityLabel}
       style={[
-        styles.card,
+        styles.shell,
         {
           width: config.width,
           height: config.height,
           borderRadius: config.borderRadius,
-          padding: config.padding,
         },
+        glowing ? shadows.cardGlow : shadows.card,
       ]}
     >
-      <Text
+      <LinearGradient
+        colors={[colors.cardFace, colors.cardFaceAlt]}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
         style={[
-          styles.corner,
-          styles.cornerTop,
+          styles.card,
           {
-            color: suitColor,
-            fontSize: config.rankFontSize,
-            lineHeight: config.rankFontSize + 2,
+            borderRadius: config.borderRadius,
+            padding: config.padding,
           },
         ]}
       >
-        {rankLabel}
-        {'\n'}
-        {suitSymbol}
-      </Text>
+        <View style={[styles.corner, styles.cornerTop]}>
+          <Text
+            style={[
+              styles.rank,
+              {
+                color: suitColor,
+                fontSize: config.rankFontSize,
+                lineHeight: config.rankFontSize + 1,
+              },
+            ]}
+          >
+            {rankLabel}
+          </Text>
+          <Text
+            style={{
+              color: suitColor,
+              fontSize: config.suitFontSize,
+              lineHeight: config.suitFontSize + 1,
+            }}
+          >
+            {suitSymbol}
+          </Text>
+        </View>
 
-      <View style={styles.center}>
-        <Text
-          style={{
-            color: suitColor,
-            fontSize: config.centerSuitFontSize,
-            lineHeight: config.centerSuitFontSize + 4,
-            fontWeight: '700',
-            textAlign: 'center',
-          }}
-        >
-          {suitSymbol}
-        </Text>
-      </View>
+        <View style={styles.center}>
+          <Text
+            style={{
+              color: suitColor,
+              fontSize: config.centerSuitFontSize,
+              lineHeight: config.centerSuitFontSize + 2,
+              textAlign: 'center',
+            }}
+          >
+            {suitSymbol}
+          </Text>
+        </View>
 
-      <Text
-        style={[
-          styles.corner,
-          styles.cornerBottom,
-          {
-            color: suitColor,
-            fontSize: config.rankFontSize,
-            lineHeight: config.rankFontSize + 2,
-          },
-        ]}
-      >
-        {rankLabel}
-        {'\n'}
-        {suitSymbol}
-      </Text>
+        <View style={[styles.corner, styles.cornerBottom]}>
+          <Text
+            style={[
+              styles.rank,
+              {
+                color: suitColor,
+                fontSize: config.rankFontSize,
+                lineHeight: config.rankFontSize + 1,
+              },
+            ]}
+          >
+            {rankLabel}
+          </Text>
+          <Text
+            style={{
+              color: suitColor,
+              fontSize: config.suitFontSize,
+              lineHeight: config.suitFontSize + 1,
+            }}
+          >
+            {suitSymbol}
+          </Text>
+        </View>
+      </LinearGradient>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  card: {
+  shell: {
     position: 'relative',
-    backgroundColor: colors.cardFace,
-    borderWidth: 1,
+    borderWidth: 1.5,
     borderColor: colors.cardBorder,
     overflow: 'hidden',
+    backgroundColor: colors.cardFace,
+  },
+  card: {
+    flex: 1,
+    position: 'relative',
   },
   center: {
     flex: 1,
@@ -188,17 +229,20 @@ const styles = StyleSheet.create({
   corner: {
     position: 'absolute',
     zIndex: 2,
-    fontWeight: '700',
-    textAlign: 'left',
+    alignItems: 'center',
   },
   cornerTop: {
-    top: 4,
-    left: 4,
+    top: 2,
+    left: 3,
   },
   cornerBottom: {
-    right: 4,
-    bottom: 4,
-    textAlign: 'left',
+    right: 3,
+    bottom: 2,
     transform: [{ rotate: '180deg' }],
+  },
+  rank: {
+    fontFamily: fontFamilies.bodyBold,
+    fontWeight: '700',
+    textAlign: 'center',
   },
 });
