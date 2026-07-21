@@ -3,6 +3,8 @@ import { StyleSheet, Text, View } from 'react-native';
 import { BlazeButton } from '../components/BlazeButton';
 import { ScreenContainer } from '../components/ScreenContainer';
 import { APP_NAME } from '../game/constants';
+import { formatTimerSeconds } from '../game/timerEngine';
+import type { GameOverReason } from '../game/types';
 import type { ResultsScreenProps } from '../navigation/navigationTypes';
 import { useGameStore } from '../store/useGameStore';
 import { colors } from '../theme/colors';
@@ -17,12 +19,30 @@ function resolveParam(value: number | undefined, fallback = 0): number {
   return value;
 }
 
+function getEndMessage(reason: GameOverReason | undefined): string {
+  switch (reason) {
+    case 'timeExpired':
+      return 'TIME’S UP!';
+    case 'busts':
+      return 'TOO HOT!';
+    case 'deckEmpty':
+      return 'DECK CLEARED!';
+    case 'quit':
+      return 'GAME ENDED';
+    default:
+      return 'RESULTS';
+  }
+}
+
 export function ResultsScreen({ navigation, route }: ResultsScreenProps) {
   const restartGame = useGameStore((state) => state.restartGame);
   const score = resolveParam(route.params?.score);
   const highScore = resolveParam(route.params?.highScore);
   const clearedLanes = resolveParam(route.params?.clearedLanes);
   const busts = resolveParam(route.params?.busts);
+  const cardsPlayed = resolveParam(route.params?.cardsPlayed);
+  const timeRemainingSeconds = resolveParam(route.params?.timeRemainingSeconds);
+  const gameOverReason = route.params?.gameOverReason;
 
   const playAgain = () => {
     restartGame();
@@ -40,14 +60,20 @@ export function ResultsScreen({ navigation, route }: ResultsScreenProps) {
     <ScreenContainer style={styles.container}>
       <View style={styles.header}>
         <Text style={styles.title}>{APP_NAME}</Text>
+        <Text style={styles.endMessage}>{getEndMessage(gameOverReason)}</Text>
         <Text style={styles.subtitle}>Results</Text>
       </View>
 
       <View style={styles.resultsCard}>
-        <ResultRow label="Final Score" value={score} emphasize />
-        <ResultRow label="High Score" value={highScore} />
-        <ResultRow label="Lanes Cleared" value={clearedLanes} />
-        <ResultRow label="Busts" value={busts} />
+        <ResultRow label="Final Score" value={String(score)} emphasize />
+        <ResultRow label="High Score" value={String(highScore)} />
+        <ResultRow label="Lanes Cleared" value={String(clearedLanes)} />
+        <ResultRow label="Cards Played" value={String(cardsPlayed)} />
+        <ResultRow label="Busts" value={String(busts)} />
+        <ResultRow
+          label="Time Remaining"
+          value={formatTimerSeconds(timeRemainingSeconds)}
+        />
       </View>
 
       <View style={styles.actions}>
@@ -64,7 +90,7 @@ export function ResultsScreen({ navigation, route }: ResultsScreenProps) {
 
 type ResultRowProps = {
   label: string;
-  value: number;
+  value: string;
   emphasize?: boolean;
 };
 
@@ -91,6 +117,12 @@ const styles = StyleSheet.create({
   title: {
     ...typography.title,
     color: colors.primary,
+  },
+  endMessage: {
+    ...typography.title,
+    fontSize: 24,
+    color: colors.secondary,
+    textAlign: 'center',
   },
   subtitle: {
     ...typography.subtitle,

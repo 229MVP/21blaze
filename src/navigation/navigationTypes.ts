@@ -1,5 +1,7 @@
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 
+import type { GameOverReason } from '../game/types';
+
 export type RootStackParamList = {
   Home: undefined;
   Game: undefined;
@@ -8,6 +10,9 @@ export type RootStackParamList = {
     highScore?: number;
     clearedLanes?: number;
     busts?: number;
+    gameOverReason?: GameOverReason;
+    timeRemainingSeconds?: number;
+    cardsPlayed?: number;
   };
 };
 
