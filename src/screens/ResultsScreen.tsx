@@ -1,15 +1,19 @@
-import { StyleSheet, Text, View } from 'react-native';
+import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 
-import { BlazeButton } from '../components/BlazeButton';
+import { FlameIcon } from '../components/branding/FlameIcon';
+import { BlazeButton } from '../components/buttons/BlazeButton';
+import { ResultsPanel } from '../components/Results/ResultsPanel';
 import { ScreenContainer } from '../components/ScreenContainer';
-import { APP_NAME } from '../game/constants';
+import { MAX_BUSTS } from '../game/constants';
 import { formatTimerSeconds } from '../game/timerEngine';
 import type { GameOverReason } from '../game/types';
 import type { ResultsScreenProps } from '../navigation/navigationTypes';
 import { useGameStore } from '../store/useGameStore';
 import { colors } from '../theme/colors';
+import { radius } from '../theme/radius';
 import { spacing } from '../theme/spacing';
-import { typography } from '../theme/typography';
+import { fontFamilies, typography } from '../theme/typography';
 
 function resolveParam(value: number | undefined, fallback = 0): number {
   if (typeof value !== 'number' || !Number.isFinite(value)) {
@@ -19,7 +23,14 @@ function resolveParam(value: number | undefined, fallback = 0): number {
   return value;
 }
 
-function getEndMessage(reason: GameOverReason | undefined): string {
+function getResultTitle(
+  reason: GameOverReason | undefined,
+  isNewHighScore: boolean,
+): string {
+  if (isNewHighScore) {
+    return 'BLAZING!';
+  }
+
   switch (reason) {
     case 'timeExpired':
       return 'TIME’S UP!';
@@ -30,7 +41,7 @@ function getEndMessage(reason: GameOverReason | undefined): string {
     case 'quit':
       return 'GAME ENDED';
     default:
-      return 'RESULTS';
+      return 'GOOD RUN';
   }
 }
 
@@ -43,6 +54,9 @@ export function ResultsScreen({ navigation, route }: ResultsScreenProps) {
   const cardsPlayed = resolveParam(route.params?.cardsPlayed);
   const timeRemainingSeconds = resolveParam(route.params?.timeRemainingSeconds);
   const gameOverReason = route.params?.gameOverReason;
+
+  const isNewHighScore = score > 0 && score >= highScore;
+  const title = getResultTitle(gameOverReason, isNewHighScore);
 
   const playAgain = () => {
     restartGame();
@@ -57,102 +71,124 @@ export function ResultsScreen({ navigation, route }: ResultsScreenProps) {
   };
 
   return (
-    <ScreenContainer style={styles.container}>
-      <View style={styles.header}>
-        <Text style={styles.title}>{APP_NAME}</Text>
-        <Text style={styles.endMessage}>{getEndMessage(gameOverReason)}</Text>
-        <Text style={styles.subtitle}>Results</Text>
-      </View>
+    <ScreenContainer style={styles.container} intensity="intense" padded={false}>
+      <ScrollView
+        contentContainerStyle={styles.scroll}
+        showsVerticalScrollIndicator={false}
+      >
+        <View style={styles.header}>
+          <FlameIcon width={36} height={48} />
+          <Text style={styles.title}>{title}</Text>
+          {isNewHighScore ? (
+            <Text style={styles.newHigh}>NEW HIGH SCORE!</Text>
+          ) : null}
+        </View>
 
-      <View style={styles.resultsCard}>
-        <ResultRow label="Final Score" value={String(score)} emphasize />
-        <ResultRow label="High Score" value={String(highScore)} />
-        <ResultRow label="Lanes Cleared" value={String(clearedLanes)} />
-        <ResultRow label="Cards Played" value={String(cardsPlayed)} />
-        <ResultRow label="Busts" value={String(busts)} />
-        <ResultRow
-          label="Time Remaining"
-          value={formatTimerSeconds(timeRemainingSeconds)}
-        />
-      </View>
+        <LinearGradient
+          colors={[colors.backgroundCard, '#222222']}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={styles.scoreCard}
+        >
+          <Text style={styles.scoreLabel}>SCORE</Text>
+          <Text style={styles.scoreValue}>{score.toLocaleString()}</Text>
+        </LinearGradient>
 
-      <View style={styles.actions}>
-        <BlazeButton title="PLAY AGAIN" onPress={playAgain} />
-        <BlazeButton
-          title="RETURN HOME"
-          variant="secondary"
-          onPress={returnHome}
+        <ResultsPanel
+          rows={[
+            {
+              label: 'High Score',
+              value: String(highScore),
+              highlight: isNewHighScore,
+              showNewBadge: isNewHighScore,
+            },
+            { label: 'Lanes Cleared', value: String(clearedLanes) },
+            { label: 'Cards Played', value: String(cardsPlayed) },
+            { label: 'Busts', value: `${busts}/${MAX_BUSTS}` },
+            {
+              label: 'Time Remaining',
+              value: formatTimerSeconds(timeRemainingSeconds),
+            },
+          ]}
         />
-      </View>
+
+        <View style={styles.actions}>
+          <BlazeButton title="PLAY AGAIN" onPress={playAgain} style={styles.actionBtn} />
+          <BlazeButton
+            title="RETURN HOME"
+            variant="outline"
+            onPress={returnHome}
+            style={styles.actionBtn}
+          />
+        </View>
+      </ScrollView>
     </ScreenContainer>
-  );
-}
-
-type ResultRowProps = {
-  label: string;
-  value: string;
-  emphasize?: boolean;
-};
-
-function ResultRow({ label, value, emphasize = false }: ResultRowProps) {
-  return (
-    <View style={styles.row}>
-      <Text style={styles.rowLabel}>{label}</Text>
-      <Text style={[styles.rowValue, emphasize && styles.emphasizedValue]}>
-        {value}
-      </Text>
-    </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
-    justifyContent: 'space-between',
+    flex: 1,
+  },
+  scroll: {
+    flexGrow: 1,
+    paddingHorizontal: spacing.md,
+    paddingTop: spacing.xl,
+    paddingBottom: spacing.lg,
+    alignItems: 'center',
+    gap: spacing.md,
+    maxWidth: 480,
+    width: '100%',
+    alignSelf: 'center',
   },
   header: {
     alignItems: 'center',
-    marginTop: spacing.xl,
-    gap: spacing.xs,
+    gap: spacing.sm,
   },
   title: {
-    ...typography.title,
+    fontFamily: fontFamilies.display,
+    fontSize: 48,
+    lineHeight: 52,
     color: colors.primary,
-  },
-  endMessage: {
-    ...typography.title,
-    fontSize: 24,
-    color: colors.secondary,
     textAlign: 'center',
+    textShadowColor: colors.gold,
+    textShadowOffset: { width: 0, height: 0 },
+    textShadowRadius: 14,
   },
-  subtitle: {
+  newHigh: {
     ...typography.subtitle,
+    color: colors.gold,
+    fontSize: 14,
   },
-  resultsCard: {
-    backgroundColor: colors.backgroundSecondary,
-    borderColor: colors.border,
-    borderWidth: 1,
-    borderRadius: 16,
-    padding: spacing.lg,
-    gap: spacing.md,
-  },
-  row: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
+  scoreCard: {
+    width: '100%',
+    borderRadius: radius.lg,
+    borderWidth: 1.5,
+    borderColor: colors.blazeSubtle,
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.lg,
     alignItems: 'center',
   },
-  rowLabel: {
+  scoreLabel: {
     ...typography.label,
+    letterSpacing: 1,
   },
-  rowValue: {
-    ...typography.body,
-    fontWeight: '700',
-  },
-  emphasizedValue: {
-    color: colors.secondary,
-    fontSize: 24,
+  scoreValue: {
+    fontFamily: fontFamilies.display,
+    fontSize: 52,
+    lineHeight: 56,
+    color: colors.brightOrange,
+    textShadowColor: colors.gold,
+    textShadowOffset: { width: 0, height: 0 },
+    textShadowRadius: 12,
   },
   actions: {
-    gap: spacing.sm,
-    marginBottom: spacing.lg,
+    width: '100%',
+    flexDirection: 'row',
+    gap: 10,
+    marginTop: spacing.xs,
+  },
+  actionBtn: {
+    flex: 1,
   },
 });

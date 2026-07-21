@@ -10,8 +10,9 @@ import Animated, {
 
 import { formatTimerSeconds } from '../../game/timerEngine';
 import { colors } from '../../theme/colors';
+import { radius } from '../../theme/radius';
 import { spacing } from '../../theme/spacing';
-import { typography } from '../../theme/typography';
+import { fontFamilies, typography } from '../../theme/typography';
 
 type TimerDisplayProps = {
   seconds: number;
@@ -48,12 +49,15 @@ export function TimerDisplay({
   }));
 
   return (
-    <View style={styles.container} accessibilityLabel={`Timer ${formatTimerSeconds(seconds)}`}>
+    <View
+      style={styles.container}
+      accessibilityLabel={`Timer ${formatTimerSeconds(seconds)}`}
+    >
       <Text style={styles.label}>TIME</Text>
       <Animated.Text
         style={[
           styles.value,
-          { color: isWarning ? colors.danger : colors.primary },
+          { color: isWarning ? colors.warningRed : colors.primary },
           animatedStyle,
         ]}
       >
@@ -69,10 +73,10 @@ const styles = StyleSheet.create({
     minWidth: 88,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: colors.backgroundSecondary,
-    borderColor: colors.border,
+    backgroundColor: colors.backgroundCard,
+    borderColor: colors.blazeSubtle,
     borderWidth: 1,
-    borderRadius: 10,
+    borderRadius: radius.md,
     paddingHorizontal: spacing.sm,
     paddingVertical: spacing.sm,
   },
@@ -82,14 +86,14 @@ const styles = StyleSheet.create({
     marginBottom: 2,
   },
   value: {
-    ...typography.body,
-    fontSize: 18,
-    fontWeight: '800',
+    fontFamily: fontFamilies.display,
+    fontSize: 22,
+    lineHeight: 24,
   },
   paused: {
     ...typography.label,
     marginTop: 2,
-    color: colors.secondary,
+    color: colors.gold,
     fontSize: 10,
   },
 });

@@ -10,34 +10,29 @@ import {
 } from 'react-native';
 import Animated, {
   Easing,
-  interpolateColor,
   useAnimatedStyle,
   useSharedValue,
-  withSequence,
   withTiming,
 } from 'react-native-reanimated';
+import { LinearGradient } from 'expo-linear-gradient';
 
-import { BlazeButton } from '../components/BlazeButton';
+import { BlazeButton } from '../components/buttons/BlazeButton';
 import { PlayingCard } from '../components/Card/PlayingCard';
 import { GameFeedbackBanner } from '../components/GameFeedback/GameFeedbackBanner';
+import { BlazeStreakMeter } from '../components/GameHUD/BlazeStreakMeter';
+import { HUDStatBox } from '../components/GameHUD/HUDStatBox';
 import { GameLane } from '../components/GameLane/GameLane';
-import { StreakMeter } from '../components/GameHUD/StreakMeter';
 import { GameStartCountdown } from '../components/GameTimer/GameStartCountdown';
 import { PauseOverlay } from '../components/GameTimer/PauseOverlay';
 import { TimerDisplay } from '../components/GameTimer/TimerDisplay';
 import { ScreenContainer } from '../components/ScreenContainer';
-import {
-  APP_NAME,
-  FINAL_WARNING_SECONDS,
-  LANE_IDS,
-  MAX_BUSTS,
-} from '../game/constants';
+import { FINAL_WARNING_SECONDS, LANE_IDS, MAX_BUSTS } from '../game/constants';
 import type { Card } from '../game/types';
 import type { GameScreenProps } from '../navigation/navigationTypes';
 import { useGameStore } from '../store/useGameStore';
 import { colors } from '../theme/colors';
 import { spacing } from '../theme/spacing';
-import { typography } from '../theme/typography';
+import { fontFamilies, typography } from '../theme/typography';
 
 export function GameScreen({ navigation }: GameScreenProps) {
   const { width } = useWindowDimensions();
@@ -98,7 +93,6 @@ export function GameScreen({ navigation }: GameScreenProps) {
     }
   }, [status, timerStatus]);
 
-  // 3-2-1-BLAZE countdown driven by GameScreen effects (not component timers).
   useEffect(() => {
     if (timerStatus !== 'countdown' || status !== 'playing') {
       return;
@@ -131,7 +125,6 @@ export function GameScreen({ navigation }: GameScreenProps) {
     updateStartCountdown,
   ]);
 
-  // Timestamp-based sync; interval is only a tick, not the source of truth.
   useEffect(() => {
     if (timerStatus !== 'running' || status !== 'playing') {
       return;
@@ -280,111 +273,119 @@ export function GameScreen({ navigation }: GameScreenProps) {
     timerStatus === 'running' && timeRemainingSeconds <= FINAL_WARNING_SECONDS;
 
   return (
-    <ScreenContainer style={styles.screen}>
+    <ScreenContainer
+      style={styles.screen}
+      intensity={showFinalBlaze ? 'intense' : 'subtle'}
+      padded={false}
+    >
+      <LinearGradient
+        colors={[colors.backgroundSecondary, 'transparent']}
+        style={styles.hudGlow}
+        pointerEvents="none"
+      />
+
       <GameFeedbackBanner event={lastMoveEvent} onFinished={handleFeedbackFinished} />
 
-      <View style={styles.header}>
-        <Text style={[styles.title, isCompact && styles.titleCompact]}>{APP_NAME}</Text>
-      </View>
-
-      <View style={styles.statsRow}>
-        <HudStat
-          label="SCORE"
-          value={String(score)}
-          pulseToken={scorePulseToken}
-          mode="pulse"
-        />
-        <HudStat
-          label="MULTIPLIER"
-          value={`x${multiplier}`}
-          pulseToken={multiplierPulseToken}
-          mode={multiplierFlashDanger ? 'danger' : 'pulse'}
-        />
-        <HudStat
-          label="BUSTS"
-          value={`${busts}/${MAX_BUSTS}`}
-          pulseToken={bustPulseToken}
-          mode="shake"
-        />
-        <HudStat label="CARDS" value={String(cardsRemaining)} pulseToken={0} mode="none" />
-      </View>
-
-      <View style={styles.timerRow}>
-        <TimerDisplay
-          seconds={timeRemainingSeconds}
-          warningThreshold={FINAL_WARNING_SECONDS}
-          isPaused={isPaused}
-        />
-        <BlazeButton
-          title="PAUSE"
-          variant="secondary"
-          onPress={handlePause}
-          disabled={timerStatus !== 'running'}
-          style={styles.pauseButton}
-        />
-      </View>
-
-      {showFinalBlaze ? (
-        <Text style={styles.finalBlaze}>FINAL BLAZE</Text>
-      ) : null}
-
-      <StreakMeter multiplier={multiplier} />
-
-      <View style={styles.playArea}>
-        <View style={styles.activeSection}>
-          <Text style={styles.chooseLabel}>Choose a Lane</Text>
-          {activeCard ? (
-            <ActiveCardStage card={activeCard} compact={isCompact} />
-          ) : (
-            <View
-              style={[
-                styles.activePlaceholder,
-                isCompact && styles.activePlaceholderCompact,
-              ]}
-            >
-              <Text style={styles.placeholderText}>No card</Text>
-            </View>
-          )}
+      <View style={styles.padded}>
+        <View style={styles.statsRow}>
+          <HUDStatBox
+            label="SCORE"
+            value={score.toLocaleString()}
+            pulseToken={scorePulseToken}
+            mode="pulse"
+          />
+          <HUDStatBox
+            label="MULTIPLIER"
+            value={`x${multiplier}`}
+            valueColor={showFinalBlaze ? colors.gold : colors.primary}
+            pulseToken={multiplierPulseToken}
+            mode={multiplierFlashDanger ? 'danger' : 'pulse'}
+          />
+          <HUDStatBox
+            label="BUSTS"
+            value={`${busts}/${MAX_BUSTS}`}
+            valueColor={busts > 0 ? colors.warningRed : colors.gold}
+            pulseToken={bustPulseToken}
+            mode="shake"
+          />
+          <HUDStatBox label="CARDS" value={String(cardsRemaining)} />
         </View>
 
-        <View style={styles.lanesGrid}>
-          {LANE_IDS.map((laneId) => {
-            const lane = lanes.find((item) => item.id === laneId) ?? {
-              id: laneId,
-              cards: [],
-            };
-            const isEventLane = lastMoveEvent?.laneId === laneId;
+        <BlazeStreakMeter multiplier={multiplier} />
 
-            return (
-              <View key={laneId} style={styles.laneCell}>
-                <GameLane
-                  lane={lane}
-                  disabled={!canPlay}
-                  onPress={() => playCardToLane(laneId)}
-                  feedbackType={isEventLane ? lastMoveEvent?.type ?? null : null}
-                  feedbackEventId={isEventLane ? lastMoveEvent?.id ?? null : null}
-                />
+        <View style={styles.timerBlock}>
+          {showFinalBlaze ? (
+            <Text style={styles.finalBlaze}>FINAL BLAZE</Text>
+          ) : null}
+          <TimerDisplay
+            seconds={timeRemainingSeconds}
+            warningThreshold={FINAL_WARNING_SECONDS}
+            isPaused={isPaused}
+          />
+        </View>
+
+        <View style={styles.playArea}>
+          <View style={styles.activeSection}>
+            {activeCard ? (
+              <ActiveCardStage card={activeCard} compact={isCompact} />
+            ) : (
+              <View
+                style={[
+                  styles.activePlaceholder,
+                  isCompact && styles.activePlaceholderCompact,
+                ]}
+              >
+                <Text style={styles.placeholderText}>No card</Text>
               </View>
-            );
-          })}
+            )}
+            <Text style={styles.chooseLabel}>CHOOSE A LANE</Text>
+          </View>
+
+          <View style={styles.lanesGrid}>
+            {LANE_IDS.map((laneId) => {
+              const lane = lanes.find((item) => item.id === laneId) ?? {
+                id: laneId,
+                cards: [],
+              };
+              const isEventLane = lastMoveEvent?.laneId === laneId;
+
+              return (
+                <View key={laneId} style={styles.laneCell}>
+                  <GameLane
+                    lane={lane}
+                    disabled={!canPlay}
+                    onPress={() => playCardToLane(laneId)}
+                    feedbackType={isEventLane ? lastMoveEvent?.type ?? null : null}
+                    feedbackEventId={isEventLane ? lastMoveEvent?.id ?? null : null}
+                  />
+                </View>
+              );
+            })}
+          </View>
+
+          <GameStartCountdown value={startCountdownValue} visible={isCountdown} />
+          <PauseOverlay
+            visible={isPaused}
+            onResume={handleResume}
+            onRestart={confirmRestart}
+            onQuit={confirmQuitToHome}
+          />
         </View>
 
-        <GameStartCountdown value={startCountdownValue} visible={isCountdown} />
-        <PauseOverlay
-          visible={isPaused}
-          onResume={handleResume}
-          onRestart={confirmRestart}
-          onQuit={confirmQuitToHome}
-        />
-      </View>
-
-      <View style={styles.actions}>
-        <BlazeButton title="RESTART GAME" onPress={confirmRestart} />
-        <BlazeButton
-          title="RETURN HOME"
-          variant="secondary"
-          onPress={confirmQuitToHome}
-        />
+        <View style={styles.actions}>
+          <BlazeButton
+            title="PAUSE"
+            variant="secondary"
+            onPress={handlePause}
+            disabled={timerStatus !== 'running'}
+            style={styles.actionBtn}
+          />
+          <BlazeButton
+            title="RESTART"
+            onPress={confirmRestart}
+            style={styles.actionBtn}
+          />
+        </View>
       </View>
     </ScreenContainer>
   );
@@ -418,75 +419,10 @@ function ActiveCardStage({ card, compact }: ActiveCardStageProps) {
   }));
 
   return (
-    <Animated.View key={card.id} style={animatedStyle}>
-      <PlayingCard card={card} size={compact ? 'medium' : 'large'} />
+    <Animated.View key={card.id} style={[styles.activeCardWrap, animatedStyle]}>
+      <View style={styles.cardGlow} pointerEvents="none" />
+      <PlayingCard card={card} size={compact ? 'medium' : 'large'} glowing />
     </Animated.View>
-  );
-}
-
-type HudStatProps = {
-  label: string;
-  value: string;
-  pulseToken: number;
-  mode: 'none' | 'pulse' | 'danger' | 'shake';
-};
-
-function HudStat({ label, value, pulseToken, mode }: HudStatProps) {
-  const scale = useSharedValue(1);
-  const shakeX = useSharedValue(0);
-  const tone = useSharedValue(0);
-
-  useEffect(() => {
-    if (pulseToken <= 0 || mode === 'none') {
-      return;
-    }
-
-    if (mode === 'shake') {
-      shakeX.value = withSequence(
-        withTiming(-3, { duration: 35 }),
-        withTiming(3, { duration: 35 }),
-        withTiming(-2, { duration: 35 }),
-        withTiming(0, { duration: 35 }),
-      );
-      return;
-    }
-
-    if (mode === 'danger') {
-      tone.value = withSequence(
-        withTiming(1, { duration: 90 }),
-        withTiming(0, { duration: 260 }),
-      );
-      scale.value = withSequence(
-        withTiming(1.08, { duration: 90 }),
-        withTiming(1, { duration: 160 }),
-      );
-      return;
-    }
-
-    scale.value = withSequence(
-      withTiming(1.1, { duration: 90 }),
-      withTiming(1, { duration: 160 }),
-    );
-  }, [mode, pulseToken, scale, shakeX, tone]);
-
-  const animatedStyle = useAnimatedStyle(() => {
-    const color = interpolateColor(
-      tone.value,
-      [0, 1],
-      [colors.secondary, colors.danger],
-    );
-
-    return {
-      transform: [{ translateX: shakeX.value }, { scale: scale.value }],
-      color,
-    };
-  });
-
-  return (
-    <View style={styles.statCard}>
-      <Text style={styles.statLabel}>{label}</Text>
-      <Animated.Text style={[styles.statValue, animatedStyle]}>{value}</Animated.Text>
-    </View>
   );
 }
 
@@ -494,91 +430,76 @@ const styles = StyleSheet.create({
   screen: {
     overflow: 'hidden',
   },
-  header: {
-    alignItems: 'center',
-    marginTop: spacing.xs,
-    marginBottom: spacing.sm,
+  hudGlow: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    height: 120,
   },
-  title: {
-    ...typography.title,
-    color: colors.primary,
-  },
-  titleCompact: {
-    fontSize: 24,
+  padded: {
+    flex: 1,
+    paddingHorizontal: spacing.sm,
+    paddingTop: spacing.xs,
   },
   statsRow: {
     flexDirection: 'row',
-    gap: spacing.xs,
+    gap: 6,
     marginBottom: spacing.sm,
   },
-  timerRow: {
-    flexDirection: 'row',
+  timerBlock: {
     alignItems: 'center',
-    gap: spacing.sm,
     marginBottom: spacing.sm,
-  },
-  pauseButton: {
-    flex: 1,
-    minHeight: 48,
+    gap: 4,
   },
   finalBlaze: {
-    ...typography.label,
-    color: colors.danger,
+    fontFamily: fontFamilies.display,
+    fontSize: 13,
+    letterSpacing: 2,
+    color: colors.gold,
     textAlign: 'center',
-    marginBottom: spacing.sm,
-    letterSpacing: 1,
   },
   playArea: {
     flex: 1,
     position: 'relative',
-    minHeight: 280,
-  },
-  statCard: {
-    flex: 1,
-    minWidth: 0,
-    backgroundColor: colors.backgroundSecondary,
-    borderColor: colors.border,
-    borderWidth: 1,
-    borderRadius: 10,
-    paddingVertical: spacing.sm,
-    paddingHorizontal: 2,
-    alignItems: 'center',
-  },
-  statLabel: {
-    ...typography.label,
-    fontSize: 10,
-    marginBottom: spacing.xs,
-  },
-  statValue: {
-    ...typography.body,
-    fontSize: 14,
-    fontWeight: '700',
-    color: colors.secondary,
+    minHeight: 260,
   },
   activeSection: {
     alignItems: 'center',
     gap: spacing.sm,
-    marginBottom: spacing.md,
-    minHeight: 140,
+    marginBottom: spacing.sm,
+    minHeight: 120,
+  },
+  activeCardWrap: {
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  cardGlow: {
+    position: 'absolute',
+    width: 140,
+    height: 140,
+    borderRadius: 70,
+    backgroundColor: 'rgba(255,101,0,0.22)',
   },
   chooseLabel: {
-    ...typography.subtitle,
-    color: colors.textPrimary,
-    fontWeight: '600',
+    ...typography.label,
+    fontSize: 11,
+    letterSpacing: 1.4,
+    color: colors.textSecondary,
   },
   activePlaceholder: {
-    width: 124,
-    height: 172,
-    borderRadius: 10,
+    width: 100,
+    height: 140,
+    borderRadius: 8,
     borderWidth: 1,
-    borderColor: colors.border,
-    backgroundColor: colors.backgroundSecondary,
+    borderColor: colors.blazeSubtle,
+    backgroundColor: colors.backgroundCard,
     alignItems: 'center',
     justifyContent: 'center',
   },
   activePlaceholderCompact: {
-    width: 90,
-    height: 126,
+    width: 72,
+    height: 100,
   },
   placeholderText: {
     ...typography.label,
@@ -587,9 +508,9 @@ const styles = StyleSheet.create({
     flex: 1,
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: spacing.sm,
-    marginBottom: spacing.md,
-    minHeight: 200,
+    gap: 6,
+    marginBottom: spacing.sm,
+    minHeight: 180,
   },
   laneCell: {
     width: '48%',
@@ -597,7 +518,11 @@ const styles = StyleSheet.create({
     maxWidth: '100%',
   },
   actions: {
-    gap: spacing.sm,
+    flexDirection: 'row',
+    gap: 10,
     marginBottom: spacing.sm,
+  },
+  actionBtn: {
+    flex: 1,
   },
 });

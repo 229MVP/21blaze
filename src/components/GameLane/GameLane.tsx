@@ -12,8 +12,9 @@ import Animated, {
 import { calculateHandTotal } from '../../game/cardValues';
 import type { Lane, MoveEventType } from '../../game/types';
 import { colors } from '../../theme/colors';
+import { radius } from '../../theme/radius';
 import { spacing } from '../../theme/spacing';
-import { typography } from '../../theme/typography';
+import { fontFamilies, typography } from '../../theme/typography';
 import { PlayingCard } from '../Card/PlayingCard';
 
 type GameLaneProps = {
@@ -96,17 +97,16 @@ export function GameLane({
     const borderColor = interpolateColor(
       flashTone.value,
       [0, 1, 2],
-      [colors.border, colors.primary, colors.danger],
+      [colors.blazeSubtle, colors.primary, colors.warningRed],
     );
 
     return {
       borderColor,
-      transform: [
-        { translateX: shakeX.value },
-        { scale: scale.value },
-      ],
+      transform: [{ translateX: shakeX.value }, { scale: scale.value }],
     };
   });
+
+  const visibleCards = lane.cards.slice(-4);
 
   return (
     <Animated.View style={[styles.laneShell, animatedStyle]}>
@@ -121,17 +121,20 @@ export function GameLane({
           disabled && styles.disabled,
         ]}
       >
-        <View style={styles.header}>
-          <Text style={styles.title}>Lane {lane.id}</Text>
-          <Text style={styles.total}>{total}</Text>
-        </View>
+        <Text style={styles.title}>LANE {lane.id}</Text>
+        <Text style={styles.total}>{total === 0 ? '—' : total}</Text>
 
         <View style={styles.cards}>
           {lane.cards.length === 0 ? (
-            <Text style={styles.empty}>Empty</Text>
+            <Text style={styles.empty}>empty</Text>
           ) : (
-            lane.cards.map((card) => (
-              <PlayingCard key={card.id} card={card} size="small" />
+            visibleCards.map((card, index) => (
+              <View
+                key={card.id}
+                style={[styles.cardOverlap, index > 0 && styles.cardOverlapOffset]}
+              >
+                <PlayingCard card={card} size="small" />
+              </View>
             ))
           )}
         </View>
@@ -143,47 +146,57 @@ export function GameLane({
 const styles = StyleSheet.create({
   laneShell: {
     flex: 1,
-    borderWidth: 2,
-    borderColor: colors.border,
-    borderRadius: 12,
+    borderWidth: 1.5,
+    borderColor: colors.blazeSubtle,
+    borderRadius: radius.md,
     overflow: 'hidden',
   },
   lane: {
     flex: 1,
-    minHeight: 130,
-    backgroundColor: colors.backgroundSecondary,
+    minHeight: 110,
+    backgroundColor: colors.backgroundCard,
     padding: spacing.sm,
-    gap: spacing.sm,
+    alignItems: 'center',
+    gap: 4,
   },
   pressed: {
     opacity: 0.92,
+    transform: [{ scale: 0.98 }],
   },
   disabled: {
     opacity: 0.55,
   },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
   title: {
     ...typography.label,
-    color: colors.textPrimary,
+    fontSize: 9,
+    letterSpacing: 1,
   },
   total: {
-    ...typography.body,
-    fontWeight: '700',
-    color: colors.secondary,
+    fontFamily: fontFamilies.display,
+    fontSize: 22,
+    lineHeight: 24,
+    color: colors.gold,
+    textShadowColor: 'rgba(255,182,41,0.4)',
+    textShadowOffset: { width: 0, height: 0 },
+    textShadowRadius: 8,
   },
   cards: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: spacing.xs,
     alignItems: 'center',
-    minHeight: 82,
+    justifyContent: 'center',
+    minHeight: 50,
+    marginTop: 2,
+  },
+  cardOverlap: {
+    zIndex: 1,
+  },
+  cardOverlapOffset: {
+    marginLeft: -12,
   },
   empty: {
     ...typography.label,
-    color: colors.textSecondary,
+    fontSize: 9,
+    color: colors.textDisabled,
+    fontStyle: 'italic',
   },
 });
