@@ -53,6 +53,7 @@ export type GameState = {
   totalPausedMilliseconds: number;
   gameOverReason: GameOverReason | null;
   startCountdownValue: number;
+  matchId: string | null;
 };
 
 export type GameResultParams = {

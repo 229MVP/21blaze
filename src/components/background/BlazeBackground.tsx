@@ -1,5 +1,5 @@
-import { useEffect, useState, type ReactNode } from 'react';
-import { AccessibilityInfo, StyleSheet, View, type ViewStyle } from 'react-native';
+import { useEffect, type ReactNode } from 'react';
+import { StyleSheet, View, type ViewStyle } from 'react-native';
 import Animated, {
   Easing,
   useAnimatedStyle,
@@ -9,6 +9,7 @@ import Animated, {
 } from 'react-native-reanimated';
 import { LinearGradient } from 'expo-linear-gradient';
 
+import { useReducedMotionSetting } from '../../hooks/useReducedMotionSetting';
 import { colors } from '../../theme/colors';
 
 type Intensity = 'subtle' | 'normal' | 'intense';
@@ -47,7 +48,7 @@ function Ember({
   delay: number;
   reduceMotion: boolean;
 }) {
-  const opacity = useSharedValue(0.25);
+  const opacity = useSharedValue(0.35);
   const translateY = useSharedValue(0);
 
   useEffect(() => {
@@ -96,18 +97,8 @@ export function BlazeBackground({
   intensity = 'normal',
   style,
 }: BlazeBackgroundProps) {
-  const [reduceMotion, setReduceMotion] = useState(false);
+  const reduceMotion = useReducedMotionSetting();
   const glow = GLOW[intensity];
-
-  useEffect(() => {
-    AccessibilityInfo.isReduceMotionEnabled()
-      .then(setReduceMotion)
-      .catch(() => undefined);
-    const sub = AccessibilityInfo.addEventListener('reduceMotionChanged', setReduceMotion);
-    return () => {
-      sub.remove();
-    };
-  }, []);
 
   return (
     <View style={[styles.root, style]}>

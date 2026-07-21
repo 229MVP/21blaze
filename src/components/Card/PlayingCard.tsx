@@ -3,6 +3,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 
 import { SUIT_SYMBOLS } from '../../game/constants';
 import type { Card, Rank, Suit } from '../../game/types';
+import type { CardStyle } from '../../settings/types';
 import { colors } from '../../theme/colors';
 import { fontFamilies } from '../../theme/typography';
 import { shadows } from '../../theme/shadows';
@@ -13,6 +14,7 @@ type PlayingCardProps = {
   card: Card;
   size?: PlayingCardSize;
   glowing?: boolean;
+  cardStyle?: CardStyle;
   /** @deprecated Prefer size="small". Kept for existing call sites. */
   compact?: boolean;
 };
@@ -25,6 +27,14 @@ type SizeConfig = {
   centerSuitFontSize: number;
   padding: number;
   borderRadius: number;
+};
+
+type StylePalette = {
+  face: [string, string];
+  border: string;
+  redSuit: string;
+  blackSuit: string;
+  glow: boolean;
 };
 
 const SIZE_CONFIG: Record<PlayingCardSize, SizeConfig> = {
@@ -57,6 +67,30 @@ const SIZE_CONFIG: Record<PlayingCardSize, SizeConfig> = {
   },
 };
 
+const STYLE_PALETTE: Record<CardStyle, StylePalette> = {
+  classic: {
+    face: [colors.cardFace, colors.cardFaceAlt],
+    border: colors.cardBorder,
+    redSuit: colors.cardInkRed,
+    blackSuit: colors.cardInk,
+    glow: false,
+  },
+  blaze: {
+    face: ['#FFF8F0', '#FFE8D4'],
+    border: colors.primary,
+    redSuit: colors.cardInkRed,
+    blackSuit: colors.cardInk,
+    glow: true,
+  },
+  midnight: {
+    face: ['#1A1A1A', '#121212'],
+    border: 'rgba(255,255,255,0.28)',
+    redSuit: '#FF5A5A',
+    blackSuit: '#E8E8E8',
+    glow: false,
+  },
+};
+
 const VALID_SUITS: readonly Suit[] = ['hearts', 'diamonds', 'clubs', 'spades'];
 const VALID_RANKS: readonly Rank[] = [
   'A',
@@ -74,15 +108,18 @@ const VALID_RANKS: readonly Rank[] = [
   'K',
 ];
 
-function getSuitColor(suit: Suit): string {
+function getSuitColor(suit: Suit, palette: StylePalette): string {
   if (suit === 'hearts' || suit === 'diamonds') {
-    return colors.cardInkRed;
+    return palette.redSuit;
   }
 
-  return colors.cardInk;
+  return palette.blackSuit;
 }
 
-function resolveCardDisplay(card: Card): {
+function resolveCardDisplay(
+  card: Card,
+  palette: StylePalette,
+): {
   rankLabel: string;
   suitSymbol: string;
   suitColor: string;
@@ -95,7 +132,7 @@ function resolveCardDisplay(card: Card): {
     return {
       rankLabel: '?',
       suitSymbol: '?',
-      suitColor: colors.cardInk,
+      suitColor: palette.blackSuit,
       accessibilityLabel: 'Invalid card',
     };
   }
@@ -103,7 +140,7 @@ function resolveCardDisplay(card: Card): {
   return {
     rankLabel: card.rank,
     suitSymbol: SUIT_SYMBOLS[card.suit],
-    suitColor: getSuitColor(card.suit),
+    suitColor: getSuitColor(card.suit, palette),
     accessibilityLabel: `${card.rank} of ${card.suit}`,
   };
 }
@@ -112,28 +149,33 @@ export function PlayingCard({
   card,
   size,
   glowing = false,
+  cardStyle = 'classic',
   compact = false,
 }: PlayingCardProps) {
   const resolvedSize: PlayingCardSize = size ?? (compact ? 'small' : 'medium');
   const config = SIZE_CONFIG[resolvedSize];
+  const palette = STYLE_PALETTE[cardStyle];
   const { rankLabel, suitSymbol, suitColor, accessibilityLabel } =
-    resolveCardDisplay(card);
+    resolveCardDisplay(card, palette);
+  const showGlow = glowing || (cardStyle === 'blaze' && glowing);
 
   return (
     <View
-      accessibilityLabel={accessibilityLabel}
+      accessibilityLabel={`${accessibilityLabel}, ${cardStyle} style`}
       style={[
         styles.shell,
         {
           width: config.width,
           height: config.height,
           borderRadius: config.borderRadius,
+          borderColor: palette.border,
         },
-        glowing ? shadows.cardGlow : shadows.card,
+        showGlow || (glowing && palette.glow) ? shadows.cardGlow : shadows.card,
+        glowing && styles.activeGlow,
       ]}
     >
       <LinearGradient
-        colors={[colors.cardFace, colors.cardFaceAlt]}
+        colors={palette.face}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
         style={[
@@ -213,9 +255,13 @@ const styles = StyleSheet.create({
   shell: {
     position: 'relative',
     borderWidth: 1.5,
-    borderColor: colors.cardBorder,
     overflow: 'hidden',
     backgroundColor: colors.cardFace,
+  },
+  activeGlow: {
+    shadowColor: colors.primary,
+    shadowOpacity: 0.65,
+    shadowRadius: 14,
   },
   card: {
     flex: 1,

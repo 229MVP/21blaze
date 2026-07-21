@@ -11,6 +11,7 @@ import Animated, {
 
 import { calculateHandTotal } from '../../game/cardValues';
 import type { Lane, MoveEventType } from '../../game/types';
+import type { CardStyle } from '../../settings/types';
 import { colors } from '../../theme/colors';
 import { radius } from '../../theme/radius';
 import { spacing } from '../../theme/spacing';
@@ -23,6 +24,7 @@ type GameLaneProps = {
   onPress: () => void;
   feedbackType?: MoveEventType | null;
   feedbackEventId?: string | null;
+  cardStyle?: CardStyle;
 };
 
 export function GameLane({
@@ -31,6 +33,7 @@ export function GameLane({
   onPress,
   feedbackType = null,
   feedbackEventId = null,
+  cardStyle = 'classic',
 }: GameLaneProps) {
   const total = calculateHandTotal(lane.cards);
   const scale = useSharedValue(1);
@@ -133,7 +136,7 @@ export function GameLane({
                 key={card.id}
                 style={[styles.cardOverlap, index > 0 && styles.cardOverlapOffset]}
               >
-                <PlayingCard card={card} size="small" />
+                <PlayingCard card={card} size="small" cardStyle={cardStyle} />
               </View>
             ))
           )}

@@ -24,13 +24,16 @@ import type {
   MoveEvent,
   MoveEventType,
 } from '../game/types';
-import { saveHighScore } from '../storage/highScoreStorage';
+import { clearHighScore, saveHighScore } from '../storage/highScoreStorage';
+import { createMatchId } from '../utils/createMatchId';
+import { useScoreHistoryStore } from './useScoreHistoryStore';
 
 type GameStore = GameState & {
   highScore: number;
   isProcessingMove: boolean;
   lastMoveEvent: MoveEvent | null;
   setHighScore: (score: number) => void;
+  resetHighScore: () => Promise<void>;
   startGame: () => void;
   restartGame: () => void;
   resetGame: () => void;
@@ -64,7 +67,15 @@ const idleGameState: GameState = {
   totalPausedMilliseconds: 0,
   gameOverReason: null,
   startCountdownValue: START_COUNTDOWN_SECONDS,
+  matchId: null,
 };
+
+function withNewMatchId(base: GameState): GameState {
+  return {
+    ...base,
+    matchId: createMatchId(),
+  };
+}
 
 let moveEventSequence = 0;
 
@@ -129,7 +140,7 @@ function createMoveEvent(
 }
 
 function withFreshMatchState(base: GameState): GameState {
-  return {
+  return withNewMatchId({
     ...base,
     cardsPlayed: 0,
     timeRemainingSeconds: GAME_DURATION_SECONDS,
@@ -139,7 +150,7 @@ function withFreshMatchState(base: GameState): GameState {
     totalPausedMilliseconds: 0,
     gameOverReason: base.activeCard ? null : 'deckEmpty',
     startCountdownValue: START_COUNTDOWN_SECONDS,
-  };
+  });
 }
 
 export const useGameStore = create<GameStore>((set, get) => ({
@@ -151,6 +162,11 @@ export const useGameStore = create<GameStore>((set, get) => ({
   setHighScore: (score) => {
     const normalized = Number.isFinite(score) && score > 0 ? Math.floor(score) : 0;
     set({ highScore: normalized });
+  },
+
+  resetHighScore: async () => {
+    await clearHighScore();
+    set({ highScore: 0 });
   },
 
   startGame: () => {
@@ -174,6 +190,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
   resetGame: () => {
     set({
       ...idleGameState,
+      highScore: get().highScore,
       isProcessingMove: false,
       lastMoveEvent: null,
     });
@@ -304,12 +321,35 @@ export const useGameStore = create<GameStore>((set, get) => ({
       highScore: nextHighScore,
       pauseStartedAt: null,
     });
+
+    const shouldRecord =
+      reason === 'timeExpired' || reason === 'busts' || reason === 'deckEmpty';
+
+    if (shouldRecord && current.matchId) {
+      void useScoreHistoryStore.getState().recordScore({
+        id: current.matchId,
+        score: current.score,
+        highScoreAtCompletion: nextHighScore,
+        lanesCleared: current.clearedLanes,
+        cardsPlayed: current.cardsPlayed,
+        busts: current.busts,
+        timeRemainingSeconds: current.timeRemainingSeconds,
+        gameOverReason: reason,
+        completedAt: new Date().toISOString(),
+      });
+    }
   },
 
   quitGame: () => {
     const current = get();
     if (current.status === 'playing' && current.gameOverReason === null) {
-      get().endGame('quit');
+      // Mark quit without recording a leaderboard entry.
+      set({
+        status: 'finished',
+        gameOverReason: 'quit',
+        isProcessingMove: false,
+        pauseStartedAt: null,
+      });
     }
 
     const highScore = get().highScore;
@@ -321,6 +361,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
       gameOverReason: 'quit',
       status: 'idle',
       timerStatus: 'ready',
+      matchId: null,
     });
   },
 
@@ -360,6 +401,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
       totalPausedMilliseconds: current.totalPausedMilliseconds,
       gameOverReason: current.gameOverReason,
       startCountdownValue: current.startCountdownValue,
+      matchId: current.matchId,
     };
 
     const nextState = placeCardInLane(before, laneId);

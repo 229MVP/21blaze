@@ -29,14 +29,17 @@ import { ScreenContainer } from '../components/ScreenContainer';
 import { FINAL_WARNING_SECONDS, LANE_IDS, MAX_BUSTS } from '../game/constants';
 import type { Card } from '../game/types';
 import type { GameScreenProps } from '../navigation/navigationTypes';
+import { selectCardStyle, useSettingsStore } from '../store/useSettingsStore';
 import { useGameStore } from '../store/useGameStore';
 import { colors } from '../theme/colors';
 import { spacing } from '../theme/spacing';
 import { fontFamilies, typography } from '../theme/typography';
+import type { CardStyle } from '../settings/types';
 
 export function GameScreen({ navigation }: GameScreenProps) {
   const { width } = useWindowDimensions();
   const isCompact = width < 380;
+  const cardStyle = useSettingsStore(selectCardStyle);
 
   const status = useGameStore((state) => state.status);
   const score = useGameStore((state) => state.score);
@@ -44,6 +47,7 @@ export function GameScreen({ navigation }: GameScreenProps) {
   const busts = useGameStore((state) => state.busts);
   const clearedLanes = useGameStore((state) => state.clearedLanes);
   const highScore = useGameStore((state) => state.highScore);
+  const matchId = useGameStore((state) => state.matchId);
   const activeCard = useGameStore((state) => state.activeCard);
   const deckLength = useGameStore((state) => state.deck.length);
   const lanes = useGameStore((state) => state.lanes);
@@ -178,6 +182,7 @@ export function GameScreen({ navigation }: GameScreenProps) {
       gameOverReason,
       timeRemainingSeconds,
       cardsPlayed,
+      matchId: matchId ?? undefined,
     });
   }, [
     busts,
@@ -185,6 +190,7 @@ export function GameScreen({ navigation }: GameScreenProps) {
     clearedLanes,
     gameOverReason,
     highScore,
+    matchId,
     navigation,
     score,
     status,
@@ -327,7 +333,11 @@ export function GameScreen({ navigation }: GameScreenProps) {
         <View style={styles.playArea}>
           <View style={styles.activeSection}>
             {activeCard ? (
-              <ActiveCardStage card={activeCard} compact={isCompact} />
+              <ActiveCardStage
+                card={activeCard}
+                compact={isCompact}
+                cardStyle={cardStyle}
+              />
             ) : (
               <View
                 style={[
@@ -357,6 +367,7 @@ export function GameScreen({ navigation }: GameScreenProps) {
                     onPress={() => playCardToLane(laneId)}
                     feedbackType={isEventLane ? lastMoveEvent?.type ?? null : null}
                     feedbackEventId={isEventLane ? lastMoveEvent?.id ?? null : null}
+                    cardStyle={cardStyle}
                   />
                 </View>
               );
@@ -394,9 +405,10 @@ export function GameScreen({ navigation }: GameScreenProps) {
 type ActiveCardStageProps = {
   card: Card;
   compact: boolean;
+  cardStyle: CardStyle;
 };
 
-function ActiveCardStage({ card, compact }: ActiveCardStageProps) {
+function ActiveCardStage({ card, compact, cardStyle }: ActiveCardStageProps) {
   const opacity = useSharedValue(1);
   const scale = useSharedValue(1);
 
@@ -421,7 +433,12 @@ function ActiveCardStage({ card, compact }: ActiveCardStageProps) {
   return (
     <Animated.View key={card.id} style={[styles.activeCardWrap, animatedStyle]}>
       <View style={styles.cardGlow} pointerEvents="none" />
-      <PlayingCard card={card} size={compact ? 'medium' : 'large'} glowing />
+      <PlayingCard
+        card={card}
+        size={compact ? 'medium' : 'large'}
+        glowing
+        cardStyle={cardStyle}
+      />
     </Animated.View>
   );
 }
