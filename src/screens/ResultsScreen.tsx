@@ -4,6 +4,7 @@ import { BlazeButton } from '../components/BlazeButton';
 import { ScreenContainer } from '../components/ScreenContainer';
 import { APP_NAME } from '../game/constants';
 import type { ResultsScreenProps } from '../navigation/navigationTypes';
+import { useGameStore } from '../store/useGameStore';
 import { colors } from '../theme/colors';
 import { spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
@@ -17,12 +18,14 @@ function resolveParam(value: number | undefined, fallback = 0): number {
 }
 
 export function ResultsScreen({ navigation, route }: ResultsScreenProps) {
+  const restartGame = useGameStore((state) => state.restartGame);
   const score = resolveParam(route.params?.score);
   const highScore = resolveParam(route.params?.highScore);
   const clearedLanes = resolveParam(route.params?.clearedLanes);
   const busts = resolveParam(route.params?.busts);
 
   const playAgain = () => {
+    restartGame();
     navigation.replace('Game');
   };
 
