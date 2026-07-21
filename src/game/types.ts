@@ -81,3 +81,20 @@ export type MoveEvent = {
   multiplierAfter: number;
   bustsAfter: number;
 };
+
+export type MoveEventType =
+  | 'placed'
+  | 'cleared21'
+  | 'clearedFiveCard'
+  | 'bust';
+
+export type MoveEvent = {
+  id: string;
+  type: MoveEventType;
+  laneId: number;
+  cardId: string;
+  pointsAwarded: number;
+  multiplierBefore: number;
+  multiplierAfter: number;
+  bustsAfter: number;
+};
