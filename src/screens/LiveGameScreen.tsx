@@ -250,6 +250,9 @@ export function LiveGameScreen({ navigation }: LiveGameScreenProps) {
     <ScreenContainer style={styles.screen} intensity="subtle" padded={false}>
       <View style={styles.padded}>
         <View style={styles.opponentPanel}>
+          <Text style={styles.modeLabel}>
+            {matchState.match.mode === 'quick_match' ? 'QUICK MATCH' : 'FRIEND DUEL'}
+          </Text>
           <Text style={styles.opponentName} numberOfLines={1}>
             {opponent?.displayName ?? 'Opponent'}
           </Text>
@@ -356,6 +359,11 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     paddingHorizontal: spacing.sm,
     gap: 2,
+  },
+  modeLabel: {
+    ...typography.label,
+    fontSize: 10,
+    color: colors.textMuted,
   },
   opponentName: {
     fontFamily: fontFamilies.bodyBold,

@@ -5,6 +5,7 @@ import { ScreenHeader } from '../components/Navigation/ScreenHeader';
 import { ScreenContainer } from '../components/ScreenContainer';
 import type { LiveDuelHomeScreenProps } from '../navigation/navigationTypes';
 import { useAuthStore } from '../store/useAuthStore';
+import { useQuickMatchStore } from '../store/useQuickMatchStore';
 import { colors } from '../theme/colors';
 import { radius } from '../theme/radius';
 import { spacing } from '../theme/spacing';
@@ -12,13 +13,14 @@ import { fontFamilies, typography } from '../theme/typography';
 
 export function LiveDuelHomeScreen({ navigation }: LiveDuelHomeScreenProps) {
   const authStatus = useAuthStore((state) => state.authStatus);
+  const resetQuickMatch = useQuickMatchStore((state) => state.reset);
   const online = authStatus === 'online';
 
   return (
     <ScreenContainer style={styles.container} intensity="normal" padded={false}>
       <View style={styles.padded}>
         <ScreenHeader title="LIVE DUEL" />
-        <Text style={styles.subtitle}>Private friend matches · Beta 0.3</Text>
+        <Text style={styles.subtitle}>Casual arenas · Beta 0.3B</Text>
 
         {!online ? (
           <View style={styles.notice}>
@@ -31,25 +33,35 @@ export function LiveDuelHomeScreen({ navigation }: LiveDuelHomeScreenProps) {
 
         <View style={styles.actions}>
           <BlazeButton
+            title="QUICK MATCH"
+            onPress={() => {
+              resetQuickMatch();
+              navigation.navigate('QuickMatchSearch');
+            }}
+            disabled={!online}
+            fullWidth
+          />
+          <BlazeButton
             title="CHALLENGE A FRIEND"
+            variant="secondary"
             onPress={() => navigation.navigate('CreateLiveRoom')}
             disabled={!online}
             fullWidth
           />
           <BlazeButton
             title="JOIN WITH CODE"
-            variant="secondary"
+            variant="outline"
             onPress={() => navigation.navigate('JoinLiveRoom')}
             disabled={!online}
             fullWidth
           />
           <View style={styles.comingSoon}>
-            <Text style={styles.comingSoonTitle}>QUICK MATCH</Text>
+            <Text style={styles.comingSoonTitle}>MATCH HISTORY</Text>
             <Text style={styles.comingSoonBody}>Coming Next</Text>
           </View>
           <View style={styles.comingSoon}>
-            <Text style={styles.comingSoonTitle}>MATCH HISTORY</Text>
-            <Text style={styles.comingSoonBody}>Coming Later</Text>
+            <Text style={styles.comingSoonTitle}>RANKED</Text>
+            <Text style={styles.comingSoonBody}>Coming Soon</Text>
           </View>
         </View>
 

@@ -57,6 +57,7 @@ export type LivePlayerRow = {
   verified_cards_played: number | null;
   verified_busts: number | null;
   verified_time_remaining_seconds: number | null;
+  display_name_snapshot?: string | null;
   result: LivePlayerResult;
 };
 
