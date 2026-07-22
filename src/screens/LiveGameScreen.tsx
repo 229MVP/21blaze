@@ -94,7 +94,8 @@ export function LiveGameScreen({ navigation }: LiveGameScreenProps) {
       ) {
         if (!navigatedRef.current) {
           navigatedRef.current = true;
-          navigation.replace('LiveDuelResults');
+          const mode = useLiveMatchStore.getState().matchState?.match.mode;
+          navigation.replace(mode === 'ranked' ? 'RankedResults' : 'LiveDuelResults');
         }
       }
     },
