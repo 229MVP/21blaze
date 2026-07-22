@@ -4,11 +4,20 @@ import {
   DEFAULT_GAME_SETTINGS,
   type CardStyle,
   type GameSettings,
+  type PreferredRegion,
 } from '../settings/types';
 
 const SETTINGS_KEY = '@21blaze/settings';
 
 const CARD_STYLES: readonly CardStyle[] = ['classic', 'blaze', 'midnight'];
+const REGIONS: readonly PreferredRegion[] = [
+  'us-east',
+  'us-central',
+  'us-west',
+  'europe',
+  'asia-pacific',
+  'unknown',
+];
 
 function asBoolean(value: unknown, fallback: boolean): boolean {
   return typeof value === 'boolean' ? value : fallback;
@@ -19,6 +28,13 @@ function asCardStyle(value: unknown, fallback: CardStyle): CardStyle {
     return value as CardStyle;
   }
 
+  return fallback;
+}
+
+function asRegion(value: unknown, fallback: PreferredRegion): PreferredRegion {
+  if (typeof value === 'string' && REGIONS.includes(value as PreferredRegion)) {
+    return value as PreferredRegion;
+  }
   return fallback;
 }
 
@@ -48,6 +64,10 @@ function mergeSettings(raw: unknown): GameSettings {
       DEFAULT_GAME_SETTINGS.reducedMotionEnabled,
     ),
     cardStyle: asCardStyle(source.cardStyle, DEFAULT_GAME_SETTINGS.cardStyle),
+    preferredRegion: asRegion(
+      source.preferredRegion,
+      DEFAULT_GAME_SETTINGS.preferredRegion,
+    ),
   };
 }
 

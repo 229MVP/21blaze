@@ -3,9 +3,11 @@ import { StyleSheet, Text, View } from 'react-native';
 import { FlameIcon } from '../components/branding/FlameIcon';
 import { BlazeButton } from '../components/buttons/BlazeButton';
 import { ScreenContainer } from '../components/ScreenContainer';
+import { formatTimerSeconds } from '../game/timerEngine';
 import type { LiveDuelResultsScreenProps } from '../navigation/navigationTypes';
 import { useAuthStore } from '../store/useAuthStore';
 import { useLiveMatchStore } from '../store/useLiveMatchStore';
+import { useQuickMatchStore } from '../store/useQuickMatchStore';
 import { colors } from '../theme/colors';
 import { radius } from '../theme/radius';
 import { spacing } from '../theme/spacing';
@@ -15,18 +17,26 @@ function outcomeTitle(
   selfResult: string | undefined,
   winnerUserId: string | null | undefined,
   selfUserId: string | undefined,
+  quickMatch: boolean,
 ): string {
-  if (selfResult === 'draw' || (!winnerUserId && selfResult === 'pending')) {
-    return 'DRAW';
-  }
-  if (
+  const isWin =
     selfResult === 'win' ||
     selfResult === 'forfeit_win' ||
-    (winnerUserId && selfUserId && winnerUserId === selfUserId)
-  ) {
-    return 'VICTORY';
+    (winnerUserId && selfUserId && winnerUserId === selfUserId);
+  const isDraw =
+    selfResult === 'draw' || (!winnerUserId && selfResult === 'pending');
+
+  if (quickMatch) {
+    if (isDraw) {
+      return 'DRAW';
+    }
+    return isWin ? 'WIN' : 'LOSS';
   }
-  return 'DEFEAT';
+
+  if (isDraw) {
+    return 'DRAW';
+  }
+  return isWin ? 'VICTORY' : 'DEFEAT';
 }
 
 export function LiveDuelResultsScreen({ navigation }: LiveDuelResultsScreenProps) {
@@ -34,17 +44,34 @@ export function LiveDuelResultsScreen({ navigation }: LiveDuelResultsScreenProps
   const finalResult = useLiveMatchStore((state) => state.finalResult);
   const matchState = useLiveMatchStore((state) => state.matchState);
   const resetLiveMatch = useLiveMatchStore((state) => state.resetLiveMatch);
+  const resetQuickMatch = useQuickMatchStore((state) => state.reset);
 
   const state = finalResult ?? matchState;
   const self = state?.self;
   const opponent = state?.opponent;
-  const title = outcomeTitle(self?.result, state?.match.winnerUserId, userId);
+  const isQuickMatch = state?.match.mode === 'quick_match';
+  const title = outcomeTitle(
+    self?.result,
+    state?.match.winnerUserId,
+    userId,
+    Boolean(isQuickMatch),
+  );
 
   const goHome = () => {
     resetLiveMatch();
+    resetQuickMatch();
     navigation.reset({
       index: 0,
       routes: [{ name: 'Home' }],
+    });
+  };
+
+  const findNewOpponent = () => {
+    resetLiveMatch();
+    resetQuickMatch();
+    navigation.reset({
+      index: 1,
+      routes: [{ name: 'LiveDuelHome' }, { name: 'QuickMatchSearch' }],
     });
   };
 
@@ -58,7 +85,9 @@ export function LiveDuelResultsScreen({ navigation }: LiveDuelResultsScreenProps
           state?.match.finishReason === 'voluntary_forfeit' ||
           state?.match.finishReason === 'missing_result'
             ? 'Decided by forfeit'
-            : 'Server-verified result'}
+            : isQuickMatch
+              ? 'Casual Quick Match · server verified'
+              : 'Server-verified result'}
         </Text>
 
         <View style={styles.row}>
@@ -68,6 +97,7 @@ export function LiveDuelResultsScreen({ navigation }: LiveDuelResultsScreenProps
             lanes={self?.verifiedLanesCleared}
             cards={self?.verifiedCardsPlayed}
             busts={self?.verifiedBusts}
+            timeRemaining={self?.verifiedTimeRemainingSeconds}
             highlight
           />
           <ResultCard
@@ -76,16 +106,25 @@ export function LiveDuelResultsScreen({ navigation }: LiveDuelResultsScreenProps
             lanes={opponent?.verifiedLanesCleared}
             cards={opponent?.verifiedCardsPlayed}
             busts={opponent?.verifiedBusts}
+            timeRemaining={opponent?.verifiedTimeRemainingSeconds}
             highlight={false}
           />
         </View>
 
         <View style={styles.actions}>
-          <View style={styles.comingSoon}>
-            <Text style={styles.comingSoonTitle}>REMATCH</Text>
-            <Text style={styles.comingSoonBody}>Coming Next</Text>
-          </View>
-          <BlazeButton title="RETURN HOME" onPress={goHome} fullWidth />
+          {isQuickMatch ? (
+            <BlazeButton
+              title="FIND NEW OPPONENT"
+              onPress={findNewOpponent}
+              fullWidth
+            />
+          ) : (
+            <View style={styles.comingSoon}>
+              <Text style={styles.comingSoonTitle}>REMATCH</Text>
+              <Text style={styles.comingSoonBody}>Coming Next</Text>
+            </View>
+          )}
+          <BlazeButton title="RETURN HOME" variant="secondary" onPress={goHome} fullWidth />
         </View>
       </View>
     </ScreenContainer>
@@ -98,6 +137,7 @@ function ResultCard({
   lanes,
   cards,
   busts,
+  timeRemaining,
   highlight,
 }: {
   name: string;
@@ -105,6 +145,7 @@ function ResultCard({
   lanes: number | null | undefined;
   cards: number | null | undefined;
   busts: number | null | undefined;
+  timeRemaining: number | null | undefined;
   highlight: boolean;
 }) {
   return (
@@ -116,6 +157,9 @@ function ResultCard({
       <Text style={styles.meta}>{lanes ?? 0} lanes</Text>
       <Text style={styles.meta}>{cards ?? 0} cards</Text>
       <Text style={styles.meta}>{busts ?? 0} busts</Text>
+      <Text style={styles.meta}>
+        {formatTimerSeconds(timeRemaining ?? 0)} left
+      </Text>
     </View>
   );
 }
@@ -140,6 +184,7 @@ const styles = StyleSheet.create({
     ...typography.body,
     fontSize: 14,
     color: colors.textSecondary,
+    textAlign: 'center',
   },
   row: {
     flexDirection: 'row',
@@ -148,6 +193,7 @@ const styles = StyleSheet.create({
   },
   card: {
     flex: 1,
+    minWidth: 0,
     borderRadius: radius.lg,
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.08)',

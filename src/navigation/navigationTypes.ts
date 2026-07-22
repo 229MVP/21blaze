@@ -24,6 +24,8 @@ export type RootStackParamList = {
   LiveLobby: undefined;
   LiveGame: undefined;
   LiveDuelResults: undefined;
+  QuickMatchSearch: undefined;
+  QuickMatchFound: undefined;
 };
 
 export type HomeScreenProps = NativeStackScreenProps<RootStackParamList, 'Home'>;
@@ -58,4 +60,12 @@ export type LiveGameScreenProps = NativeStackScreenProps<RootStackParamList, 'Li
 export type LiveDuelResultsScreenProps = NativeStackScreenProps<
   RootStackParamList,
   'LiveDuelResults'
+>;
+export type QuickMatchSearchScreenProps = NativeStackScreenProps<
+  RootStackParamList,
+  'QuickMatchSearch'
+>;
+export type QuickMatchFoundScreenProps = NativeStackScreenProps<
+  RootStackParamList,
+  'QuickMatchFound'
 >;

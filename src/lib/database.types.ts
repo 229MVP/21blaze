@@ -205,6 +205,7 @@ export type Database = {
           verified_busts: number | null;
           verified_time_remaining_seconds: number | null;
           verified_move_log: Json | null;
+          display_name_snapshot: string | null;
           result: LivePlayerResult;
         };
         Insert: {
@@ -222,6 +223,7 @@ export type Database = {
           verified_busts?: number | null;
           verified_time_remaining_seconds?: number | null;
           verified_move_log?: Json | null;
+          display_name_snapshot?: string | null;
           result?: LivePlayerResult;
         };
         Update: {
@@ -239,7 +241,83 @@ export type Database = {
           verified_busts?: number | null;
           verified_time_remaining_seconds?: number | null;
           verified_move_log?: Json | null;
+          display_name_snapshot?: string | null;
           result?: LivePlayerResult;
+        };
+        Relationships: [];
+      };
+      matchmaking_queue: {
+        Row: {
+          id: string;
+          user_id: string;
+          mode: string;
+          status: string;
+          region: string | null;
+          game_rules_version: string;
+          queued_at: string;
+          matched_at: string | null;
+          expires_at: string;
+          match_id: string | null;
+          cancelled_at: string | null;
+          last_check_at: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          mode?: string;
+          status?: string;
+          region?: string | null;
+          game_rules_version: string;
+          queued_at?: string;
+          matched_at?: string | null;
+          expires_at: string;
+          match_id?: string | null;
+          cancelled_at?: string | null;
+          last_check_at?: string | null;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          mode?: string;
+          status?: string;
+          region?: string | null;
+          game_rules_version?: string;
+          queued_at?: string;
+          matched_at?: string | null;
+          expires_at?: string;
+          match_id?: string | null;
+          cancelled_at?: string | null;
+          last_check_at?: string | null;
+          created_at?: string;
+        };
+        Relationships: [];
+      };
+      quick_match_acceptances: {
+        Row: {
+          match_id: string;
+          user_id: string;
+          accepted_at: string | null;
+          declined_at: string | null;
+          expires_at: string;
+          created_at: string;
+        };
+        Insert: {
+          match_id: string;
+          user_id: string;
+          accepted_at?: string | null;
+          declined_at?: string | null;
+          expires_at: string;
+          created_at?: string;
+        };
+        Update: {
+          match_id?: string;
+          user_id?: string;
+          accepted_at?: string | null;
+          declined_at?: string | null;
+          expires_at?: string;
+          created_at?: string;
         };
         Relationships: [];
       };
@@ -260,8 +338,45 @@ export type Database = {
         };
         Relationships: [];
       };
+      live_match_history: {
+        Row: {
+          match_id: string;
+          mode: string;
+          status: string;
+          winner_user_id: string | null;
+          finish_reason: string | null;
+          completed_at: string | null;
+          created_at: string;
+          viewer_user_id: string;
+          viewer_display_name: string | null;
+          viewer_score: number | null;
+          viewer_lanes_cleared: number | null;
+          viewer_cards_played: number | null;
+          viewer_busts: number | null;
+          viewer_time_remaining_seconds: number | null;
+          viewer_result: string;
+          opponent_user_id: string | null;
+          opponent_display_name: string | null;
+          opponent_score: number | null;
+          opponent_lanes_cleared: number | null;
+          opponent_cards_played: number | null;
+          opponent_busts: number | null;
+          opponent_time_remaining_seconds: number | null;
+          opponent_result: string | null;
+        };
+        Relationships: [];
+      };
     };
-    Functions: Record<string, never>;
+    Functions: {
+      try_create_quick_match: {
+        Args: {
+          requesting_user_id: string;
+          requesting_region: string;
+          requesting_game_rules_version: string;
+        };
+        Returns: string | null;
+      };
+    };
     Enums: Record<string, never>;
     CompositeTypes: Record<string, never>;
   };

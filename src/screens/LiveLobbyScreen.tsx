@@ -63,21 +63,29 @@ export function LiveLobbyScreen({ navigation }: LiveLobbyScreenProps) {
     );
   }
 
+  const isQuickMatch = matchState.match.mode === 'quick_match';
+  const serverCountdownActive =
+    countdown !== null ||
+    matchState.match.status === 'countdown' ||
+    Boolean(matchState.match.startsAt);
+
   return (
     <ScreenContainer style={styles.container} intensity="normal" padded={false}>
       <View style={styles.padded}>
-        <ScreenHeader title="LOBBY" />
-        <Text style={styles.room}>ROOM {matchState.match.roomCode}</Text>
+        <ScreenHeader title={isQuickMatch ? 'QUICK MATCH' : 'LOBBY'} />
+        <Text style={styles.room}>
+          {isQuickMatch ? 'CASUAL DUEL' : `ROOM ${matchState.match.roomCode}`}
+        </Text>
 
         <View style={styles.players}>
           <PlayerCard
             name={matchState.self.displayName}
-            ready={localReady}
+            ready={isQuickMatch ? true : localReady}
             you
           />
           <PlayerCard
             name={matchState.opponent?.displayName ?? 'Waiting…'}
-            ready={opponentReady}
+            ready={isQuickMatch ? Boolean(matchState.opponent) : opponentReady}
             you={false}
           />
         </View>
@@ -86,21 +94,25 @@ export function LiveLobbyScreen({ navigation }: LiveLobbyScreenProps) {
           <Text style={styles.countdown}>STARTING IN {countdown}</Text>
         ) : (
           <Text style={styles.help}>
-            Both players must ready up. Match starts on the server clock.
+            {isQuickMatch
+              ? 'Synchronizing with the server clock…'
+              : 'Both players must ready up. Match starts on the server clock.'}
           </Text>
         )}
 
         {error ? <Text style={styles.error}>{error}</Text> : null}
 
         <View style={styles.actions}>
-          <BlazeButton
-            title={localReady ? 'READY!' : 'READY'}
-            onPress={() => {
-              void markReady();
-            }}
-            disabled={localReady || isBusy || !matchState.opponent}
-            fullWidth
-          />
+          {!isQuickMatch && !serverCountdownActive ? (
+            <BlazeButton
+              title={localReady ? 'READY!' : 'READY'}
+              onPress={() => {
+                void markReady();
+              }}
+              disabled={localReady || isBusy || !matchState.opponent}
+              fullWidth
+            />
+          ) : null}
           <BlazeButton
             title="LEAVE"
             variant="secondary"

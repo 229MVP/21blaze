@@ -24,3 +24,6 @@ verify_jwt = true
 
 [functions.get-live-match-state]
 verify_jwt = true
+
+[functions.quick-match]
+verify_jwt = true
