@@ -1,3 +1,9 @@
+import {
+  applyMissionProgressFromMatch,
+  grantMatchXp,
+  tryBuildMatchSummaryFromMoveLog,
+  type MatchXpMode,
+} from './progression.ts';
 import type { createServiceClient } from './supabaseAdmin.ts';
 
 export const LIVE_MATCH_DURATION_SECONDS = 120;
@@ -57,6 +63,7 @@ export type LivePlayerRow = {
   verified_cards_played: number | null;
   verified_busts: number | null;
   verified_time_remaining_seconds: number | null;
+  verified_move_log?: unknown;
   display_name_snapshot?: string | null;
   result: LivePlayerResult;
 };
@@ -70,6 +77,74 @@ export type VerifiedLiveResult = {
 };
 
 type AdminClient = ReturnType<typeof createServiceClient>;
+
+function liveXpMode(mode: string): MatchXpMode {
+  return mode === 'ranked' ? 'ranked' : 'casual';
+}
+
+async function grantLiveProgressionSilent(
+  admin: AdminClient,
+  match: LiveMatchRow,
+  players: LivePlayerRow[],
+): Promise<void> {
+  if (match.status === 'cancelled' || match.status === 'forfeited') {
+    return;
+  }
+
+  // Only grant for valid completed score matches (not forfeit / no-contest).
+  if (match.status !== 'completed') {
+    return;
+  }
+
+  const finish = match.finish_reason;
+  if (
+    finish === 'disconnect_forfeit' ||
+    finish === 'missing_result' ||
+    finish === 'forfeit'
+  ) {
+    return;
+  }
+
+  const xpMode = liveXpMode(match.mode);
+
+  for (const player of players) {
+    if (
+      !player.submitted_at ||
+      player.verified_score === null ||
+      player.result === 'forfeit_loss' ||
+      player.result === 'forfeit_win'
+    ) {
+      continue;
+    }
+
+    try {
+      await grantMatchXp(admin, player.user_id, xpMode, match.id);
+    } catch {
+      // Idempotent retry later.
+    }
+
+    try {
+      const summary = tryBuildMatchSummaryFromMoveLog(
+        match.seed,
+        player.verified_move_log,
+        {
+          matchMode: xpMode,
+          matchCompleted: true,
+          validCompletion: true,
+          lanesClearedFallback: player.verified_lanes_cleared ?? 0,
+        },
+      );
+      await applyMissionProgressFromMatch(
+        admin,
+        player.user_id,
+        match.id,
+        summary,
+      );
+    } catch {
+      // Silent — mission progress is idempotent per match.
+    }
+  }
+}
 
 export function randomSeed(): number {
   const bytes = new Uint32Array(1);
@@ -312,6 +387,13 @@ export async function finalizeIfBothSubmitted(
 
   const { match, players } = loaded;
   if (match.status === 'completed' || match.status === 'forfeited') {
+    if (match.status === 'completed') {
+      try {
+        await grantLiveProgressionSilent(admin, match, players);
+      } catch {
+        // Swallow progression errors on idempotent path.
+      }
+    }
     return;
   }
 
@@ -420,6 +502,25 @@ export async function finalizeIfBothSubmitted(
     'completed',
     match.starts_at,
   );
+
+  try {
+    await grantLiveProgressionSilent(
+      admin,
+      {
+        ...match,
+        status: 'completed',
+        winner_user_id: winnerUserId,
+        finish_reason: winnerUserId ? 'score' : 'draw',
+        completed_at: completedAt,
+      },
+      [
+        { ...a, result: aResult },
+        { ...b, result: bResult },
+      ],
+    );
+  } catch {
+    // Swallow all progression errors.
+  }
 }
 
 async function finalizeMissingOpponent(
