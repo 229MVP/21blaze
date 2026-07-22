@@ -38,7 +38,8 @@
     "android": "expo start --android",
     "ios": "expo start --ios",
     "web": "expo start --web",
-    "test:game": "npx tsx src/game/gameEngineSelfTest.ts"
+    "test:game": "npx tsx src/game/gameEngineSelfTest.ts",
+    "test:ranked": "npx tsx src/ranked/rankedSelfTest.ts"
   },
   "private": true
 }

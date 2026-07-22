@@ -280,10 +280,19 @@ export async function applyDisconnectForfeits(
       winnerUserId: opponent.user_id,
       reason: 'disconnect',
     });
-    await broadcastLiveEvent(matchId, 'match_completed', {
+  await broadcastLiveEvent(matchId, 'match_completed', {
       winnerUserId: opponent.user_id,
       finishReason: 'disconnect_forfeit',
     });
+
+    const { maybeFinalizeRankedMatch } = await import('./rankedHelpers.ts');
+    await maybeFinalizeRankedMatch(
+      admin,
+      matchId,
+      match.mode,
+      'forfeited',
+      match.starts_at,
+    );
 
     changed = true;
     break;
@@ -402,6 +411,15 @@ export async function finalizeIfBothSubmitted(
     winnerUserId,
     finishReason: winnerUserId ? 'score' : 'draw',
   });
+
+  const { maybeFinalizeRankedMatch } = await import('./rankedHelpers.ts');
+  await maybeFinalizeRankedMatch(
+    admin,
+    matchId,
+    match.mode,
+    'completed',
+    match.starts_at,
+  );
 }
 
 async function finalizeMissingOpponent(
@@ -448,6 +466,15 @@ async function finalizeMissingOpponent(
     winnerUserId: winner.user_id,
     finishReason: 'missing_result',
   });
+
+  const { maybeFinalizeRankedMatch } = await import('./rankedHelpers.ts');
+  await maybeFinalizeRankedMatch(
+    admin,
+    matchId,
+    loaded.match.mode,
+    'forfeited',
+    loaded.match.starts_at,
+  );
 }
 
 export async function buildPublicMatchState(

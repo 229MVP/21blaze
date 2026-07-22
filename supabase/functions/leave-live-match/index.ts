@@ -7,6 +7,7 @@ import {
   buildPublicMatchState,
   loadMatchWithPlayers,
 } from '../_shared/liveMatch.ts';
+import { maybeFinalizeRankedMatch } from '../_shared/rankedHelpers.ts';
 
 Deno.serve(async (request) => {
   if (request.method === 'OPTIONS') {
@@ -116,6 +117,14 @@ Deno.serve(async (request) => {
         winnerUserId: opponent.user_id,
         finishReason: 'voluntary_forfeit',
       });
+
+      await maybeFinalizeRankedMatch(
+        admin,
+        matchId,
+        loaded.match.mode,
+        'forfeited',
+        loaded.match.starts_at,
+      );
 
       const state = await buildPublicMatchState(admin, matchId, userId);
       return jsonResponse({ forfeited: true, state });

@@ -46,6 +46,7 @@ export type Database = {
           avatar_seed: number;
           created_at: string;
           updated_at: string;
+          ranked_suspended_until: string | null;
         };
         Insert: {
           id: string;
@@ -53,6 +54,7 @@ export type Database = {
           avatar_seed?: number;
           created_at?: string;
           updated_at?: string;
+          ranked_suspended_until?: string | null;
         };
         Update: {
           id?: string;
@@ -60,6 +62,7 @@ export type Database = {
           avatar_seed?: number;
           created_at?: string;
           updated_at?: string;
+          ranked_suspended_until?: string | null;
         };
         Relationships: [];
       };
@@ -261,6 +264,10 @@ export type Database = {
           cancelled_at: string | null;
           last_check_at: string | null;
           created_at: string;
+          season_id: string | null;
+          rating_snapshot: number | null;
+          placement_status: string | null;
+          rating_range_at_join: number | null;
         };
         Insert: {
           id?: string;
@@ -276,6 +283,10 @@ export type Database = {
           cancelled_at?: string | null;
           last_check_at?: string | null;
           created_at?: string;
+          season_id?: string | null;
+          rating_snapshot?: number | null;
+          placement_status?: string | null;
+          rating_range_at_join?: number | null;
         };
         Update: {
           id?: string;
@@ -290,6 +301,190 @@ export type Database = {
           match_id?: string | null;
           cancelled_at?: string | null;
           last_check_at?: string | null;
+          created_at?: string;
+          season_id?: string | null;
+          rating_snapshot?: number | null;
+          placement_status?: string | null;
+          rating_range_at_join?: number | null;
+        };
+        Relationships: [];
+      };
+      ranked_seasons: {
+        Row: {
+          id: string;
+          name: string;
+          slug: string;
+          status: string;
+          starts_at: string;
+          ends_at: string;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          name: string;
+          slug: string;
+          status: string;
+          starts_at: string;
+          ends_at: string;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          name?: string;
+          slug?: string;
+          status?: string;
+          starts_at?: string;
+          ends_at?: string;
+          created_at?: string;
+        };
+        Relationships: [];
+      };
+      player_rankings: {
+        Row: {
+          user_id: string;
+          season_id: string;
+          rating: number;
+          placement_matches_completed: number;
+          ranked_matches_played: number;
+          wins: number;
+          losses: number;
+          draws: number;
+          current_win_streak: number;
+          longest_win_streak: number;
+          peak_rating: number;
+          current_division: string;
+          peak_division: string;
+          last_ranked_match_at: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          user_id: string;
+          season_id: string;
+          rating?: number;
+          placement_matches_completed?: number;
+          ranked_matches_played?: number;
+          wins?: number;
+          losses?: number;
+          draws?: number;
+          current_win_streak?: number;
+          longest_win_streak?: number;
+          peak_rating?: number;
+          current_division?: string;
+          peak_division?: string;
+          last_ranked_match_at?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          user_id?: string;
+          season_id?: string;
+          rating?: number;
+          placement_matches_completed?: number;
+          ranked_matches_played?: number;
+          wins?: number;
+          losses?: number;
+          draws?: number;
+          current_win_streak?: number;
+          longest_win_streak?: number;
+          peak_rating?: number;
+          current_division?: string;
+          peak_division?: string;
+          last_ranked_match_at?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
+      ranked_match_results: {
+        Row: {
+          id: string;
+          match_id: string;
+          season_id: string;
+          player_one_user_id: string;
+          player_two_user_id: string;
+          winner_user_id: string | null;
+          result_type: string;
+          player_one_rating_before: number;
+          player_one_rating_after: number;
+          player_one_rating_change: number;
+          player_two_rating_before: number;
+          player_two_rating_after: number;
+          player_two_rating_change: number;
+          player_one_verified_score: number;
+          player_two_verified_score: number;
+          rating_processed_at: string;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          match_id: string;
+          season_id: string;
+          player_one_user_id: string;
+          player_two_user_id: string;
+          winner_user_id?: string | null;
+          result_type: string;
+          player_one_rating_before: number;
+          player_one_rating_after: number;
+          player_one_rating_change: number;
+          player_two_rating_before: number;
+          player_two_rating_after: number;
+          player_two_rating_change: number;
+          player_one_verified_score: number;
+          player_two_verified_score: number;
+          rating_processed_at?: string;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          match_id?: string;
+          season_id?: string;
+          player_one_user_id?: string;
+          player_two_user_id?: string;
+          winner_user_id?: string | null;
+          result_type?: string;
+          player_one_rating_before?: number;
+          player_one_rating_after?: number;
+          player_one_rating_change?: number;
+          player_two_rating_before?: number;
+          player_two_rating_after?: number;
+          player_two_rating_change?: number;
+          player_one_verified_score?: number;
+          player_two_verified_score?: number;
+          rating_processed_at?: string;
+          created_at?: string;
+        };
+        Relationships: [];
+      };
+      ranked_integrity_flags: {
+        Row: {
+          id: string;
+          match_id: string | null;
+          user_id: string | null;
+          flag_type: string;
+          severity: string;
+          metadata: Json;
+          reviewed_at: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          match_id?: string | null;
+          user_id?: string | null;
+          flag_type: string;
+          severity: string;
+          metadata?: Json;
+          reviewed_at?: string | null;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          match_id?: string | null;
+          user_id?: string | null;
+          flag_type?: string;
+          severity?: string;
+          metadata?: Json;
+          reviewed_at?: string | null;
           created_at?: string;
         };
         Relationships: [];
@@ -366,6 +561,26 @@ export type Database = {
         };
         Relationships: [];
       };
+      ranked_season_leaderboard: {
+        Row: {
+          rank: number;
+          season_id: string;
+          user_id: string;
+          display_name: string;
+          rating: number;
+          current_division: string;
+          placement_matches_completed: number;
+          ranked_matches_played: number;
+          wins: number;
+          losses: number;
+          draws: number;
+          current_win_streak: number;
+          peak_rating: number;
+          peak_division: string;
+          last_ranked_match_at: string | null;
+        };
+        Relationships: [];
+      };
     };
     Functions: {
       try_create_quick_match: {
@@ -375,6 +590,33 @@ export type Database = {
           requesting_game_rules_version: string;
         };
         Returns: string | null;
+      };
+      try_create_ranked_match: {
+        Args: {
+          requesting_user_id: string;
+          requesting_region: string;
+          requesting_game_rules_version: string;
+        };
+        Returns: string | null;
+      };
+      finalize_ranked_match: {
+        Args: {
+          p_match_id: string;
+        };
+        Returns: Json;
+      };
+      ensure_player_ranking: {
+        Args: {
+          p_user_id: string;
+          p_season_id: string;
+        };
+        Returns: Database['public']['Tables']['player_rankings']['Row'];
+      };
+      soft_reset_ranked_rating: {
+        Args: {
+          old_rating: number;
+        };
+        Returns: number;
       };
     };
     Enums: Record<string, never>;

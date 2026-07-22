@@ -27,3 +27,6 @@ verify_jwt = true
 
 [functions.quick-match]
 verify_jwt = true
+
+[functions.ranked-match]
+verify_jwt = true

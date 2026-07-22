@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
+  Alert,
   AppState,
   type AppStateStatus,
   StyleSheet,
@@ -9,6 +10,7 @@ import {
 } from 'react-native';
 
 import { PlayingCard } from '../components/Card/PlayingCard';
+import { BlazeButton } from '../components/buttons/BlazeButton';
 import { BlazeStreakMeter } from '../components/GameHUD/BlazeStreakMeter';
 import { HUDStatBox } from '../components/GameHUD/HUDStatBox';
 import { GameLane } from '../components/GameLane/GameLane';
@@ -59,6 +61,8 @@ export function LiveGameScreen({ navigation }: LiveGameScreenProps) {
   const submitResult = useLiveMatchStore((state) => state.submitResult);
   const reconnectToMatch = useLiveMatchStore((state) => state.reconnectToMatch);
   const clearGameplayFlash = useLiveMatchStore((state) => state.clearGameplayFlash);
+  const leaveMatch = useLiveMatchStore((state) => state.leaveMatch);
+  const isRanked = matchState?.match.mode === 'ranked';
 
   const seed = matchState?.match.seed;
   const [game, setGame] = useState<GameState | null>(null);
@@ -160,9 +164,35 @@ export function LiveGameScreen({ navigation }: LiveGameScreenProps) {
       !navigatedRef.current
     ) {
       navigatedRef.current = true;
-      navigation.replace('LiveDuelResults');
+      if (finalResult?.match.mode === 'ranked' || matchState?.match.mode === 'ranked') {
+        navigation.replace('RankedResults');
+      } else {
+        navigation.replace('LiveDuelResults');
+      }
     }
-  }, [finalResult?.match.status, navigation]);
+  }, [
+    finalResult?.match.mode,
+    finalResult?.match.status,
+    matchState?.match.mode,
+    navigation,
+  ]);
+
+  const confirmRankedQuit = () => {
+    Alert.alert(
+      'Leave Ranked Match?',
+      'Leaving this ranked match after it has started will count as a loss.',
+      [
+        { text: 'Stay', style: 'cancel' },
+        {
+          text: 'Forfeit',
+          style: 'destructive',
+          onPress: () => {
+            void leaveMatch();
+          },
+        },
+      ],
+    );
+  };
 
   const playCardToLane = (laneId: LaneId) => {
     if (!game || !hasStarted || isProcessingMove || game.activeCard === null) {
@@ -251,7 +281,11 @@ export function LiveGameScreen({ navigation }: LiveGameScreenProps) {
       <View style={styles.padded}>
         <View style={styles.opponentPanel}>
           <Text style={styles.modeLabel}>
-            {matchState.match.mode === 'quick_match' ? 'QUICK MATCH' : 'FRIEND DUEL'}
+            {matchState.match.mode === 'ranked'
+              ? 'RANKED'
+              : matchState.match.mode === 'quick_match'
+                ? 'QUICK MATCH'
+                : 'FRIEND DUEL'}
           </Text>
           <Text style={styles.opponentName} numberOfLines={1}>
             {opponent?.displayName ?? 'Opponent'}
@@ -337,6 +371,15 @@ export function LiveGameScreen({ navigation }: LiveGameScreenProps) {
 
         {submissionStatus === 'submitting' ? (
           <Text style={styles.centerText}>VERIFYING RESULT…</Text>
+        ) : null}
+
+        {isRanked && hasStarted && submissionStatus !== 'submitting' ? (
+          <BlazeButton
+            title="FORFEIT"
+            variant="outline"
+            onPress={confirmRankedQuit}
+            fullWidth
+          />
         ) : null}
       </View>
     </ScreenContainer>

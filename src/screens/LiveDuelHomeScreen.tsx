@@ -3,9 +3,11 @@ import { StyleSheet, Text, View } from 'react-native';
 import { BlazeButton } from '../components/buttons/BlazeButton';
 import { ScreenHeader } from '../components/Navigation/ScreenHeader';
 import { ScreenContainer } from '../components/ScreenContainer';
+import { isRankedBetaEnabled } from '../config/featureFlags';
 import type { LiveDuelHomeScreenProps } from '../navigation/navigationTypes';
 import { useAuthStore } from '../store/useAuthStore';
 import { useQuickMatchStore } from '../store/useQuickMatchStore';
+import { useRankedStore } from '../store/useRankedStore';
 import { colors } from '../theme/colors';
 import { radius } from '../theme/radius';
 import { spacing } from '../theme/spacing';
@@ -14,13 +16,15 @@ import { fontFamilies, typography } from '../theme/typography';
 export function LiveDuelHomeScreen({ navigation }: LiveDuelHomeScreenProps) {
   const authStatus = useAuthStore((state) => state.authStatus);
   const resetQuickMatch = useQuickMatchStore((state) => state.reset);
+  const resetRankedSession = useRankedStore((state) => state.resetRankedSession);
   const online = authStatus === 'online';
+  const rankedEnabled = isRankedBetaEnabled();
 
   return (
     <ScreenContainer style={styles.container} intensity="normal" padded={false}>
       <View style={styles.padded}>
         <ScreenHeader title="LIVE DUEL" />
-        <Text style={styles.subtitle}>Casual arenas · Beta 0.3B</Text>
+        <Text style={styles.subtitle}>Casual + Ranked · Beta 0.4</Text>
 
         {!online ? (
           <View style={styles.notice}>
@@ -55,13 +59,26 @@ export function LiveDuelHomeScreen({ navigation }: LiveDuelHomeScreenProps) {
             disabled={!online}
             fullWidth
           />
+          {rankedEnabled ? (
+            <BlazeButton
+              title="RANKED"
+              variant="secondary"
+              onPress={() => {
+                resetRankedSession();
+                navigation.navigate('RankedHome');
+              }}
+              disabled={!online}
+              fullWidth
+            />
+          ) : (
+            <View style={styles.comingSoon}>
+              <Text style={styles.comingSoonTitle}>RANKED</Text>
+              <Text style={styles.comingSoonBody}>Coming Soon</Text>
+            </View>
+          )}
           <View style={styles.comingSoon}>
             <Text style={styles.comingSoonTitle}>MATCH HISTORY</Text>
             <Text style={styles.comingSoonBody}>Coming Next</Text>
-          </View>
-          <View style={styles.comingSoon}>
-            <Text style={styles.comingSoonTitle}>RANKED</Text>
-            <Text style={styles.comingSoonBody}>Coming Soon</Text>
           </View>
         </View>
 
