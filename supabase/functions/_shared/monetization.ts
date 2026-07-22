@@ -21,6 +21,8 @@ export const PRODUCT_ID_TO_ENTITLEMENTS: Record<string, readonly string[]> = {
     'remove_ads',
     'cards_inferno',
     'arena_volcano',
+    'founder_frame',
+    'founder_title',
   ],
   // Android
   remove_ads: ['remove_ads'],
@@ -34,12 +36,16 @@ export const PRODUCT_ID_TO_ENTITLEMENTS: Record<string, readonly string[]> = {
     'remove_ads',
     'cards_inferno',
     'arena_volcano',
+    'founder_frame',
+    'founder_title',
   ],
   founders_bundle: [
     'founders_bundle',
     'remove_ads',
     'cards_inferno',
     'arena_volcano',
+    'founder_frame',
+    'founder_title',
   ],
 };
 

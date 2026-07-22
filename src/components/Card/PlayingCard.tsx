@@ -1,6 +1,7 @@
 import { StyleSheet, Text, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 
+import { paletteForCardTheme } from '../../cosmetics/themePalettes';
 import { SUIT_SYMBOLS } from '../../game/constants';
 import type { Card, Rank, Suit } from '../../game/types';
 import type { CardStyle } from '../../settings/types';
@@ -14,7 +15,7 @@ type PlayingCardProps = {
   card: Card;
   size?: PlayingCardSize;
   glowing?: boolean;
-  cardStyle?: CardStyle;
+  cardStyle?: CardStyle | string;
   /** @deprecated Prefer size="small". Kept for existing call sites. */
   compact?: boolean;
 };
@@ -64,30 +65,6 @@ const SIZE_CONFIG: Record<PlayingCardSize, SizeConfig> = {
     centerSuitFontSize: 48,
     padding: 7,
     borderRadius: 8,
-  },
-};
-
-const STYLE_PALETTE: Record<CardStyle, StylePalette> = {
-  classic: {
-    face: [colors.cardFace, colors.cardFaceAlt],
-    border: colors.cardBorder,
-    redSuit: colors.cardInkRed,
-    blackSuit: colors.cardInk,
-    glow: false,
-  },
-  blaze: {
-    face: ['#FFF8F0', '#FFE8D4'],
-    border: colors.primary,
-    redSuit: colors.cardInkRed,
-    blackSuit: colors.cardInk,
-    glow: true,
-  },
-  midnight: {
-    face: ['#1A1A1A', '#121212'],
-    border: 'rgba(255,255,255,0.28)',
-    redSuit: '#FF5A5A',
-    blackSuit: '#E8E8E8',
-    glow: false,
   },
 };
 
@@ -154,10 +131,10 @@ export function PlayingCard({
 }: PlayingCardProps) {
   const resolvedSize: PlayingCardSize = size ?? (compact ? 'small' : 'medium');
   const config = SIZE_CONFIG[resolvedSize];
-  const palette = STYLE_PALETTE[cardStyle];
+  const palette = paletteForCardTheme(String(cardStyle));
   const { rankLabel, suitSymbol, suitColor, accessibilityLabel } =
     resolveCardDisplay(card, palette);
-  const showGlow = glowing || (cardStyle === 'blaze' && glowing);
+  const showGlow = glowing || (palette.glow && glowing);
 
   return (
     <View

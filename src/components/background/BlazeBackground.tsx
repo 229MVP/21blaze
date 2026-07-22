@@ -9,7 +9,9 @@ import Animated, {
 } from 'react-native-reanimated';
 import { LinearGradient } from 'expo-linear-gradient';
 
+import { paletteForArena } from '../../cosmetics/themePalettes';
 import { useReducedMotionSetting } from '../../hooks/useReducedMotionSetting';
+import { useCosmeticStore } from '../../store/useCosmeticStore';
 import { colors } from '../../theme/colors';
 
 type Intensity = 'subtle' | 'normal' | 'intense';
@@ -41,12 +43,14 @@ function Ember({
   size,
   delay,
   reduceMotion,
+  color,
 }: {
   left: string;
   top: string;
   size: number;
   delay: number;
   reduceMotion: boolean;
+  color: string;
 }) {
   const opacity = useSharedValue(0.35);
   const translateY = useSharedValue(0);
@@ -85,6 +89,8 @@ function Ember({
           width: size,
           height: size,
           borderRadius: size,
+          backgroundColor: color,
+          shadowColor: color,
         },
         animatedStyle,
       ]}
@@ -99,13 +105,19 @@ export function BlazeBackground({
 }: BlazeBackgroundProps) {
   const reduceMotion = useReducedMotionSetting();
   const glow = GLOW[intensity];
+  const arenaKey = useCosmeticStore((state) => state.equippedCosmetics.arena);
+  const arena = paletteForArena(arenaKey);
 
   return (
     <View style={[styles.root, style]}>
       <View style={styles.base} pointerEvents="none" />
       <LinearGradient
         pointerEvents="none"
-        colors={[`rgba(255,101,0,${glow})`, 'transparent', `rgba(197,26,10,${glow * 0.55})`]}
+        colors={[
+          arena.topGlow.replace(/[\d.]+\)$/u, `${glow})`),
+          'transparent',
+          arena.bottomGlow,
+        ]}
         locations={[0, 0.5, 1]}
         start={{ x: 0.5, y: 0 }}
         end={{ x: 0.5, y: 1 }}
@@ -119,7 +131,12 @@ export function BlazeBackground({
       />
       <View style={styles.embers} pointerEvents="none">
         {EMBERS.map((ember, index) => (
-          <Ember key={index} {...ember} reduceMotion={reduceMotion} />
+          <Ember
+            key={index}
+            {...ember}
+            reduceMotion={reduceMotion}
+            color={arena.emberColor}
+          />
         ))}
       </View>
       <View style={styles.content}>{children}</View>
@@ -141,8 +158,6 @@ const styles = StyleSheet.create({
   },
   ember: {
     position: 'absolute',
-    backgroundColor: colors.brightOrange,
-    shadowColor: colors.primary,
     shadowOpacity: 0.9,
     shadowRadius: 4,
   },

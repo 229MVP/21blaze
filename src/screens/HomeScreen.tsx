@@ -7,13 +7,21 @@ import { FlameIcon } from '../components/branding/FlameIcon';
 import { BlazeButton } from '../components/buttons/BlazeButton';
 import { PlayerProfileButton } from '../components/Profile/PlayerProfileButton';
 import { ScreenContainer } from '../components/ScreenContainer';
+import { isMonetizationBetaEnabled } from '../config/featureFlags';
 import { APP_VERSION } from '../game/constants';
 import type { HomeScreenProps } from '../navigation/navigationTypes';
 import { loadHighScore } from '../storage/highScoreStorage';
 import { useAuthStore } from '../store/useAuthStore';
+import { useCosmeticStore } from '../store/useCosmeticStore';
 import { useGameStore } from '../store/useGameStore';
+import { useHasRemoveAdsEntitlement, usePurchaseStore } from '../store/usePurchaseStore';
 import { useScoreHistoryStore } from '../store/useScoreHistoryStore';
 import { useSettingsStore } from '../store/useSettingsStore';
+import { useWalletStore } from '../store/useWalletStore';
+import {
+  maybeShowInterstitialAfterSoloHome,
+  recordSoloMatchCompletedForInterstitial,
+} from '../monetization/interstitialAdService';
 import { colors } from '../theme/colors';
 import { radius } from '../theme/radius';
 import { spacing } from '../theme/spacing';
@@ -56,7 +64,7 @@ function statusDetail(authStatus: 'connecting' | 'online' | 'local'): string {
   return 'Scores stay on this device';
 }
 
-export function HomeScreen({ navigation }: HomeScreenProps) {
+export function HomeScreen({ navigation, route }: HomeScreenProps) {
   const { width } = useWindowDimensions();
   const logoSize = width < 360 ? 'md' : 'lg';
   const highScore = useGameStore((state) => state.highScore);
@@ -64,6 +72,12 @@ export function HomeScreen({ navigation }: HomeScreenProps) {
   const hydrateSettings = useSettingsStore((state) => state.hydrateSettings);
   const hydrateScoreHistory = useScoreHistoryStore((state) => state.hydrateScoreHistory);
   const authStatus = useAuthStore((state) => state.authStatus);
+  const balance = useWalletStore((state) => state.balance);
+  const hydrateWallet = useWalletStore((state) => state.hydrateWallet);
+  const hydrateCosmetics = useCosmeticStore((state) => state.hydrateCosmetics);
+  const initializePurchases = usePurchaseStore((state) => state.initializePurchases);
+  const hasRemoveAds = useHasRemoveAdsEntitlement();
+  const storeEnabled = isMonetizationBetaEnabled();
 
   useEffect(() => {
     let isMounted = true;
@@ -72,6 +86,9 @@ export function HomeScreen({ navigation }: HomeScreenProps) {
       const savedScore = await loadHighScore();
       await hydrateSettings();
       await hydrateScoreHistory();
+      await hydrateWallet();
+      await hydrateCosmetics();
+      await initializePurchases();
 
       if (isMounted) {
         setHighScore(savedScore);
@@ -83,7 +100,24 @@ export function HomeScreen({ navigation }: HomeScreenProps) {
     return () => {
       isMounted = false;
     };
-  }, [hydrateScoreHistory, hydrateSettings, setHighScore]);
+  }, [
+    hydrateCosmetics,
+    hydrateScoreHistory,
+    hydrateSettings,
+    hydrateWallet,
+    initializePurchases,
+    setHighScore,
+  ]);
+
+  useEffect(() => {
+    const fromSolo = route.params?.fromSoloComplete === true;
+    if (!fromSolo) {
+      return;
+    }
+    recordSoloMatchCompletedForInterstitial();
+    void maybeShowInterstitialAfterSoloHome(hasRemoveAds);
+    navigation.setParams({ fromSoloComplete: undefined });
+  }, [hasRemoveAds, navigation, route.params?.fromSoloComplete]);
 
   return (
     <ScreenContainer style={styles.container} intensity="intense">
@@ -106,6 +140,13 @@ export function HomeScreen({ navigation }: HomeScreenProps) {
         </View>
 
         <PlayerProfileButton />
+
+        {storeEnabled ? (
+          <View style={styles.economyRow}>
+            <Text style={styles.coinBalance}>{balance.toLocaleString()} COINS</Text>
+            {hasRemoveAds ? <Text style={styles.adFreeBadge}>AD-FREE</Text> : null}
+          </View>
+        ) : null}
 
         <Pressable
           accessibilityRole="button"
@@ -134,6 +175,15 @@ export function HomeScreen({ navigation }: HomeScreenProps) {
             accessibilityLabel="Live Duel friend matches"
             fullWidth
           />
+          {storeEnabled ? (
+            <BlazeButton
+              title="BLAZE STORE"
+              variant="outline"
+              onPress={() => navigation.navigate('BlazeStore')}
+              accessibilityLabel="Open Blaze Store"
+              fullWidth
+            />
+          ) : null}
           <View style={styles.secondaryRow}>
             <BlazeButton
               title="HOW TO PLAY"
@@ -227,6 +277,25 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     minHeight: 88,
     justifyContent: 'center',
+  },
+  economyRow: {
+    width: '100%',
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: 12,
+  },
+  coinBalance: {
+    fontFamily: fontFamilies.bodyBold,
+    fontSize: 13,
+    color: colors.gold,
+    letterSpacing: 1,
+  },
+  adFreeBadge: {
+    fontFamily: fontFamilies.bodyBold,
+    fontSize: 11,
+    color: colors.success,
+    letterSpacing: 1,
   },
   pressed: {
     opacity: 0.9,

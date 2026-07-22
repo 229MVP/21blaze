@@ -733,6 +733,8 @@ BEGIN
   PERFORM public.grant_entitlement(p_user_id, 'remove_ads', 'revenuecat', NULL, '{"bundle":"founders"}'::jsonb);
   PERFORM public.grant_entitlement(p_user_id, 'cards_inferno', 'revenuecat', NULL, '{"bundle":"founders"}'::jsonb);
   PERFORM public.grant_entitlement(p_user_id, 'arena_volcano', 'revenuecat', NULL, '{"bundle":"founders"}'::jsonb);
+  PERFORM public.grant_entitlement(p_user_id, 'founder_frame', 'revenuecat', NULL, '{"bundle":"founders"}'::jsonb);
+  PERFORM public.grant_entitlement(p_user_id, 'founder_title', 'revenuecat', NULL, '{"bundle":"founders"}'::jsonb);
   PERFORM public.grant_entitlement(p_user_id, 'founders_bundle', 'revenuecat', NULL, '{"bundle":"founders"}'::jsonb);
 
   -- One-time coin grant (idempotent).

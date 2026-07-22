@@ -17,6 +17,8 @@ import {
   CARD_STYLES,
   type CardStyle,
 } from '../settings/types';
+import { openPrivacyOptions } from '../monetization/adConsentService';
+import { usePurchaseStore } from '../store/usePurchaseStore';
 import { useGameStore } from '../store/useGameStore';
 import { useScoreHistoryStore } from '../store/useScoreHistoryStore';
 import { useSettingsStore } from '../store/useSettingsStore';
@@ -163,6 +165,60 @@ export function SettingsScreen({ navigation }: SettingsScreenProps) {
           </View>
 
           <View style={[styles.panel, styles.panelSpaced]}>
+            <Text style={styles.sectionLabel}>PURCHASES</Text>
+            <SettingsRow
+              label="RESTORE PURCHASES"
+              onPress={() => {
+                void usePurchaseStore.getState().restorePurchases().then((status) => {
+                  if (status === 'success') {
+                    Alert.alert('Restored', 'Eligible purchases were restored.');
+                  } else if (status === 'unavailable') {
+                    Alert.alert(
+                      'Unavailable',
+                      'Purchases require a native development build.',
+                    );
+                  } else if (status !== 'cancelled') {
+                    Alert.alert('Restore failed', 'Please try again later.');
+                  }
+                });
+              }}
+              accessibilityLabel="Restore purchases"
+              isFirst
+            />
+            <SettingsRow
+              label="PURCHASE SUPPORT"
+              onPress={() => {
+                Alert.alert(
+                  'Purchase Support',
+                  'Purchases are optional. Cosmetics do not affect gameplay. Store prices come from the app store. Use Restore Purchases after reinstalling. Remove Ads does not remove optional rewarded ads you choose to watch.',
+                );
+              }}
+              accessibilityLabel="Purchase support information"
+              isLast
+            />
+          </View>
+
+          <View style={[styles.panel, styles.panelSpaced]}>
+            <Text style={styles.sectionLabel}>ADS</Text>
+            <SettingsRow
+              label="PRIVACY OPTIONS"
+              onPress={() => {
+                void openPrivacyOptions().then((opened) => {
+                  if (!opened) {
+                    Alert.alert(
+                      'Privacy Options',
+                      'Privacy options are unavailable on this platform.',
+                    );
+                  }
+                });
+              }}
+              accessibilityLabel="Open privacy options"
+              isFirst
+              isLast
+            />
+          </View>
+
+          <View style={[styles.panel, styles.panelSpaced]}>
             <SettingsRow
               label="CARD STYLE"
               value={CARD_STYLE_LABELS[settings.cardStyle]}
@@ -253,6 +309,15 @@ const styles = StyleSheet.create({
   },
   panelSpaced: {
     marginTop: spacing.md,
+  },
+  sectionLabel: {
+    fontFamily: fontFamilies.bodyBold,
+    fontSize: 11,
+    letterSpacing: 1.4,
+    color: colors.gold,
+    paddingHorizontal: spacing.md,
+    paddingTop: spacing.sm,
+    paddingBottom: 4,
   },
   cardOptions: {
     gap: spacing.sm,
