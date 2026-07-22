@@ -122,21 +122,28 @@ export function HomeScreen({ navigation }: HomeScreenProps) {
 
         <View style={styles.actions}>
           <BlazeButton
-            title="PLAY"
+            title="SOLO PLAY"
             onPress={() => navigation.navigate('Game')}
-            accessibilityLabel="Play 21 Blaze"
+            accessibilityLabel="Solo play 21 Blaze"
+            fullWidth
+          />
+          <BlazeButton
+            title="LIVE DUEL"
+            variant="secondary"
+            onPress={() => navigation.navigate('LiveDuelHome')}
+            accessibilityLabel="Live Duel friend matches"
             fullWidth
           />
           <View style={styles.secondaryRow}>
             <BlazeButton
               title="HOW TO PLAY"
-              variant="secondary"
+              variant="outline"
               onPress={() => navigation.navigate('HowToPlay')}
               style={styles.halfButton}
             />
             <BlazeButton
               title="SETTINGS"
-              variant="secondary"
+              variant="outline"
               onPress={() => navigation.navigate('Settings')}
               style={styles.halfButton}
             />

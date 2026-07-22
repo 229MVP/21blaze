@@ -6,3 +6,21 @@ verify_jwt = true
 
 [functions.submit-match]
 verify_jwt = true
+
+[functions.create-live-room]
+verify_jwt = true
+
+[functions.join-live-room]
+verify_jwt = true
+
+[functions.set-live-ready]
+verify_jwt = true
+
+[functions.leave-live-match]
+verify_jwt = true
+
+[functions.submit-live-result]
+verify_jwt = true
+
+[functions.get-live-match-state]
+verify_jwt = true
