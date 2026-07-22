@@ -8,9 +8,17 @@
     "scheme": "twentyoneblaze",
     "userInterfaceStyle": "dark",
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.twentyoneblaze.app",
+      "infoPlist": {
+        "GADApplicationIdentifier": "ca-app-pub-3940256099942544~1458002511",
+        "SKAdNetworkItems": [
+          { "SKAdNetworkIdentifier": "cstr6suwn9.skadnetwork" }
+        ]
+      }
     },
     "android": {
+      "package": "com.twentyoneblaze.app",
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
         "foregroundImage": "./assets/android-icon-foreground.png",
@@ -24,7 +32,20 @@
     },
     "plugins": [
       "expo-font",
-      "expo-splash-screen"
-    ]
+      "expo-splash-screen",
+      "expo-dev-client",
+      [
+        "react-native-google-mobile-ads",
+        {
+          "androidAppId": "ca-app-pub-3940256099942544~3347511713",
+          "iosAppId": "ca-app-pub-3940256099942544~1458002511"
+        }
+      ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "00000000-0000-0000-0000-000000000000"
+      }
+    }
   }
 }

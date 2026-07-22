@@ -1,4 +1,4 @@
-import { useEffect, useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 
@@ -6,12 +6,16 @@ import { FlameIcon } from '../components/branding/FlameIcon';
 import { BlazeButton } from '../components/buttons/BlazeButton';
 import { ResultsPanel } from '../components/Results/ResultsPanel';
 import { ScreenContainer } from '../components/ScreenContainer';
+import { isRewardedAdsEnabled } from '../config/featureFlags';
 import { MAX_BUSTS } from '../game/constants';
 import { formatTimerSeconds } from '../game/timerEngine';
 import type { GameOverReason } from '../game/types';
+import { trackEvent } from '../monetization/analytics';
+import { showRewardedAd } from '../monetization/rewardedAdService';
 import type { ResultsScreenProps } from '../navigation/navigationTypes';
 import { findLocalRank, useScoreHistoryStore } from '../store/useScoreHistoryStore';
 import { useGameStore } from '../store/useGameStore';
+import { useWalletStore } from '../store/useWalletStore';
 import { colors } from '../theme/colors';
 import { radius } from '../theme/radius';
 import { spacing } from '../theme/spacing';
@@ -75,6 +79,12 @@ export function ResultsScreen({ navigation, route }: ResultsScreenProps) {
   const entries = useScoreHistoryStore((state) => state.entries);
   const isHydrated = useScoreHistoryStore((state) => state.isHydrated);
   const hydrateScoreHistory = useScoreHistoryStore((state) => state.hydrateScoreHistory);
+  const claimSoloMatchReward = useWalletStore((state) => state.claimSoloMatchReward);
+  const claimRewardedDouble = useWalletStore((state) => state.claimRewardedDouble);
+  const lastSoloGrant = useWalletStore((state) => state.lastSoloGrant);
+  const doubledMatchIds = useWalletStore((state) => state.doubledMatchIds);
+  const [doubleBusy, setDoubleBusy] = useState(false);
+  const [doubleDone, setDoubleDone] = useState(false);
 
   useEffect(() => {
     void hydrateScoreHistory();
@@ -83,6 +93,17 @@ export function ResultsScreen({ navigation, route }: ResultsScreenProps) {
   useEffect(() => {
     void submitVerifiedMatchIfNeeded();
   }, [submitVerifiedMatchIfNeeded]);
+
+  useEffect(() => {
+    if (!matchId || gameOverReason === 'quit') {
+      return;
+    }
+    void claimSoloMatchReward({
+      matchId,
+      score,
+      gameOverReason: gameOverReason ?? 'timeExpired',
+    });
+  }, [claimSoloMatchReward, gameOverReason, matchId, score]);
 
   const isNewHighScore = score > 0 && score >= highScore;
   const title = getResultTitle(gameOverReason, isNewHighScore);
@@ -132,7 +153,7 @@ export function ResultsScreen({ navigation, route }: ResultsScreenProps) {
   const returnHome = () => {
     navigation.reset({
       index: 0,
-      routes: [{ name: 'Home' }],
+      routes: [{ name: 'Home', params: { fromSoloComplete: true } }],
     });
   };
 
@@ -190,6 +211,50 @@ export function ResultsScreen({ navigation, route }: ResultsScreenProps) {
             },
           ]}
         />
+
+        {gameOverReason !== 'quit' && matchId ? (
+          <View style={styles.coinPanel}>
+            <Text style={styles.coinTitle}>COINS EARNED</Text>
+            <Text style={styles.coinValue}>
+              +{(lastSoloGrant ?? 0).toLocaleString()}
+            </Text>
+            {isRewardedAdsEnabled() &&
+            !doubleDone &&
+            !(matchId && doubledMatchIds[matchId]) ? (
+              <BlazeButton
+                title="DOUBLE REWARD"
+                variant="outline"
+                loading={doubleBusy}
+                onPress={() => {
+                  void (async () => {
+                    setDoubleBusy(true);
+                    trackEvent('rewarded_ad_requested', { type: 'double_solo' });
+                    const outcome = await showRewardedAd('double_solo_match_coins');
+                    if (outcome.status === 'earned') {
+                      trackEvent('rewarded_ad_completed');
+                      const granted = await claimRewardedDouble({
+                        matchId,
+                        clientRewardId: outcome.clientRewardId,
+                      });
+                      if (granted > 0) {
+                        setDoubleDone(true);
+                      }
+                    } else if (outcome.status === 'dismissed') {
+                      trackEvent('rewarded_ad_failed', { reason: 'dismissed' });
+                    } else {
+                      trackEvent('rewarded_ad_failed');
+                    }
+                    setDoubleBusy(false);
+                  })();
+                }}
+                fullWidth
+              />
+            ) : null}
+            {doubleDone || (matchId && doubledMatchIds[matchId]) ? (
+              <Text style={styles.doubled}>REWARD DOUBLED</Text>
+            ) : null}
+          </View>
+        ) : null}
 
         <View style={styles.actions}>
           <BlazeButton title="PLAY AGAIN" onPress={playAgain} fullWidth />
@@ -282,6 +347,30 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: colors.textSecondary,
     textAlign: 'center',
+  },
+  coinPanel: {
+    width: '100%',
+    borderRadius: radius.lg,
+    borderWidth: 1,
+    borderColor: colors.blazeSubtle,
+    backgroundColor: colors.backgroundCard,
+    padding: spacing.md,
+    alignItems: 'center',
+    gap: spacing.sm,
+  },
+  coinTitle: {
+    fontFamily: fontFamilies.bodyBold,
+    letterSpacing: 1.2,
+    color: colors.gold,
+  },
+  coinValue: {
+    fontFamily: fontFamilies.display,
+    fontSize: 32,
+    color: colors.primary,
+  },
+  doubled: {
+    fontFamily: fontFamilies.bodyBold,
+    color: colors.success,
   },
   scoreCard: {
     width: '100%',

@@ -29,17 +29,16 @@ import { ScreenContainer } from '../components/ScreenContainer';
 import { FINAL_WARNING_SECONDS, LANE_IDS, MAX_BUSTS } from '../game/constants';
 import type { Card } from '../game/types';
 import type { GameScreenProps } from '../navigation/navigationTypes';
-import { selectCardStyle, useSettingsStore } from '../store/useSettingsStore';
+import { useActiveCardTheme } from '../cosmetics/useActiveCardTheme';
 import { useGameStore } from '../store/useGameStore';
 import { colors } from '../theme/colors';
 import { spacing } from '../theme/spacing';
 import { fontFamilies, typography } from '../theme/typography';
-import type { CardStyle } from '../settings/types';
 
 export function GameScreen({ navigation }: GameScreenProps) {
   const { width } = useWindowDimensions();
   const isCompact = width < 380;
-  const cardStyle = useSettingsStore(selectCardStyle);
+  const cardStyle = useActiveCardTheme();
 
   const status = useGameStore((state) => state.status);
   const score = useGameStore((state) => state.score);
@@ -417,7 +416,7 @@ export function GameScreen({ navigation }: GameScreenProps) {
 type ActiveCardStageProps = {
   card: Card;
   compact: boolean;
-  cardStyle: CardStyle;
+  cardStyle: string;
 };
 
 function ActiveCardStage({ card, compact, cardStyle }: ActiveCardStageProps) {

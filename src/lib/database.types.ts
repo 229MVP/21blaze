@@ -516,6 +516,261 @@ export type Database = {
         };
         Relationships: [];
       };
+      player_wallets: {
+        Row: {
+          user_id: string;
+          blaze_coins: number;
+          lifetime_coins_earned: number;
+          lifetime_coins_spent: number;
+          updated_at: string;
+        };
+        Insert: {
+          user_id: string;
+          blaze_coins?: number;
+          lifetime_coins_earned?: number;
+          lifetime_coins_spent?: number;
+          updated_at?: string;
+        };
+        Update: {
+          user_id?: string;
+          blaze_coins?: number;
+          lifetime_coins_earned?: number;
+          lifetime_coins_spent?: number;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
+      player_entitlements: {
+        Row: {
+          user_id: string;
+          entitlement_key: string;
+          source: string;
+          revenuecat_product_id: string | null;
+          granted_at: string;
+          expires_at: string | null;
+          revoked_at: string | null;
+          metadata: Json;
+        };
+        Insert: {
+          user_id: string;
+          entitlement_key: string;
+          source: string;
+          revenuecat_product_id?: string | null;
+          granted_at?: string;
+          expires_at?: string | null;
+          revoked_at?: string | null;
+          metadata?: Json;
+        };
+        Update: {
+          user_id?: string;
+          entitlement_key?: string;
+          source?: string;
+          revenuecat_product_id?: string | null;
+          granted_at?: string;
+          expires_at?: string | null;
+          revoked_at?: string | null;
+          metadata?: Json;
+        };
+        Relationships: [];
+      };
+      player_cosmetics: {
+        Row: {
+          user_id: string;
+          cosmetic_key: string;
+          category: string;
+          unlocked_at: string;
+          equipped_at: string | null;
+          source: string;
+        };
+        Insert: {
+          user_id: string;
+          cosmetic_key: string;
+          category: string;
+          unlocked_at?: string;
+          equipped_at?: string | null;
+          source: string;
+        };
+        Update: {
+          user_id?: string;
+          cosmetic_key?: string;
+          category?: string;
+          unlocked_at?: string;
+          equipped_at?: string | null;
+          source?: string;
+        };
+        Relationships: [];
+      };
+      equipped_cosmetics: {
+        Row: {
+          user_id: string;
+          card_theme: string;
+          arena: string;
+          profile_frame: string;
+          player_title: string | null;
+          victory_effect: string | null;
+          updated_at: string;
+        };
+        Insert: {
+          user_id: string;
+          card_theme?: string;
+          arena?: string;
+          profile_frame?: string;
+          player_title?: string | null;
+          victory_effect?: string | null;
+          updated_at?: string;
+        };
+        Update: {
+          user_id?: string;
+          card_theme?: string;
+          arena?: string;
+          profile_frame?: string;
+          player_title?: string | null;
+          victory_effect?: string | null;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
+      wallet_transactions: {
+        Row: {
+          id: string;
+          user_id: string;
+          transaction_type: string;
+          amount: number;
+          balance_after: number;
+          source_key: string;
+          idempotency_key: string;
+          metadata: Json;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          transaction_type: string;
+          amount: number;
+          balance_after: number;
+          source_key: string;
+          idempotency_key: string;
+          metadata?: Json;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          transaction_type?: string;
+          amount?: number;
+          balance_after?: number;
+          source_key?: string;
+          idempotency_key?: string;
+          metadata?: Json;
+          created_at?: string;
+        };
+        Relationships: [];
+      };
+      purchase_events: {
+        Row: {
+          id: string;
+          user_id: string | null;
+          revenuecat_event_id: string;
+          event_type: string;
+          product_id: string | null;
+          entitlement_ids: string[];
+          store: string | null;
+          environment: string | null;
+          event_timestamp: string | null;
+          raw_event: Json;
+          processed_at: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id?: string | null;
+          revenuecat_event_id: string;
+          event_type: string;
+          product_id?: string | null;
+          entitlement_ids?: string[];
+          store?: string | null;
+          environment?: string | null;
+          event_timestamp?: string | null;
+          raw_event: Json;
+          processed_at?: string | null;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          user_id?: string | null;
+          revenuecat_event_id?: string;
+          event_type?: string;
+          product_id?: string | null;
+          entitlement_ids?: string[];
+          store?: string | null;
+          environment?: string | null;
+          event_timestamp?: string | null;
+          raw_event?: Json;
+          processed_at?: string | null;
+          created_at?: string;
+        };
+        Relationships: [];
+      };
+      ad_reward_claims: {
+        Row: {
+          id: string;
+          user_id: string;
+          reward_type: string;
+          reward_amount: number;
+          match_id: string | null;
+          client_reward_id: string;
+          status: string;
+          ad_network: string;
+          created_at: string;
+          verified_at: string | null;
+          claimed_at: string | null;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          reward_type: string;
+          reward_amount: number;
+          match_id?: string | null;
+          client_reward_id: string;
+          status?: string;
+          ad_network: string;
+          created_at?: string;
+          verified_at?: string | null;
+          claimed_at?: string | null;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          reward_type?: string;
+          reward_amount?: number;
+          match_id?: string | null;
+          client_reward_id?: string;
+          status?: string;
+          ad_network?: string;
+          created_at?: string;
+          verified_at?: string | null;
+          claimed_at?: string | null;
+        };
+        Relationships: [];
+      };
+      app_configuration: {
+        Row: {
+          key: string;
+          value: Json;
+          updated_at: string;
+        };
+        Insert: {
+          key: string;
+          value: Json;
+          updated_at?: string;
+        };
+        Update: {
+          key?: string;
+          value?: Json;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
     };
     Views: {
       global_leaderboard: {

@@ -25,7 +25,7 @@ import { isTimerExpired } from '../game/timerEngine';
 import type { GameOverReason, GameState, LaneId } from '../game/types';
 import type { MoveLogEntry } from '../online/types';
 import type { LiveGameScreenProps } from '../navigation/navigationTypes';
-import { selectCardStyle, useSettingsStore } from '../store/useSettingsStore';
+import { useActiveCardTheme } from '../cosmetics/useActiveCardTheme';
 import { useLiveMatchStore } from '../store/useLiveMatchStore';
 import { colors } from '../theme/colors';
 import { radius } from '../theme/radius';
@@ -46,7 +46,7 @@ function remainingFromServerEndsAt(endsAt: string | null, now: number): number {
 export function LiveGameScreen({ navigation }: LiveGameScreenProps) {
   const { width } = useWindowDimensions();
   const isCompact = width < 380;
-  const cardStyle = useSettingsStore(selectCardStyle);
+  const cardStyle = useActiveCardTheme();
 
   const matchState = useLiveMatchStore((state) => state.matchState);
   const serverStartsAt = useLiveMatchStore((state) => state.serverStartsAt);

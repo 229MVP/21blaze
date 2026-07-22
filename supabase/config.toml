@@ -30,3 +30,21 @@ verify_jwt = true
 
 [functions.ranked-match]
 verify_jwt = true
+
+[functions.revenuecat-webhook]
+verify_jwt = false
+
+[functions.claim-ad-reward]
+verify_jwt = true
+
+[functions.purchase-cosmetic]
+verify_jwt = true
+
+[functions.equip-cosmetic]
+verify_jwt = true
+
+[functions.claim-match-coins]
+verify_jwt = true
+
+[functions.sync-entitlements]
+verify_jwt = true

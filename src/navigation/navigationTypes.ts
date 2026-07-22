@@ -3,7 +3,7 @@ import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { GameOverReason } from '../game/types';
 
 export type RootStackParamList = {
-  Home: undefined;
+  Home: { fromSoloComplete?: boolean } | undefined;
   Game: undefined;
   Results: {
     score?: number;
@@ -33,6 +33,7 @@ export type RootStackParamList = {
   RankedLeaderboard: undefined;
   RankedMatchHistory: undefined;
   HowRankedWorks: undefined;
+  BlazeStore: undefined;
 };
 
 export type HomeScreenProps = NativeStackScreenProps<RootStackParamList, 'Home'>;
@@ -103,4 +104,8 @@ export type RankedMatchHistoryScreenProps = NativeStackScreenProps<
 export type HowRankedWorksScreenProps = NativeStackScreenProps<
   RootStackParamList,
   'HowRankedWorks'
+>;
+export type BlazeStoreScreenProps = NativeStackScreenProps<
+  RootStackParamList,
+  'BlazeStore'
 >;

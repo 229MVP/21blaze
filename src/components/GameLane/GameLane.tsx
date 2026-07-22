@@ -24,7 +24,7 @@ type GameLaneProps = {
   onPress: () => void;
   feedbackType?: MoveEventType | null;
   feedbackEventId?: string | null;
-  cardStyle?: CardStyle;
+  cardStyle?: CardStyle | string;
 };
 
 export function GameLane({

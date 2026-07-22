@@ -1,5 +1,6 @@
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 
+import { BlazeStoreScreen } from '../screens/BlazeStoreScreen';
 import { CreateLiveRoomScreen } from '../screens/CreateLiveRoomScreen';
 import { GameScreen } from '../screens/GameScreen';
 import { HighScoresScreen } from '../screens/HighScoresScreen';
@@ -57,6 +58,7 @@ export function AppNavigator() {
       <Stack.Screen name="RankedLeaderboard" component={RankedLeaderboardScreen} />
       <Stack.Screen name="RankedMatchHistory" component={RankedMatchHistoryScreen} />
       <Stack.Screen name="HowRankedWorks" component={HowRankedWorksScreen} />
+      <Stack.Screen name="BlazeStore" component={BlazeStoreScreen} />
     </Stack.Navigator>
   );
 }
