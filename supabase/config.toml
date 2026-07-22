@@ -1,0 +1,8 @@
+# Minimal Supabase config for Edge Functions.
+# Project is linked via CLI / dashboard for remote deploy.
+
+[functions.start-match]
+verify_jwt = true
+
+[functions.submit-match]
+verify_jwt = true
