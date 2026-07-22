@@ -18,6 +18,12 @@ export type RootStackParamList = {
   HowToPlay: undefined;
   Settings: undefined;
   HighScores: undefined;
+  LiveDuelHome: undefined;
+  CreateLiveRoom: undefined;
+  JoinLiveRoom: undefined;
+  LiveLobby: undefined;
+  LiveGame: undefined;
+  LiveDuelResults: undefined;
 };
 
 export type HomeScreenProps = NativeStackScreenProps<RootStackParamList, 'Home'>;
@@ -31,4 +37,25 @@ export type SettingsScreenProps = NativeStackScreenProps<RootStackParamList, 'Se
 export type HighScoresScreenProps = NativeStackScreenProps<
   RootStackParamList,
   'HighScores'
+>;
+export type LiveDuelHomeScreenProps = NativeStackScreenProps<
+  RootStackParamList,
+  'LiveDuelHome'
+>;
+export type CreateLiveRoomScreenProps = NativeStackScreenProps<
+  RootStackParamList,
+  'CreateLiveRoom'
+>;
+export type JoinLiveRoomScreenProps = NativeStackScreenProps<
+  RootStackParamList,
+  'JoinLiveRoom'
+>;
+export type LiveLobbyScreenProps = NativeStackScreenProps<
+  RootStackParamList,
+  'LiveLobby'
+>;
+export type LiveGameScreenProps = NativeStackScreenProps<RootStackParamList, 'LiveGame'>;
+export type LiveDuelResultsScreenProps = NativeStackScreenProps<
+  RootStackParamList,
+  'LiveDuelResults'
 >;

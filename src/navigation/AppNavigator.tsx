@@ -1,9 +1,15 @@
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 
+import { CreateLiveRoomScreen } from '../screens/CreateLiveRoomScreen';
 import { GameScreen } from '../screens/GameScreen';
 import { HighScoresScreen } from '../screens/HighScoresScreen';
 import { HomeScreen } from '../screens/HomeScreen';
 import { HowToPlayScreen } from '../screens/HowToPlayScreen';
+import { JoinLiveRoomScreen } from '../screens/JoinLiveRoomScreen';
+import { LiveDuelHomeScreen } from '../screens/LiveDuelHomeScreen';
+import { LiveDuelResultsScreen } from '../screens/LiveDuelResultsScreen';
+import { LiveGameScreen } from '../screens/LiveGameScreen';
+import { LiveLobbyScreen } from '../screens/LiveLobbyScreen';
 import { ResultsScreen } from '../screens/ResultsScreen';
 import { SettingsScreen } from '../screens/SettingsScreen';
 import { colors } from '../theme/colors';
@@ -27,6 +33,12 @@ export function AppNavigator() {
       <Stack.Screen name="HowToPlay" component={HowToPlayScreen} />
       <Stack.Screen name="Settings" component={SettingsScreen} />
       <Stack.Screen name="HighScores" component={HighScoresScreen} />
+      <Stack.Screen name="LiveDuelHome" component={LiveDuelHomeScreen} />
+      <Stack.Screen name="CreateLiveRoom" component={CreateLiveRoomScreen} />
+      <Stack.Screen name="JoinLiveRoom" component={JoinLiveRoomScreen} />
+      <Stack.Screen name="LiveLobby" component={LiveLobbyScreen} />
+      <Stack.Screen name="LiveGame" component={LiveGameScreen} />
+      <Stack.Screen name="LiveDuelResults" component={LiveDuelResultsScreen} />
     </Stack.Navigator>
   );
 }
