@@ -44,7 +44,8 @@
     "web": "expo start --web",
     "test:game": "npx tsx src/game/gameEngineSelfTest.ts",
     "test:ranked": "npx tsx src/ranked/rankedSelfTest.ts",
-    "test:monetization": "npx tsx src/monetization/monetizationSelfTest.ts"
+    "test:monetization": "npx tsx src/monetization/monetizationSelfTest.ts",
+    "test:progression": "npx tsx src/progression/progressionSelfTest.ts"
   },
   "private": true
 }

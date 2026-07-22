@@ -43,3 +43,21 @@ export function isStorePurchasesEnabled(): boolean {
 export function isMonetizationTestMode(): boolean {
   return typeof __DEV__ !== 'undefined' && __DEV__;
 }
+
+export function isProgressionBetaEnabled(): boolean {
+  return envFlag('EXPO_PUBLIC_ENABLE_PROGRESSION_BETA', true);
+}
+
+export function isDailyRewardsEnabled(): boolean {
+  return (
+    isProgressionBetaEnabled() &&
+    envFlag('EXPO_PUBLIC_ENABLE_DAILY_REWARDS', true)
+  );
+}
+
+export function isDailyMissionsEnabled(): boolean {
+  return (
+    isProgressionBetaEnabled() &&
+    envFlag('EXPO_PUBLIC_ENABLE_DAILY_MISSIONS', true)
+  );
+}

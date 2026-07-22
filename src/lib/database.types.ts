@@ -666,6 +666,93 @@ export type Database = {
         };
         Relationships: [];
       };
+      player_progression: {
+        Row: {
+          user_id: string;
+          level: number;
+          total_xp: number;
+          current_level_xp: number;
+          highest_level_reached: number;
+          daily_streak: number;
+          longest_daily_streak: number;
+          last_daily_claim_at: string | null;
+          next_daily_claim_at: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          user_id: string;
+          level?: number;
+          total_xp?: number;
+          current_level_xp?: number;
+          highest_level_reached?: number;
+          daily_streak?: number;
+          longest_daily_streak?: number;
+          last_daily_claim_at?: string | null;
+          next_daily_claim_at?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          user_id?: string;
+          level?: number;
+          total_xp?: number;
+          current_level_xp?: number;
+          highest_level_reached?: number;
+          daily_streak?: number;
+          longest_daily_streak?: number;
+          last_daily_claim_at?: string | null;
+          next_daily_claim_at?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
+      progression_transactions: {
+        Row: {
+          id: string;
+          user_id: string;
+          transaction_type: string;
+          xp_amount: number;
+          level_before: number;
+          level_after: number;
+          total_xp_after: number;
+          source_type: string;
+          source_id: string | null;
+          idempotency_key: string;
+          metadata: Json;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          transaction_type: string;
+          xp_amount: number;
+          level_before: number;
+          level_after: number;
+          total_xp_after: number;
+          source_type: string;
+          source_id?: string | null;
+          idempotency_key: string;
+          metadata?: Json;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          transaction_type?: string;
+          xp_amount?: number;
+          level_before?: number;
+          level_after?: number;
+          total_xp_after?: number;
+          source_type?: string;
+          source_id?: string | null;
+          idempotency_key?: string;
+          metadata?: Json;
+          created_at?: string;
+        };
+        Relationships: [];
+      };
       purchase_events: {
         Row: {
           id: string;

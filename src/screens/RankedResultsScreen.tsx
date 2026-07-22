@@ -4,11 +4,16 @@ import { StyleSheet, Text, View } from 'react-native';
 import { DivisionBadge } from '../components/Ranked/DivisionBadge';
 import { FlameIcon } from '../components/branding/FlameIcon';
 import { BlazeButton } from '../components/buttons/BlazeButton';
+import { LevelUpOverlay } from '../components/Progression/LevelUpOverlay';
+import { XpProgressBar } from '../components/Progression/XpProgressBar';
 import { ScreenContainer } from '../components/ScreenContainer';
+import { isProgressionBetaEnabled } from '../config/featureFlags';
+import { PROGRESSION_CONFIG } from '../config/progressionConfig';
 import { divisionRankIndex } from '../ranked/divisions';
 import type { RankedResultsScreenProps } from '../navigation/navigationTypes';
 import { useAuthStore } from '../store/useAuthStore';
 import { useLiveMatchStore } from '../store/useLiveMatchStore';
+import { useProgressionStore } from '../store/useProgressionStore';
 import { useRankedStore } from '../store/useRankedStore';
 import { colors } from '../theme/colors';
 import { radius } from '../theme/radius';
@@ -47,6 +52,11 @@ export function RankedResultsScreen({ navigation }: RankedResultsScreenProps) {
   const hydrateRankedProfile = useRankedStore((state) => state.hydrateRankedProfile);
   const loadRankedHistory = useRankedStore((state) => state.loadRankedHistory);
   const resetRankedSession = useRankedStore((state) => state.resetRankedSession);
+  const progressionEnabled = isProgressionBetaEnabled();
+  const progression = useProgressionStore((state) => state.progression);
+  const pendingLevelUp = useProgressionStore((state) => state.pendingLevelUp);
+  const refreshProgression = useProgressionStore((state) => state.refreshProgression);
+  const acknowledgeLevelUp = useProgressionStore((state) => state.acknowledgeLevelUp);
   const [previousDivision] = useState(rankedProfile?.division ?? 'unranked');
   const [previousPlacement] = useState(
     rankedProfile?.placementMatchesCompleted ?? 0,
@@ -55,7 +65,15 @@ export function RankedResultsScreen({ navigation }: RankedResultsScreenProps) {
   useEffect(() => {
     void hydrateRankedProfile();
     void loadRankedHistory();
-  }, [hydrateRankedProfile, loadRankedHistory]);
+    if (progressionEnabled) {
+      void refreshProgression();
+    }
+  }, [
+    hydrateRankedProfile,
+    loadRankedHistory,
+    progressionEnabled,
+    refreshProgression,
+  ]);
 
   const state = finalResult ?? matchState;
   const latestRated = useMemo(() => {
@@ -204,6 +222,23 @@ export function RankedResultsScreen({ navigation }: RankedResultsScreenProps) {
           </View>
         ) : null}
 
+        {progressionEnabled ? (
+          <View style={styles.xpPanel}>
+            <Text style={styles.xpState}>REWARDS VERIFIED</Text>
+            <Text style={styles.xpEarned}>
+              +{PROGRESSION_CONFIG.matchXp.ranked} XP
+            </Text>
+            {progression ? (
+              <XpProgressBar
+                compact
+                level={progression.level}
+                currentLevelXp={progression.currentLevelXp}
+                xpRequiredForNextLevel={progression.xpRequiredForNextLevel}
+              />
+            ) : null}
+          </View>
+        ) : null}
+
         <View style={styles.actions}>
           <BlazeButton title="FIND ANOTHER MATCH" onPress={findAnother} fullWidth />
           <BlazeButton
@@ -220,6 +255,13 @@ export function RankedResultsScreen({ navigation }: RankedResultsScreenProps) {
           />
         </View>
       </View>
+
+      {progressionEnabled ? (
+        <LevelUpOverlay
+          pending={pendingLevelUp}
+          onContinue={acknowledgeLevelUp}
+        />
+      ) : null}
     </ScreenContainer>
   );
 }
@@ -343,6 +385,26 @@ const styles = StyleSheet.create({
   },
   deltaUp: { color: colors.success },
   deltaDown: { color: colors.warningRed },
+  xpPanel: {
+    width: '100%',
+    borderRadius: radius.lg,
+    borderWidth: 1,
+    borderColor: colors.blazeSubtle,
+    backgroundColor: 'rgba(0,0,0,0.28)',
+    padding: spacing.md,
+    alignItems: 'center',
+    gap: spacing.sm,
+  },
+  xpState: {
+    fontFamily: fontFamilies.bodyBold,
+    letterSpacing: 1.1,
+    color: colors.gold,
+  },
+  xpEarned: {
+    fontFamily: fontFamilies.display,
+    fontSize: 24,
+    color: colors.primary,
+  },
   actions: {
     marginTop: 'auto',
     width: '100%',
