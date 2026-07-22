@@ -22,6 +22,7 @@ import { isNativePurchasesSupported } from '../monetization/revenueCatClient';
 import type { BlazeStoreScreenProps } from '../navigation/navigationTypes';
 import { useCosmeticStore } from '../store/useCosmeticStore';
 import {
+  useHasBlazeProEntitlement,
   useHasRemoveAdsEntitlement,
   usePurchaseStore,
 } from '../store/usePurchaseStore';
@@ -60,7 +61,10 @@ export function BlazeStoreScreen({ navigation }: BlazeStoreScreenProps) {
   const purchaseProduct = usePurchaseStore((state) => state.purchaseProduct);
   const restore = usePurchaseStore((state) => state.restorePurchases);
   const initializePurchases = usePurchaseStore((state) => state.initializePurchases);
+  const presentProPaywall = usePurchaseStore((state) => state.presentProPaywall);
+  const paywallStatus = usePurchaseStore((state) => state.paywallStatus);
   const hasRemoveAds = useHasRemoveAdsEntitlement();
+  const hasPro = useHasBlazeProEntitlement();
 
   const [detail, setDetail] = useState<DetailTarget | null>(null);
   const [busy, setBusy] = useState(false);
@@ -100,14 +104,16 @@ export function BlazeStoreScreen({ navigation }: BlazeStoreScreenProps) {
         <ScreenHeader title="BLAZE STORE" />
         <View style={styles.headerRow}>
           <Text style={styles.balance}>{balance.toLocaleString()} COINS</Text>
-          {hasRemoveAds ? <Text style={styles.adFree}>AD-FREE</Text> : null}
+          {hasPro ? <Text style={styles.adFree}>PRO</Text> : null}
+          {!hasPro && hasRemoveAds ? <Text style={styles.adFree}>AD-FREE</Text> : null}
         </View>
         {isMonetizationTestMode() ? (
           <Text style={styles.testBadge}>MONETIZATION TEST MODE</Text>
         ) : null}
         <Text style={styles.disclosure}>
-          Purchases are optional. Cosmetics do not affect gameplay. Store prices come
-          from the app store. Restore Purchases is available for eligible products.
+          Purchases are optional. Cosmetics and Pro do not affect gameplay fairness.
+          Store prices come from the app store. Restore Purchases is available for
+          eligible products.
         </Text>
 
         {!nativeOk || Platform.OS === 'web' ? (
@@ -135,6 +141,52 @@ export function BlazeStoreScreen({ navigation }: BlazeStoreScreenProps) {
             />
           }
         >
+          <Section title="21 BLAZE PRO">
+            <View style={styles.proCard}>
+              <Text style={styles.proTitle}>
+                {hasPro ? 'PRO ACTIVE' : 'UNLOCK 21 BLAZE PRO'}
+              </Text>
+              <Text style={styles.proBody}>
+                Monthly, yearly, or lifetime. Includes ad-free interstitials. Does not
+                change cards, ratings, or matchmaking.
+              </Text>
+              <BlazeButton
+                title={hasPro ? 'MANAGE SUBSCRIPTION' : 'VIEW PRO PAYWALL'}
+                loading={paywallStatus === 'purchasing' || busy}
+                onPress={() => {
+                  void (async () => {
+                    setBusy(true);
+                    if (hasPro) {
+                      const status = await usePurchaseStore
+                        .getState()
+                        .openCustomerCenter();
+                      if (status === 'unavailable') {
+                        // Fall back to restore / paywall messaging.
+                      }
+                    } else {
+                      await presentProPaywall();
+                    }
+                    setBusy(false);
+                  })();
+                }}
+                fullWidth
+              />
+              {!hasPro ? (
+                <View style={styles.proPriceRow}>
+                  <Text style={styles.proPrice}>
+                    Monthly {priceFor('pro_monthly')}
+                  </Text>
+                  <Text style={styles.proPrice}>
+                    Yearly {priceFor('pro_yearly')}
+                  </Text>
+                  <Text style={styles.proPrice}>
+                    Lifetime {priceFor('pro_lifetime')}
+                  </Text>
+                </View>
+              ) : null}
+            </View>
+          </Section>
+
           <Section title="FEATURED">
             <StoreRow
               title="Founders Bundle"
@@ -407,6 +459,34 @@ const styles = StyleSheet.create({
     ...typography.label,
     fontSize: 11,
     color: colors.success,
+  },
+  proCard: {
+    borderWidth: 1,
+    borderColor: colors.blazeStrong,
+    borderRadius: radius.md,
+    backgroundColor: 'rgba(0,0,0,0.28)',
+    padding: spacing.md,
+    gap: spacing.sm,
+  },
+  proTitle: {
+    fontFamily: fontFamilies.bodyBold,
+    fontSize: 15,
+    color: colors.gold,
+    letterSpacing: 1,
+  },
+  proBody: {
+    ...typography.body,
+    fontSize: 13,
+    color: colors.textSecondary,
+  },
+  proPriceRow: {
+    gap: 4,
+  },
+  proPrice: {
+    fontFamily: fontFamilies.bodySemi,
+    fontSize: 12,
+    color: colors.textPrimary,
+    flexShrink: 1,
   },
   testBadge: {
     ...typography.label,

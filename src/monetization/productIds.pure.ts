@@ -8,6 +8,9 @@ export const IOS_PRODUCTS = {
   arenaVolcano: 'com.twentyoneblaze.arena.volcano',
   arenaNeonCasino: 'com.twentyoneblaze.arena.neon_casino',
   foundersBundle: 'com.twentyoneblaze.bundle.founders',
+  proLifetime: 'lifetime',
+  proYearly: 'yearly',
+  proMonthly: 'monthly',
 } as const;
 
 export const ANDROID_PRODUCTS = {
@@ -18,6 +21,9 @@ export const ANDROID_PRODUCTS = {
   arenaVolcano: 'arena_volcano',
   arenaNeonCasino: 'arena_neon_casino',
   foundersBundle: 'bundle_founders',
+  proLifetime: 'lifetime',
+  proYearly: 'yearly',
+  proMonthly: 'monthly',
 } as const;
 
 export const ENTITLEMENT_KEYS = {
@@ -30,9 +36,40 @@ export const ENTITLEMENT_KEYS = {
   foundersBundle: 'founders_bundle',
   founderFrame: 'founder_frame',
   founderTitle: 'founder_title',
+  pro: 'pro',
 } as const satisfies Record<string, EntitlementKey>;
 
 export const STORE_PRODUCTS: readonly PurchasableProduct[] = [
+  {
+    id: 'pro_lifetime',
+    entitlementKey: 'pro',
+    category: 'subscription',
+    displayName: '21 Blaze Pro — Lifetime',
+    description:
+      'One-time lifetime access to 21 Blaze Pro. Subscriptions and Pro do not change match fairness.',
+    includedEntitlements: ['pro', 'remove_ads'],
+    includedCosmetics: [],
+  },
+  {
+    id: 'pro_yearly',
+    entitlementKey: 'pro',
+    category: 'subscription',
+    displayName: '21 Blaze Pro — Yearly',
+    description:
+      'Yearly 21 Blaze Pro subscription. Does not alter cards, ratings, or matchmaking.',
+    includedEntitlements: ['pro', 'remove_ads'],
+    includedCosmetics: [],
+  },
+  {
+    id: 'pro_monthly',
+    entitlementKey: 'pro',
+    category: 'subscription',
+    displayName: '21 Blaze Pro — Monthly',
+    description:
+      'Monthly 21 Blaze Pro subscription. Cosmetics and competitive rules are unchanged.',
+    includedEntitlements: ['pro', 'remove_ads'],
+    includedCosmetics: [],
+  },
   {
     id: 'remove_ads',
     entitlementKey: 'remove_ads',
@@ -128,6 +165,9 @@ export function productIdToCatalogId(productId: string): string | null {
     [ANDROID_PRODUCTS.arenaNeonCasino]: 'arena_neon_casino',
     [IOS_PRODUCTS.foundersBundle]: 'bundle_founders',
     [ANDROID_PRODUCTS.foundersBundle]: 'bundle_founders',
+    lifetime: 'pro_lifetime',
+    yearly: 'pro_yearly',
+    monthly: 'pro_monthly',
   };
   return map[productId] ?? null;
 }
@@ -152,6 +192,12 @@ export function catalogIdToStoreProductIdForPlatform(
       return products.arenaNeonCasino;
     case 'bundle_founders':
       return products.foundersBundle;
+    case 'pro_lifetime':
+      return products.proLifetime;
+    case 'pro_yearly':
+      return products.proYearly;
+    case 'pro_monthly':
+      return products.proMonthly;
     default:
       return null;
   }

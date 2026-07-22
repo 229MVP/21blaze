@@ -3,7 +3,8 @@ export type ProductCategory =
   | 'card_theme'
   | 'arena'
   | 'bundle'
-  | 'coin_cosmetic';
+  | 'coin_cosmetic'
+  | 'subscription';
 
 export type PurchaseStatus =
   | 'idle'
@@ -38,7 +39,8 @@ export type EntitlementKey =
   | 'arena_neon_casino'
   | 'founders_bundle'
   | 'founder_frame'
-  | 'founder_title';
+  | 'founder_title'
+  | 'pro';
 
 export type PurchasableProduct = {
   id: string;
@@ -68,6 +70,8 @@ export type StoreOffering = {
 export type CustomerEntitlements = {
   active: ReadonlyArray<EntitlementKey>;
   removeAds: boolean;
+  /** True when the player has the 21 Blaze Pro entitlement. */
+  hasPro: boolean;
   rawActiveIds: ReadonlyArray<string>;
 };
 
