@@ -9,6 +9,7 @@ import {
 } from '../game/constants';
 import {
   createInitialGameState,
+  createInitialGameStateFromSeed,
   getCardsRemaining,
   placeCardInLane,
 } from '../game/gameEngine';
@@ -24,31 +25,49 @@ import type {
   MoveEvent,
   MoveEventType,
 } from '../game/types';
+import {
+  IDLE_ONLINE_MATCH_STATE,
+  type MoveLogEntry,
+  type OfficialMatchResult,
+  type OnlineMatchState,
+  type SubmissionStatus,
+} from '../online/types';
+import {
+  OnlineMatchServiceError,
+  startOnlineMatch,
+  submitOnlineMatch,
+} from '../services/onlineMatchService';
 import { clearHighScore, saveHighScore } from '../storage/highScoreStorage';
 import { createMatchId } from '../utils/createMatchId';
 import { useScoreHistoryStore } from './useScoreHistoryStore';
 
-type GameStore = GameState & {
-  highScore: number;
-  isProcessingMove: boolean;
-  lastMoveEvent: MoveEvent | null;
-  setHighScore: (score: number) => void;
-  resetHighScore: () => Promise<void>;
-  startGame: () => void;
-  restartGame: () => void;
-  resetGame: () => void;
-  beginStartCountdown: () => void;
-  updateStartCountdown: (value: number) => void;
-  beginTimedGame: (now: number) => void;
-  synchronizeTimer: (now: number) => void;
-  pauseGame: (now: number) => void;
-  resumeGame: (now: number) => void;
-  endGame: (reason: GameOverReason) => void;
-  quitGame: () => void;
-  playCardToLane: (laneId: LaneId) => void;
-  clearLastMoveEvent: () => void;
-  getCardsRemaining: () => number;
-};
+type GameStore = GameState &
+  OnlineMatchState & {
+    highScore: number;
+    isProcessingMove: boolean;
+    lastMoveEvent: MoveEvent | null;
+    moveLog: MoveLogEntry[];
+    officialResult: OfficialMatchResult | null;
+    isPreparingMatch: boolean;
+    setHighScore: (score: number) => void;
+    resetHighScore: () => Promise<void>;
+    prepareAndStartGame: () => Promise<void>;
+    startGame: () => void;
+    restartGame: () => void;
+    resetGame: () => void;
+    beginStartCountdown: () => void;
+    updateStartCountdown: (value: number) => void;
+    beginTimedGame: (now: number) => void;
+    synchronizeTimer: (now: number) => void;
+    pauseGame: (now: number) => void;
+    resumeGame: (now: number) => void;
+    endGame: (reason: GameOverReason) => void;
+    quitGame: () => void;
+    playCardToLane: (laneId: LaneId) => void;
+    clearLastMoveEvent: () => void;
+    getCardsRemaining: () => number;
+    submitVerifiedMatchIfNeeded: () => Promise<void>;
+  };
 
 const idleGameState: GameState = {
   status: 'idle',
@@ -78,6 +97,8 @@ function withNewMatchId(base: GameState): GameState {
 }
 
 let moveEventSequence = 0;
+const submittedOnlineMatchIds = new Set<string>();
+let submissionPromise: Promise<void> | null = null;
 
 function maybePersistHighScore(score: number, highScore: number): number {
   if (score > highScore) {
@@ -153,11 +174,48 @@ function withFreshMatchState(base: GameState): GameState {
   });
 }
 
+function toGameSlice(state: GameState): GameState {
+  return {
+    status: state.status,
+    deck: state.deck,
+    activeCard: state.activeCard,
+    lanes: state.lanes,
+    score: state.score,
+    multiplier: state.multiplier,
+    busts: state.busts,
+    clearedLanes: state.clearedLanes,
+    cardsPlayed: state.cardsPlayed,
+    timeRemainingSeconds: state.timeRemainingSeconds,
+    timerStatus: state.timerStatus,
+    gameStartedAt: state.gameStartedAt,
+    pauseStartedAt: state.pauseStartedAt,
+    totalPausedMilliseconds: state.totalPausedMilliseconds,
+    gameOverReason: state.gameOverReason,
+    startCountdownValue: state.startCountdownValue,
+    matchId: state.matchId,
+  };
+}
+
+function resetOnlineFields(): OnlineMatchState & {
+  moveLog: MoveLogEntry[];
+  officialResult: OfficialMatchResult | null;
+} {
+  return {
+    ...IDLE_ONLINE_MATCH_STATE,
+    moveLog: [],
+    officialResult: null,
+  };
+}
+
 export const useGameStore = create<GameStore>((set, get) => ({
   ...idleGameState,
+  ...IDLE_ONLINE_MATCH_STATE,
   highScore: 0,
   isProcessingMove: false,
   lastMoveEvent: null,
+  moveLog: [],
+  officialResult: null,
+  isPreparingMatch: false,
 
   setHighScore: (score) => {
     const normalized = Number.isFinite(score) && score > 0 ? Math.floor(score) : 0;
@@ -169,30 +227,69 @@ export const useGameStore = create<GameStore>((set, get) => ({
     set({ highScore: 0 });
   },
 
-  startGame: () => {
-    const next = withFreshMatchState(createInitialGameState());
+  prepareAndStartGame: async () => {
+    if (get().isPreparingMatch) {
+      return;
+    }
+
     set({
-      ...next,
+      ...idleGameState,
+      ...resetOnlineFields(),
+      highScore: get().highScore,
+      isPreparingMatch: true,
       isProcessingMove: false,
       lastMoveEvent: null,
+      status: 'idle',
+      timerStatus: 'ready',
     });
+
+    try {
+      const online = await startOnlineMatch();
+      const next = withFreshMatchState(createInitialGameStateFromSeed(online.seed));
+      set({
+        ...next,
+        eligibility: 'verified',
+        onlineMatchId: online.matchId,
+        deckSeed: online.seed,
+        startedAtServer: online.startedAt,
+        expiresAtServer: online.expiresAt,
+        submissionStatus: 'idle',
+        rejectionReason: null,
+        moveLog: [],
+        officialResult: null,
+        isPreparingMatch: false,
+        isProcessingMove: false,
+        lastMoveEvent: null,
+      });
+    } catch {
+      const next = withFreshMatchState(createInitialGameState());
+      set({
+        ...next,
+        ...resetOnlineFields(),
+        eligibility: 'localOnly',
+        isPreparingMatch: false,
+        isProcessingMove: false,
+        lastMoveEvent: null,
+      });
+    }
+  },
+
+  startGame: () => {
+    void get().prepareAndStartGame();
   },
 
   restartGame: () => {
-    const next = withFreshMatchState(createInitialGameState());
-    set({
-      ...next,
-      isProcessingMove: false,
-      lastMoveEvent: null,
-    });
+    void get().prepareAndStartGame();
   },
 
   resetGame: () => {
     set({
       ...idleGameState,
+      ...resetOnlineFields(),
       highScore: get().highScore,
       isProcessingMove: false,
       lastMoveEvent: null,
+      isPreparingMatch: false,
     });
   },
 
@@ -338,23 +435,109 @@ export const useGameStore = create<GameStore>((set, get) => ({
         completedAt: new Date().toISOString(),
       });
     }
+
+    if (shouldRecord) {
+      void get().submitVerifiedMatchIfNeeded();
+    }
+  },
+
+  submitVerifiedMatchIfNeeded: async () => {
+    const current = get();
+    const matchId = current.onlineMatchId;
+    const reason = current.gameOverReason;
+
+    if (
+      current.eligibility !== 'verified' ||
+      !matchId ||
+      reason === null ||
+      reason === 'quit'
+    ) {
+      return;
+    }
+
+    if (
+      reason !== 'timeExpired' &&
+      reason !== 'busts' &&
+      reason !== 'deckEmpty'
+    ) {
+      return;
+    }
+
+    if (
+      submittedOnlineMatchIds.has(matchId) ||
+      current.submissionStatus === 'submitting' ||
+      current.submissionStatus === 'verified'
+    ) {
+      return;
+    }
+
+    if (submissionPromise) {
+      await submissionPromise;
+      return;
+    }
+
+    submittedOnlineMatchIds.add(matchId);
+    set({ submissionStatus: 'submitting', rejectionReason: null });
+
+    submissionPromise = (async () => {
+      try {
+        const response = await submitOnlineMatch(matchId, get().moveLog);
+
+        if (response.verified && response.officialResult) {
+          set({
+            submissionStatus: 'verified',
+            officialResult: response.officialResult,
+            rejectionReason: null,
+            score: response.officialResult.score,
+            clearedLanes: response.officialResult.lanesCleared,
+            cardsPlayed: response.officialResult.cardsPlayed,
+            busts: response.officialResult.busts,
+            timeRemainingSeconds: response.officialResult.timeRemainingSeconds,
+            gameOverReason: response.officialResult.gameOverReason,
+          });
+          return;
+        }
+
+        set({
+          submissionStatus: 'rejected',
+          rejectionReason: response.rejectionReason ?? 'Score was not verified.',
+        });
+      } catch (error) {
+        submittedOnlineMatchIds.delete(matchId);
+        const message =
+          error instanceof OnlineMatchServiceError
+            ? error.message
+            : error instanceof Error
+              ? error.message
+              : 'Verification failed.';
+        set({
+          submissionStatus: 'failed',
+          rejectionReason: message,
+        });
+      } finally {
+        submissionPromise = null;
+      }
+    })();
+
+    await submissionPromise;
   },
 
   quitGame: () => {
     const current = get();
     if (current.status === 'playing' && current.gameOverReason === null) {
-      // Mark quit without recording a leaderboard entry.
       set({
         status: 'finished',
         gameOverReason: 'quit',
         isProcessingMove: false,
         pauseStartedAt: null,
+        submissionStatus: 'idle',
       });
     }
 
     const highScore = get().highScore;
     set({
       ...idleGameState,
+      ...resetOnlineFields(),
       highScore,
       isProcessingMove: false,
       lastMoveEvent: null,
@@ -362,6 +545,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
       status: 'idle',
       timerStatus: 'ready',
       matchId: null,
+      isPreparingMatch: false,
     });
   },
 
@@ -376,7 +560,8 @@ export const useGameStore = create<GameStore>((set, get) => ({
       current.isProcessingMove ||
       current.status !== 'playing' ||
       current.timerStatus !== 'running' ||
-      current.activeCard === null
+      current.activeCard === null ||
+      current.gameStartedAt === null
     ) {
       return;
     }
@@ -384,32 +569,25 @@ export const useGameStore = create<GameStore>((set, get) => ({
     const cardId = current.activeCard.id;
     set({ isProcessingMove: true });
 
-    const before: GameState = {
-      status: current.status,
-      deck: current.deck,
-      activeCard: current.activeCard,
-      lanes: current.lanes,
-      score: current.score,
-      multiplier: current.multiplier,
-      busts: current.busts,
-      clearedLanes: current.clearedLanes,
-      cardsPlayed: current.cardsPlayed,
-      timeRemainingSeconds: current.timeRemainingSeconds,
-      timerStatus: current.timerStatus,
-      gameStartedAt: current.gameStartedAt,
-      pauseStartedAt: current.pauseStartedAt,
-      totalPausedMilliseconds: current.totalPausedMilliseconds,
-      gameOverReason: current.gameOverReason,
-      startCountdownValue: current.startCountdownValue,
-      matchId: current.matchId,
-    };
-
+    const before = toGameSlice(current);
     const nextState = placeCardInLane(before, laneId);
 
     if (nextState === before) {
       set({ isProcessingMove: false });
       return;
     }
+
+    const elapsedMilliseconds = calculateElapsedGameMilliseconds(
+      Date.now(),
+      current.gameStartedAt,
+      current.totalPausedMilliseconds,
+    );
+
+    const moveEntry: MoveLogEntry = {
+      sequence: current.moveLog.length + 1,
+      laneId,
+      elapsedMilliseconds,
+    };
 
     const lastMoveEvent = createMoveEvent(before, nextState, laneId, cardId);
     const cardsPlayed = current.cardsPlayed + 1;
@@ -419,6 +597,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
       cardsPlayed,
       lastMoveEvent,
       isProcessingMove: false,
+      moveLog: [...current.moveLog, moveEntry],
     });
 
     if (nextState.busts >= MAX_BUSTS) {

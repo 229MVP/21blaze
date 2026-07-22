@@ -9,7 +9,7 @@ import {
   START_COUNTDOWN_SECONDS,
   TARGET_TOTAL,
 } from './constants';
-import { createShuffledDeck, drawCard } from './deck';
+import { createSeededShuffledDeck, createShuffledDeck, drawCard } from './deck';
 import type { Card, GameState, Lane, LaneId, LaneOutcome } from './types';
 
 function createEmptyLanes(): Lane[] {
@@ -37,10 +37,7 @@ export function evaluateLane(cards: readonly Card[]): LaneOutcome {
   return 'continue';
 }
 
-export function createInitialGameState(
-  random: () => number = Math.random,
-): GameState {
-  const shuffled = createShuffledDeck(random);
+function buildInitialState(shuffled: Card[]): GameState {
   const { card: activeCard, remainingDeck } = drawCard(shuffled);
 
   return {
@@ -62,6 +59,17 @@ export function createInitialGameState(
     startCountdownValue: START_COUNTDOWN_SECONDS,
     matchId: null,
   };
+}
+
+export function createInitialGameState(
+  random: () => number = Math.random,
+): GameState {
+  return buildInitialState(createShuffledDeck(random));
+}
+
+/** Online matches: identical seed ⇒ identical deck / first active card. */
+export function createInitialGameStateFromSeed(seed: number): GameState {
+  return buildInitialState(createSeededShuffledDeck(seed));
 }
 
 function resetLane(lanes: readonly Lane[], laneId: LaneId): Lane[] {

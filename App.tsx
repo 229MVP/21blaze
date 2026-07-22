@@ -14,6 +14,7 @@ import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { AppNavigator } from './src/navigation/AppNavigator';
+import { useAuthStore } from './src/store/useAuthStore';
 import { useScoreHistoryStore } from './src/store/useScoreHistoryStore';
 import { useSettingsStore } from './src/store/useSettingsStore';
 import { colors } from './src/theme/colors';
@@ -65,6 +66,7 @@ export default function App() {
   useEffect(() => {
     void useSettingsStore.getState().hydrateSettings();
     void useScoreHistoryStore.getState().hydrateScoreHistory();
+    void useAuthStore.getState().initializeAuth();
   }, []);
 
   // Proceed with system-font fallbacks if custom fonts fail or stall.

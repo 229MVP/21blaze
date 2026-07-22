@@ -1,4 +1,5 @@
 import { GAME_DURATION_SECONDS } from './constants';
+import { runOnlineSelfTests } from './onlineSelfTest';
 import {
   calculateElapsedGameMilliseconds,
   calculateTimeRemainingSeconds,
@@ -54,6 +55,8 @@ export function runGameEngineSelfTests(): void {
 
   assert(isTimerExpired(0) === true, 'Timer expiration is true at zero');
   assert(isTimerExpired(1) === false, 'Timer expiration is false above zero');
+
+  runOnlineSelfTests();
 }
 
 runGameEngineSelfTests();

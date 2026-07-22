@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useMemo } from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 
@@ -49,14 +49,28 @@ function getResultTitle(
 
 export function ResultsScreen({ navigation, route }: ResultsScreenProps) {
   const restartGame = useGameStore((state) => state.restartGame);
-  const score = resolveParam(route.params?.score);
+  const eligibility = useGameStore((state) => state.eligibility);
+  const submissionStatus = useGameStore((state) => state.submissionStatus);
+  const officialResult = useGameStore((state) => state.officialResult);
+  const submitVerifiedMatchIfNeeded = useGameStore(
+    (state) => state.submitVerifiedMatchIfNeeded,
+  );
+
+  const routeScore = resolveParam(route.params?.score);
   const highScore = resolveParam(route.params?.highScore);
-  const clearedLanes = resolveParam(route.params?.clearedLanes);
-  const busts = resolveParam(route.params?.busts);
-  const cardsPlayed = resolveParam(route.params?.cardsPlayed);
-  const timeRemainingSeconds = resolveParam(route.params?.timeRemainingSeconds);
-  const gameOverReason = route.params?.gameOverReason;
+  const routeClearedLanes = resolveParam(route.params?.clearedLanes);
+  const routeBusts = resolveParam(route.params?.busts);
+  const routeCardsPlayed = resolveParam(route.params?.cardsPlayed);
+  const routeTimeRemainingSeconds = resolveParam(route.params?.timeRemainingSeconds);
+  const gameOverReason = officialResult?.gameOverReason ?? route.params?.gameOverReason;
   const matchId = route.params?.matchId;
+
+  const score = officialResult?.score ?? routeScore;
+  const clearedLanes = officialResult?.lanesCleared ?? routeClearedLanes;
+  const busts = officialResult?.busts ?? routeBusts;
+  const cardsPlayed = officialResult?.cardsPlayed ?? routeCardsPlayed;
+  const timeRemainingSeconds =
+    officialResult?.timeRemainingSeconds ?? routeTimeRemainingSeconds;
 
   const entries = useScoreHistoryStore((state) => state.entries);
   const isHydrated = useScoreHistoryStore((state) => state.isHydrated);
@@ -66,10 +80,49 @@ export function ResultsScreen({ navigation, route }: ResultsScreenProps) {
     void hydrateScoreHistory();
   }, [hydrateScoreHistory]);
 
+  useEffect(() => {
+    void submitVerifiedMatchIfNeeded();
+  }, [submitVerifiedMatchIfNeeded]);
+
   const isNewHighScore = score > 0 && score >= highScore;
   const title = getResultTitle(gameOverReason, isNewHighScore);
   const localRank =
     isHydrated && matchId ? findLocalRank(entries, matchId) : null;
+
+  const verificationLabel = useMemo(() => {
+    if (eligibility === 'localOnly') {
+      return 'LOCAL SCORE';
+    }
+    if (submissionStatus === 'verified') {
+      return 'VERIFIED ONLINE';
+    }
+    if (submissionStatus === 'submitting' || submissionStatus === 'idle') {
+      return 'VERIFYING SCORE…';
+    }
+    if (submissionStatus === 'failed') {
+      return 'VERIFICATION FAILED';
+    }
+    if (submissionStatus === 'rejected') {
+      return 'SCORE NOT VERIFIED';
+    }
+    return 'LOCAL SCORE';
+  }, [eligibility, submissionStatus]);
+
+  const verificationDetail = useMemo(() => {
+    if (eligibility === 'localOnly') {
+      return 'This match was saved locally and was not submitted globally.';
+    }
+    if (submissionStatus === 'verified') {
+      return 'Official result accepted on the global leaderboard.';
+    }
+    if (submissionStatus === 'submitting' || submissionStatus === 'idle') {
+      return 'Checking your run with the server…';
+    }
+    if (submissionStatus === 'failed') {
+      return 'Your local score is still saved.';
+    }
+    return 'Your local score is still saved.';
+  }, [eligibility, submissionStatus]);
 
   const playAgain = () => {
     restartGame();
@@ -105,6 +158,11 @@ export function ResultsScreen({ navigation, route }: ResultsScreenProps) {
           ) : null}
         </View>
 
+        <View style={styles.verifyBanner}>
+          <Text style={styles.verifyLabel}>{verificationLabel}</Text>
+          <Text style={styles.verifyDetail}>{verificationDetail}</Text>
+        </View>
+
         <LinearGradient
           colors={[colors.backgroundCard, '#222222']}
           start={{ x: 0, y: 0 }}
@@ -135,12 +193,21 @@ export function ResultsScreen({ navigation, route }: ResultsScreenProps) {
 
         <View style={styles.actions}>
           <BlazeButton title="PLAY AGAIN" onPress={playAgain} fullWidth />
-          <BlazeButton
-            title="VIEW HIGH SCORES"
-            variant="outline"
-            onPress={() => navigation.navigate('HighScores')}
-            fullWidth
-          />
+          {submissionStatus === 'verified' ? (
+            <BlazeButton
+              title="VIEW GLOBAL RANKING"
+              variant="outline"
+              onPress={() => navigation.navigate('HighScores')}
+              fullWidth
+            />
+          ) : (
+            <BlazeButton
+              title="VIEW HIGH SCORES"
+              variant="outline"
+              onPress={() => navigation.navigate('HighScores')}
+              fullWidth
+            />
+          )}
           <BlazeButton
             title="RETURN HOME"
             variant="secondary"
@@ -192,6 +259,29 @@ const styles = StyleSheet.create({
     fontSize: 13,
     letterSpacing: 1,
     color: colors.brightOrange,
+  },
+  verifyBanner: {
+    width: '100%',
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: colors.blazeSubtle,
+    backgroundColor: 'rgba(0,0,0,0.28)',
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.md,
+    gap: 4,
+  },
+  verifyLabel: {
+    fontFamily: fontFamilies.bodyBold,
+    fontSize: 13,
+    letterSpacing: 1.2,
+    color: colors.gold,
+    textAlign: 'center',
+  },
+  verifyDetail: {
+    ...typography.body,
+    fontSize: 13,
+    color: colors.textSecondary,
+    textAlign: 'center',
   },
   scoreCard: {
     width: '100%',

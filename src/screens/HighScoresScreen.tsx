@@ -1,5 +1,13 @@
-import { useEffect, useState } from 'react';
-import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useCallback, useEffect, useState } from 'react';
+import {
+  ActivityIndicator,
+  Platform,
+  RefreshControl,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+} from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import Svg, { Path } from 'react-native-svg';
 
@@ -8,8 +16,11 @@ import { BlazeButton } from '../components/buttons/BlazeButton';
 import { BlazeSegmentedControl } from '../components/Navigation/BlazeSegmentedControl';
 import { ScreenHeader } from '../components/Navigation/ScreenHeader';
 import { ScreenContainer } from '../components/ScreenContainer';
+import type { GlobalLeaderboardRow } from '../lib/database.types';
 import type { RootStackParamList } from '../navigation/navigationTypes';
 import type { ScoreEntry } from '../scores/types';
+import { loadGlobalLeaderboard } from '../services/leaderboardService';
+import { useAuthStore } from '../store/useAuthStore';
 import { useScoreHistoryStore } from '../store/useScoreHistoryStore';
 import { colors } from '../theme/colors';
 import { radius } from '../theme/radius';
@@ -79,15 +90,83 @@ function LocalRow({ entry, rank }: { entry: ScoreEntry; rank: number }) {
   );
 }
 
+function GlobalRow({
+  entry,
+  isCurrentPlayer,
+}: {
+  entry: GlobalLeaderboardRow;
+  isCurrentPlayer: boolean;
+}) {
+  return (
+    <View
+      style={[
+        styles.row,
+        entry.rank === 1 && styles.rowGold,
+        isCurrentPlayer && styles.rowCurrent,
+      ]}
+      accessibilityLabel={`Rank ${entry.rank}, ${entry.display_name}, score ${entry.score}, ${entry.lanes_cleared} lanes cleared, ${entry.cards_played} cards played`}
+    >
+      <RankBadge rank={entry.rank} />
+      <View style={styles.rowCopy}>
+        <Text style={[styles.playerName, isCurrentPlayer && styles.playerNameCurrent]}>
+          {entry.display_name}
+          {isCurrentPlayer ? ' (YOU)' : ''}
+        </Text>
+        <Text style={[styles.score, entry.rank === 1 && styles.scoreGold]}>
+          {entry.score.toLocaleString()}
+        </Text>
+        <Text style={styles.meta}>
+          {entry.lanes_cleared} lanes · {entry.cards_played} cards
+        </Text>
+      </View>
+    </View>
+  );
+}
+
 export function HighScoresScreen({ navigation }: HighScoresScreenProps) {
   const [tab, setTab] = useState<LeaderboardTab>('local');
   const entries = useScoreHistoryStore((state) => state.entries);
   const isHydrated = useScoreHistoryStore((state) => state.isHydrated);
   const hydrateScoreHistory = useScoreHistoryStore((state) => state.hydrateScoreHistory);
+  const userId = useAuthStore((state) => state.user?.id ?? null);
+
+  const [globalRows, setGlobalRows] = useState<GlobalLeaderboardRow[]>([]);
+  const [globalLoading, setGlobalLoading] = useState(false);
+  const [globalRefreshing, setGlobalRefreshing] = useState(false);
+  const [globalError, setGlobalError] = useState<string | null>(null);
+  const [hasLoadedGlobal, setHasLoadedGlobal] = useState(false);
 
   useEffect(() => {
     void hydrateScoreHistory();
   }, [hydrateScoreHistory]);
+
+  const fetchGlobal = useCallback(async (mode: 'load' | 'refresh' = 'load') => {
+    if (mode === 'refresh') {
+      setGlobalRefreshing(true);
+    } else {
+      setGlobalLoading(true);
+    }
+    setGlobalError(null);
+
+    try {
+      const rows = await loadGlobalLeaderboard(25);
+      setGlobalRows(rows);
+      setHasLoadedGlobal(true);
+    } catch (error) {
+      setGlobalError(
+        error instanceof Error ? error.message : 'Unable to load global leaderboard.',
+      );
+    } finally {
+      setGlobalLoading(false);
+      setGlobalRefreshing(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (tab === 'global' && !hasLoadedGlobal && !globalLoading) {
+      void fetchGlobal('load');
+    }
+  }, [fetchGlobal, globalLoading, hasLoadedGlobal, tab]);
 
   return (
     <ScreenContainer style={styles.container} intensity="normal" padded={false}>
@@ -108,6 +187,17 @@ export function HighScoresScreen({ navigation }: HighScoresScreenProps) {
           style={styles.list}
           contentContainerStyle={styles.listContent}
           showsVerticalScrollIndicator={false}
+          refreshControl={
+            tab === 'global' && Platform.OS !== 'web' ? (
+              <RefreshControl
+                refreshing={globalRefreshing}
+                onRefresh={() => {
+                  void fetchGlobal('refresh');
+                }}
+                tintColor={colors.primary}
+              />
+            ) : undefined
+          }
         >
           {tab === 'local' ? (
             !isHydrated ? (
@@ -134,12 +224,45 @@ export function HighScoresScreen({ navigation }: HighScoresScreenProps) {
           ) : null}
 
           {tab === 'global' ? (
-            <View style={styles.comingSoonPanel}>
-              <Text style={styles.comingSoonTitle}>GLOBAL</Text>
-              <Text style={styles.comingSoon}>
-                Online leaderboards are coming in a future update.
-              </Text>
-            </View>
+            globalLoading && !hasLoadedGlobal ? (
+              <View style={styles.loadingBlock}>
+                <ActivityIndicator color={colors.primary} />
+                <Text style={styles.comingSoon}>Loading global scores…</Text>
+              </View>
+            ) : globalError ? (
+              <View style={styles.comingSoonPanel}>
+                <Text style={styles.comingSoonTitle}>GLOBAL</Text>
+                <Text style={styles.comingSoon}>{globalError}</Text>
+                <BlazeButton
+                  title="RETRY"
+                  onPress={() => {
+                    void fetchGlobal('load');
+                  }}
+                  style={styles.retryButton}
+                />
+              </View>
+            ) : globalRows.length === 0 ? (
+              <View style={styles.empty}>
+                <FlameIcon width={36} height={48} />
+                <Text style={styles.emptyTitle}>NO VERIFIED SCORES YET</Text>
+                <Text style={styles.emptyDetail}>
+                  Finish an online match to claim the first spot.
+                </Text>
+                <BlazeButton
+                  title="PLAY"
+                  onPress={() => navigation.navigate('Game')}
+                  style={styles.emptyPlay}
+                />
+              </View>
+            ) : (
+              globalRows.map((entry) => (
+                <GlobalRow
+                  key={`${entry.user_id}-${entry.rank}`}
+                  entry={entry}
+                  isCurrentPlayer={Boolean(userId && entry.user_id === userId)}
+                />
+              ))
+            )
           ) : null}
 
           {tab === 'friends' ? (
@@ -196,6 +319,9 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255,101,0,0.1)',
     borderColor: 'rgba(255,101,0,0.5)',
   },
+  rowCurrent: {
+    borderColor: colors.gold,
+  },
   rankWrap: {
     width: 36,
     alignItems: 'center',
@@ -213,6 +339,14 @@ const styles = StyleSheet.create({
     flex: 1,
     minWidth: 0,
     gap: 2,
+  },
+  playerName: {
+    fontFamily: fontFamilies.bodyBold,
+    fontSize: 13,
+    color: colors.textPrimary,
+  },
+  playerNameCurrent: {
+    color: colors.gold,
   },
   score: {
     fontFamily: fontFamilies.display,
@@ -276,5 +410,15 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: colors.textSecondary,
     textAlign: 'center',
+  },
+  loadingBlock: {
+    alignItems: 'center',
+    gap: spacing.sm,
+    paddingVertical: spacing.xl,
+  },
+  retryButton: {
+    marginTop: spacing.sm,
+    alignSelf: 'center',
+    minWidth: 140,
   },
 });

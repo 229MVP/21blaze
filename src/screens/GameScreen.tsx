@@ -59,7 +59,8 @@ export function GameScreen({ navigation }: GameScreenProps) {
   const gameOverReason = useGameStore((state) => state.gameOverReason);
   const cardsPlayed = useGameStore((state) => state.cardsPlayed);
 
-  const startGame = useGameStore((state) => state.startGame);
+  const isPreparingMatch = useGameStore((state) => state.isPreparingMatch);
+  const prepareAndStartGame = useGameStore((state) => state.prepareAndStartGame);
   const restartGame = useGameStore((state) => state.restartGame);
   const playCardToLane = useGameStore((state) => state.playCardToLane);
   const clearLastMoveEvent = useGameStore((state) => state.clearLastMoveEvent);
@@ -85,11 +86,14 @@ export function GameScreen({ navigation }: GameScreenProps) {
 
   useEffect(() => {
     const current = useGameStore.getState();
-    if (current.status !== 'playing' || current.timerStatus === 'ready') {
-      startGame();
+    if (
+      !current.isPreparingMatch &&
+      (current.status !== 'playing' || current.timerStatus === 'ready')
+    ) {
       countdownSessionId.current += 1;
+      void prepareAndStartGame();
     }
-  }, [startGame]);
+  }, [prepareAndStartGame]);
 
   useEffect(() => {
     if (status === 'playing' && timerStatus === 'countdown') {
@@ -274,7 +278,8 @@ export function GameScreen({ navigation }: GameScreenProps) {
     status === 'playing' &&
     timerStatus === 'running' &&
     activeCard !== null &&
-    !isProcessingMove;
+    !isProcessingMove &&
+    !isPreparingMatch;
   const showFinalBlaze =
     timerStatus === 'running' && timeRemainingSeconds <= FINAL_WARNING_SECONDS;
 
@@ -291,6 +296,13 @@ export function GameScreen({ navigation }: GameScreenProps) {
       />
 
       <GameFeedbackBanner event={lastMoveEvent} onFinished={handleFeedbackFinished} />
+
+      {isPreparingMatch || status !== 'playing' ? (
+        <View style={styles.preparing}>
+          <Text style={styles.preparingTitle}>LIGHTING THE DECK</Text>
+          <Text style={styles.preparingDetail}>Preparing your match…</Text>
+        </View>
+      ) : null}
 
       <View style={styles.padded}>
         <View style={styles.statsRow}>
@@ -453,6 +465,28 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     height: 120,
+  },
+  preparing: {
+    ...StyleSheet.absoluteFill,
+    zIndex: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(0,0,0,0.55)',
+    gap: 8,
+    paddingHorizontal: spacing.lg,
+  },
+  preparingTitle: {
+    fontFamily: fontFamilies.display,
+    fontSize: 28,
+    color: colors.primary,
+    letterSpacing: 1,
+    textAlign: 'center',
+  },
+  preparingDetail: {
+    ...typography.body,
+    fontSize: 14,
+    color: colors.textSecondary,
+    textAlign: 'center',
   },
   padded: {
     flex: 1,

@@ -5,10 +5,12 @@ import Svg, { Path } from 'react-native-svg';
 import { BlazeLogo } from '../components/branding/BlazeLogo';
 import { FlameIcon } from '../components/branding/FlameIcon';
 import { BlazeButton } from '../components/buttons/BlazeButton';
+import { PlayerProfileButton } from '../components/Profile/PlayerProfileButton';
 import { ScreenContainer } from '../components/ScreenContainer';
 import { APP_VERSION } from '../game/constants';
 import type { HomeScreenProps } from '../navigation/navigationTypes';
 import { loadHighScore } from '../storage/highScoreStorage';
+import { useAuthStore } from '../store/useAuthStore';
 import { useGameStore } from '../store/useGameStore';
 import { useScoreHistoryStore } from '../store/useScoreHistoryStore';
 import { useSettingsStore } from '../store/useSettingsStore';
@@ -34,6 +36,26 @@ function TrophyIcon({ size = 14 }: { size?: number }) {
   );
 }
 
+function statusLabel(authStatus: 'connecting' | 'online' | 'local'): string {
+  if (authStatus === 'online') {
+    return 'ONLINE';
+  }
+  if (authStatus === 'connecting') {
+    return 'CONNECTING';
+  }
+  return 'LOCAL MODE';
+}
+
+function statusDetail(authStatus: 'connecting' | 'online' | 'local'): string {
+  if (authStatus === 'online') {
+    return 'Verified matches available';
+  }
+  if (authStatus === 'connecting') {
+    return 'Authentication is initializing';
+  }
+  return 'Scores stay on this device';
+}
+
 export function HomeScreen({ navigation }: HomeScreenProps) {
   const { width } = useWindowDimensions();
   const logoSize = width < 360 ? 'md' : 'lg';
@@ -41,6 +63,7 @@ export function HomeScreen({ navigation }: HomeScreenProps) {
   const setHighScore = useGameStore((state) => state.setHighScore);
   const hydrateSettings = useSettingsStore((state) => state.hydrateSettings);
   const hydrateScoreHistory = useScoreHistoryStore((state) => state.hydrateScoreHistory);
+  const authStatus = useAuthStore((state) => state.authStatus);
 
   useEffect(() => {
     let isMounted = true;
@@ -66,6 +89,23 @@ export function HomeScreen({ navigation }: HomeScreenProps) {
     <ScreenContainer style={styles.container} intensity="intense">
       <View style={styles.content}>
         <BlazeLogo size={logoSize} showTagline />
+
+        <View style={styles.statusChip} accessibilityRole="text">
+          <View
+            style={[
+              styles.statusDot,
+              authStatus === 'online' && styles.statusDotOnline,
+              authStatus === 'connecting' && styles.statusDotConnecting,
+              authStatus === 'local' && styles.statusDotLocal,
+            ]}
+          />
+          <View style={styles.statusCopy}>
+            <Text style={styles.statusLabel}>{statusLabel(authStatus)}</Text>
+            <Text style={styles.statusDetail}>{statusDetail(authStatus)}</Text>
+          </View>
+        </View>
+
+        <PlayerProfileButton />
 
         <Pressable
           accessibilityRole="button"
@@ -125,6 +165,50 @@ const styles = StyleSheet.create({
     alignSelf: 'center',
     gap: spacing.md,
   },
+  statusChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    paddingVertical: 8,
+    paddingHorizontal: spacing.md,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.08)',
+    backgroundColor: 'rgba(0,0,0,0.22)',
+    width: '100%',
+  },
+  statusDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: colors.textMuted,
+  },
+  statusDotOnline: {
+    backgroundColor: '#3DDC84',
+  },
+  statusDotConnecting: {
+    backgroundColor: colors.gold,
+  },
+  statusDotLocal: {
+    backgroundColor: colors.brightOrange,
+  },
+  statusCopy: {
+    flex: 1,
+    minWidth: 0,
+    gap: 1,
+  },
+  statusLabel: {
+    fontFamily: fontFamilies.bodyBold,
+    fontSize: 12,
+    letterSpacing: 1.2,
+    color: colors.textPrimary,
+  },
+  statusDetail: {
+    ...typography.label,
+    fontSize: 11,
+    textTransform: 'none',
+    color: colors.textSecondary,
+  },
   highScoreBox: {
     width: '100%',
     backgroundColor: colors.backgroundCard,
@@ -134,7 +218,6 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.md,
     paddingHorizontal: spacing.lg,
     alignItems: 'center',
-    marginTop: spacing.md,
     minHeight: 88,
     justifyContent: 'center',
   },
