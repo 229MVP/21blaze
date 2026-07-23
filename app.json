@@ -15,7 +15,9 @@
         "GADApplicationIdentifier": "ca-app-pub-3940256099942544~1458002511",
         "NSUserTrackingUsageDescription": "This identifier is used to deliver personalized ads when you allow tracking. Declining does not block Solo Play.",
         "SKAdNetworkItems": [
-          { "SKAdNetworkIdentifier": "cstr6suwn9.skadnetwork" }
+          {
+            "SKAdNetworkIdentifier": "cstr6suwn9.skadnetwork"
+          }
         ]
       }
     },
@@ -43,7 +45,8 @@
           "androidAppId": "ca-app-pub-3940256099942544~3347511713",
           "iosAppId": "ca-app-pub-3940256099942544~1458002511"
         }
-      ]
+      ],
+      "expo-audio"
     ],
     "extra": {
       "eas": {

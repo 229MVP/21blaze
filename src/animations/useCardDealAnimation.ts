@@ -1,0 +1,2 @@
+
+import { useEffect } from 'react'; import { useAnimatedStyle,useSharedValue,withTiming } from 'react-native-reanimated'; export function useCardDealAnimation(trigger:unknown,reduced=false){const opacity=useSharedValue(0),y=useSharedValue(-18);useEffect(()=>{opacity.value=withTiming(1,{duration:reduced?80:180});y.value=withTiming(0,{duration:reduced?80:240})},[trigger,reduced,opacity,y]);return useAnimatedStyle(()=>({opacity:opacity.value,transform:[{translateY:y.value}]}))}
