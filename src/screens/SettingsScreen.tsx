@@ -1,9 +1,10 @@
 import { useState } from 'react';
 import { Alert, ScrollView, StyleSheet, Text, View } from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
-import Svg, { Circle, Path } from 'react-native-svg';
+import { Circle, Path } from 'react-native-svg';
 
 import { PlayingCard } from '../components/Card/PlayingCard';
+import { SvgRoot as Svg } from '../components/svg/SvgRoot';
 import { BlazeButton } from '../components/buttons/BlazeButton';
 import { ScreenHeader } from '../components/Navigation/ScreenHeader';
 import { BlazeModal } from '../components/Settings/BlazeModal';
@@ -38,21 +39,27 @@ const PREVIEW_CARD: Card = {
 
 function GearIcon() {
   return (
-    <Svg width={28} height={28} viewBox="0 0 24 24" accessibilityElementsHidden>
-      <Path
-        d="M12 8.5a3.5 3.5 0 1 0 0 7 3.5 3.5 0 0 0 0-7z"
-        fill="none"
-        stroke={colors.primary}
-        strokeWidth={1.8}
-      />
-      <Path
-        d="M19.4 13.5a7.6 7.6 0 0 0 .05-1l2-1.5-2-3.5-2.4 1a7.7 7.7 0 0 0-1.7-1l-.3-2.5H9.9l-.3 2.5a7.7 7.7 0 0 0-1.7 1l-2.4-1-2 3.5 2 1.5a7.6 7.6 0 0 0 0 2l-2 1.5 2 3.5 2.4-1a7.7 7.7 0 0 0 1.7 1l.3 2.5h4.2l.3-2.5a7.7 7.7 0 0 0 1.7-1l2.4 1 2-3.5-2-1.5z"
-        fill="none"
-        stroke={colors.gold}
-        strokeWidth={1.4}
-      />
-      <Circle cx="12" cy="12" r="1.2" fill={colors.gold} />
-    </Svg>
+    <View
+      accessibilityElementsHidden
+      importantForAccessibility="no-hide-descendants"
+      style={{ width: 28, height: 28 }}
+    >
+      <Svg width={28} height={28} viewBox="0 0 24 24">
+        <Path
+          d="M12 8.5a3.5 3.5 0 1 0 0 7 3.5 3.5 0 0 0 0-7z"
+          fill="none"
+          stroke={colors.primary}
+          strokeWidth={1.8}
+        />
+        <Path
+          d="M19.4 13.5a7.6 7.6 0 0 0 .05-1l2-1.5-2-3.5-2.4 1a7.7 7.7 0 0 0-1.7-1l-.3-2.5H9.9l-.3 2.5a7.7 7.7 0 0 0-1.7 1l-2.4-1-2 3.5 2 1.5a7.6 7.6 0 0 0 0 2l-2 1.5 2 3.5 2.4-1a7.7 7.7 0 0 0 1.7 1l.3 2.5h4.2l.3-2.5a7.7 7.7 0 0 0 1.7-1l2.4 1 2-3.5-2-1.5z"
+          fill="none"
+          stroke={colors.gold}
+          strokeWidth={1.4}
+        />
+        <Circle cx="12" cy="12" r="1.2" fill={colors.gold} />
+      </Svg>
+    </View>
   );
 }
 

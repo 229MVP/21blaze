@@ -21,6 +21,9 @@ import { isStorePurchasesEnabled } from '../config/featureFlags';
 import { useAuthStore } from './useAuthStore';
 import { useCosmeticStore } from './useCosmeticStore';
 
+/** Stable empty list for initial state / selector fallbacks. */
+export const EMPTY_SERVER_ENTITLEMENTS: readonly string[] = Object.freeze([]);
+
 type PurchaseStore = {
   offerings: StoreOffering | null;
   customerInfo: CustomerEntitlements | null;
@@ -48,7 +51,7 @@ function currentUserId(): string | null {
 export const usePurchaseStore = create<PurchaseStore>((set, get) => ({
   offerings: null,
   customerInfo: null,
-  serverEntitlements: [],
+  serverEntitlements: [...EMPTY_SERVER_ENTITLEMENTS],
   isInitialized: false,
   isLoadingOfferings: false,
   activePurchaseProductId: null,
