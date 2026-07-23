@@ -1,8 +1,9 @@
 import { useEffect } from 'react';
 import { Pressable, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
-import Svg, { Path } from 'react-native-svg';
+import { Path } from 'react-native-svg';
 
 import { BlazeLogo } from '../components/branding/BlazeLogo';
+import { SvgRoot as Svg } from '../components/svg/SvgRoot';
 import { FlameIcon } from '../components/branding/FlameIcon';
 import { BlazeButton } from '../components/buttons/BlazeButton';
 import { XpProgressBar } from '../components/Progression/XpProgressBar';
@@ -40,18 +41,18 @@ import { fontFamilies, typography } from '../theme/typography';
 
 function TrophyIcon({ size = 14 }: { size?: number }) {
   return (
-    <Svg
-      width={size}
-      height={size}
-      viewBox="0 0 24 24"
+    <View
       accessibilityElementsHidden
       importantForAccessibility="no-hide-descendants"
+      style={{ width: size, height: size }}
     >
-      <Path
-        d="M7 4h10v2h3v2c0 2.2-1.5 4-3.5 4.6A4.5 4.5 0 0 1 14 15.9V18h2v2H8v-2h2v-2.1A4.5 4.5 0 0 1 7.5 12.6C5.5 12 4 10.2 4 8V6h3V4zm2 2v1.5H6.1c.2 1 .9 1.8 1.9 2.1V6zm8.9 0H15v3.6c1-.3 1.7-1.1 1.9-2.1H17.9z"
-        fill={colors.gold}
-      />
-    </Svg>
+      <Svg width={size} height={size} viewBox="0 0 24 24">
+        <Path
+          d="M7 4h10v2h3v2c0 2.2-1.5 4-3.5 4.6A4.5 4.5 0 0 1 14 15.9V18h2v2H8v-2h2v-2.1A4.5 4.5 0 0 1 7.5 12.6C5.5 12 4 10.2 4 8V6h3V4zm2 2v1.5H6.1c.2 1 .9 1.8 1.9 2.1V6zm8.9 0H15v3.6c1-.3 1.7-1.1 1.9-2.1H17.9z"
+          fill={colors.gold}
+        />
+      </Svg>
+    </View>
   );
 }
 
