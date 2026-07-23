@@ -32,6 +32,8 @@ type DiagnosticsSnapshot = {
   appEnv: string;
   revenueCatConfigured: boolean;
   apiKeyPresent: boolean;
+  /** true when key looks like RevenueCat Test Store (test_…) — never shows the key. */
+  testStoreKeyDetected: boolean;
   nativeSupported: boolean;
   storePurchasesEnabled: boolean;
   offeringFound: boolean;
@@ -64,10 +66,12 @@ export function PurchaseDiagnosticsScreen({
     try {
       const offerings = userId ? await loadOfferings(userId) : null;
       const customer = userId ? await refreshCustomerInfo(userId) : null;
+      const apiKey = getRevenueCatApiKey();
       setSnapshot({
         appEnv: getAppEnv(),
         revenueCatConfigured: wasPurchasesConfigured(),
-        apiKeyPresent: Boolean(getRevenueCatApiKey()),
+        apiKeyPresent: Boolean(apiKey),
+        testStoreKeyDetected: Boolean(apiKey?.startsWith('test_')),
         nativeSupported: isNativePurchasesSupported(),
         storePurchasesEnabled: isStorePurchasesEnabled(),
         offeringFound: Boolean(offerings),
@@ -119,6 +123,16 @@ export function PurchaseDiagnosticsScreen({
           <Row
             label="API key present"
             value={String(snapshot?.apiKeyPresent ?? false)}
+          />
+          <Row
+            label="Test Store environment"
+            value={
+              snapshot?.testStoreKeyDetected
+                ? 'Test Store key detected (test_…)'
+                : snapshot?.apiKeyPresent
+                  ? 'Non-test key present (not displaying value)'
+                  : 'No key'
+            }
           />
           <Row
             label="Native purchases supported"

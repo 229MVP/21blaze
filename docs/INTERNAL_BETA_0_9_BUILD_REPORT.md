@@ -7,7 +7,7 @@ This report does **not** claim EAS build success, device purchase success, or re
 |-------|-------|
 | Release | Internal Beta 0.9.0 |
 | Branch | `cursor/internal-beta-0-9-0-1a6b` |
-| Commit | `TBD_TIP_COMMIT` |
+| Commit | (set after tip push — see branch tip) |
 | Version | `0.9.0` |
 | Android `versionCode` | `901` |
 | iOS `buildNumber` | `901` |
@@ -90,10 +90,19 @@ This report does **not** claim EAS build success, device purchase success, or re
 
 ---
 
-## Validation (expected parent; not claimed here)
+## Validation (local agent)
 
-Parent agent is expected to run: `tsc --noEmit`, expo-doctor, web export, and self-tests.  
-This build report does **not** assert those results.
+| Check | Result |
+|-------|--------|
+| `npx tsc --noEmit` | **PASS** |
+| `npx expo-doctor` | **PASS** (20/20) |
+| `npx expo export --platform web --clear` | **PASS** |
+| `npm run test:game` | **PASS** |
+| `npm run test:monetization` | **PASS** |
+| `npm run test:ranked` | **PASS** |
+| `npm run test:progression` | **PASS** |
+| `eas build --platform android --profile preview` | **FAILED** — Expo account required (`EXPO_TOKEN` / `eas login`); placeholder `projectId` |
+| `eas build --platform ios --profile preview` | **FAILED** — same auth blocker (+ Apple credentials unavailable) |
 
 ---
 
