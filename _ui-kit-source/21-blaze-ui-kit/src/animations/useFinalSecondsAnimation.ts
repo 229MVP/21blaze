@@ -1,0 +1,2 @@
+
+import { useEffect } from 'react'; import { Easing,useAnimatedStyle,useSharedValue,withRepeat,withTiming } from 'react-native-reanimated'; export function useFinalSecondsAnimation(active:boolean,reduced=false){const p=useSharedValue(1);useEffect(()=>{p.value=active&&!reduced?withRepeat(withTiming(1.08,{duration:420,easing:Easing.inOut(Easing.quad)}),-1,true):1},[active,reduced,p]);return useAnimatedStyle(()=>({transform:[{scale:p.value}]}))}
