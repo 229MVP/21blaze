@@ -7,7 +7,7 @@ This report does **not** claim EAS build success, device purchase success, or re
 |-------|-------|
 | Release | Internal Beta 0.9.0 |
 | Branch | `cursor/internal-beta-0-9-0-1a6b` |
-| Commit | (set after tip push — see branch tip) |
+| Commit | `eb948dc186aecc7b04beaf8ff87d23238d258c3c` |
 | Version | `0.9.0` |
 | Android `versionCode` | `901` |
 | iOS `buildNumber` | `901` |
