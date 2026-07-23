@@ -19,16 +19,20 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { toKitCardProps } from '../components/cards/adaptGameCard';
 import { PlayingCard as KitPlayingCard } from '../components/cards/PlayingCard';
 import { GameFeedbackBanner } from '../components/GameFeedback/GameFeedbackBanner';
+import {
+  laneVisualFlags,
+  toKitLaneData,
+} from '../components/game/adaptGameLanes';
 import { BlazeStreak } from '../components/game/BlazeStreak';
+import { LaneBox } from '../components/game/LaneBox';
 import { StatCounterRow } from '../components/game/StatCounterRow';
-import { GameLane } from '../components/GameLane/GameLane';
 import { GameStartCountdown } from '../components/GameTimer/GameStartCountdown';
 import { PauseOverlay } from '../components/GameTimer/PauseOverlay';
 import { TimerDisplay } from '../components/GameTimer/TimerDisplay';
 import { BlazeScreenBackground } from '../components/layout/BlazeScreenBackground';
 import { BottomActionBar } from '../components/navigation/BottomActionBar';
 import { FINAL_WARNING_SECONDS, LANE_IDS, MAX_BUSTS } from '../game/constants';
-import type { Card } from '../game/types';
+import type { Card, LaneId } from '../game/types';
 import type { GameScreenProps } from '../navigation/navigationTypes';
 import { useActiveCardTheme } from '../cosmetics/useActiveCardTheme';
 import { useGameStore } from '../store/useGameStore';
@@ -366,22 +370,24 @@ export function GameScreen({ navigation }: GameScreenProps) {
           </View>
 
           <View style={styles.lanesGrid}>
-            {LANE_IDS.map((laneId) => {
-              const lane = lanes.find((item) => item.id === laneId) ?? {
-                id: laneId,
-                cards: [],
-              };
-              const isEventLane = lastMoveEvent?.laneId === laneId;
-
+            {toKitLaneData(lanes, LANE_IDS).map((laneData) => {
+              const laneId = laneData.laneNumber as LaneId;
+              const flags = laneVisualFlags(
+                laneId,
+                lastMoveEvent?.laneId,
+                lastMoveEvent?.type,
+              );
               return (
                 <View key={laneId} style={styles.laneCell}>
-                  <GameLane
-                    lane={lane}
+                  <LaneBox
+                    laneNumber={laneData.laneNumber}
+                    total={laneData.total}
+                    cards={laneData.cards}
                     disabled={!canPlay}
+                    selected={flags.selected}
+                    danger={flags.danger}
+                    cleared={flags.cleared}
                     onPress={() => playCardToLane(laneId)}
-                    feedbackType={isEventLane ? lastMoveEvent?.type ?? null : null}
-                    feedbackEventId={isEventLane ? lastMoveEvent?.id ?? null : null}
-                    cardStyle={cardStyle}
                   />
                 </View>
               );
