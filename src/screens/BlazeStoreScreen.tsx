@@ -25,6 +25,7 @@ import { STORE_PRODUCTS } from '../monetization/productIds';
 import { isNativePurchasesSupported } from '../monetization/revenueCatClient';
 import type { BlazeStoreScreenProps } from '../navigation/navigationTypes';
 import { useCosmeticStore } from '../store/useCosmeticStore';
+import type { EntitlementKey } from '../monetization/types';
 import {
   useHasBlazeProEntitlement,
   useHasRemoveAdsEntitlement,
@@ -35,6 +36,11 @@ import { colors } from '../theme/colors';
 import { radius } from '../theme/radius';
 import { spacing } from '../theme/spacing';
 import { fontFamilies, typography } from '../theme/typography';
+
+/** Stable empty snapshot — never allocate `[]` inside a Zustand selector. */
+const EMPTY_ACTIVE_ENTITLEMENTS: readonly EntitlementKey[] = Object.freeze(
+  [],
+);
 
 type DetailTarget = {
   id: string;
@@ -69,9 +75,10 @@ export function BlazeStoreScreen({ navigation }: BlazeStoreScreenProps) {
   const paywallStatus = usePurchaseStore((state) => state.paywallStatus);
   const hasRemoveAds = useHasRemoveAdsEntitlement();
   const hasPro = useHasBlazeProEntitlement();
-  const customerActive = usePurchaseStore(
-    (state) => state.customerInfo?.active ?? [],
+  const customerActiveRaw = usePurchaseStore(
+    (state) => state.customerInfo?.active,
   );
+  const customerActive = customerActiveRaw ?? EMPTY_ACTIVE_ENTITLEMENTS;
   const serverEntitlements = usePurchaseStore((state) => state.serverEntitlements);
 
   const [detail, setDetail] = useState<DetailTarget | null>(null);

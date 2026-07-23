@@ -1,5 +1,5 @@
 import { StyleSheet, Text, View } from 'react-native';
-import Svg, { Circle, Path } from 'react-native-svg';
+import { Circle, Path } from 'react-native-svg';
 
 import {
   divisionForRating,
@@ -8,6 +8,7 @@ import {
 } from '../../ranked/divisions';
 import { colors } from '../../theme/colors';
 import { fontFamilies, typography } from '../../theme/typography';
+import { SvgRoot as Svg } from '../svg/SvgRoot';
 
 type BadgeSize = 'small' | 'medium' | 'large';
 

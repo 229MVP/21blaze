@@ -1,10 +1,11 @@
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import Svg, { Path, Rect } from 'react-native-svg';
+import { Path, Rect } from 'react-native-svg';
 
 import { BlazeButton } from '../components/buttons/BlazeButton';
 import { ScreenHeader } from '../components/Navigation/ScreenHeader';
 import { ScreenContainer } from '../components/ScreenContainer';
+import { SvgRoot as Svg } from '../components/svg/SvgRoot';
 import {
   MAX_MULTIPLIER,
   SCORE_CLEAR_21,
@@ -47,15 +48,25 @@ const STEPS = [
 
 function BookIcon() {
   return (
-    <Svg width={28} height={28} viewBox="0 0 24 24" accessibilityElementsHidden>
-      <Path
-        d="M4 4.5A2.5 2.5 0 0 1 6.5 2H20v18H6.5A2.5 2.5 0 0 0 4 22.5V4.5z"
-        fill="none"
-        stroke={colors.primary}
-        strokeWidth={1.8}
-      />
-      <Path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" stroke={colors.gold} strokeWidth={1.8} />
-    </Svg>
+    <View
+      accessibilityElementsHidden
+      importantForAccessibility="no-hide-descendants"
+      style={{ width: 28, height: 28 }}
+    >
+      <Svg width={28} height={28} viewBox="0 0 24 24">
+        <Path
+          d="M4 4.5A2.5 2.5 0 0 1 6.5 2H20v18H6.5A2.5 2.5 0 0 0 4 22.5V4.5z"
+          fill="none"
+          stroke={colors.primary}
+          strokeWidth={1.8}
+        />
+        <Path
+          d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"
+          stroke={colors.gold}
+          strokeWidth={1.8}
+        />
+      </Svg>
+    </View>
   );
 }
 
