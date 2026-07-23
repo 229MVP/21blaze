@@ -1,0 +1,82 @@
+{
+  "cli": {
+    "version": ">= 16.0.0",
+    "appVersionSource": "local"
+  },
+  "build": {
+    "development": {
+      "developmentClient": true,
+      "distribution": "internal",
+      "environment": "development",
+      "android": {
+        "buildType": "apk"
+      },
+      "env": {
+        "EXPO_PUBLIC_APP_ENV": "development",
+        "EXPO_PUBLIC_ENABLE_LIVE_DUEL": "false",
+        "EXPO_PUBLIC_ENABLE_QUICK_MATCH": "false",
+        "EXPO_PUBLIC_ENABLE_RANKED_BETA": "false",
+        "EXPO_PUBLIC_ENABLE_MONETIZATION_BETA": "true",
+        "EXPO_PUBLIC_ENABLE_REWARDED_ADS": "false",
+        "EXPO_PUBLIC_ENABLE_REWARDED_CURRENCY": "false",
+        "EXPO_PUBLIC_ENABLE_INTERSTITIAL_ADS": "true",
+        "EXPO_PUBLIC_ENABLE_STORE_PURCHASES": "true",
+        "EXPO_PUBLIC_ENABLE_PROGRESSION_BETA": "false",
+        "EXPO_PUBLIC_ENABLE_DAILY_REWARDS": "false",
+        "EXPO_PUBLIC_ENABLE_DAILY_MISSIONS": "false",
+        "EXPO_PUBLIC_ENABLE_PURCHASE_DIAGNOSTICS": "true"
+      }
+    },
+    "preview": {
+      "distribution": "internal",
+      "environment": "preview",
+      "android": {
+        "buildType": "apk"
+      },
+      "ios": {
+        "simulator": false
+      },
+      "env": {
+        "EXPO_PUBLIC_APP_ENV": "preview",
+        "EXPO_PUBLIC_ENABLE_LIVE_DUEL": "false",
+        "EXPO_PUBLIC_ENABLE_QUICK_MATCH": "false",
+        "EXPO_PUBLIC_ENABLE_RANKED_BETA": "false",
+        "EXPO_PUBLIC_ENABLE_MONETIZATION_BETA": "true",
+        "EXPO_PUBLIC_ENABLE_REWARDED_ADS": "false",
+        "EXPO_PUBLIC_ENABLE_REWARDED_CURRENCY": "false",
+        "EXPO_PUBLIC_ENABLE_INTERSTITIAL_ADS": "true",
+        "EXPO_PUBLIC_ENABLE_STORE_PURCHASES": "true",
+        "EXPO_PUBLIC_ENABLE_PROGRESSION_BETA": "false",
+        "EXPO_PUBLIC_ENABLE_DAILY_REWARDS": "false",
+        "EXPO_PUBLIC_ENABLE_DAILY_MISSIONS": "false",
+        "EXPO_PUBLIC_ENABLE_PURCHASE_DIAGNOSTICS": "true"
+      }
+    },
+    "production": {
+      "environment": "production",
+      "autoIncrement": true,
+      "distribution": "store",
+      "android": {
+        "buildType": "app-bundle"
+      },
+      "env": {
+        "EXPO_PUBLIC_APP_ENV": "production",
+        "EXPO_PUBLIC_ENABLE_LIVE_DUEL": "false",
+        "EXPO_PUBLIC_ENABLE_QUICK_MATCH": "false",
+        "EXPO_PUBLIC_ENABLE_RANKED_BETA": "false",
+        "EXPO_PUBLIC_ENABLE_MONETIZATION_BETA": "false",
+        "EXPO_PUBLIC_ENABLE_REWARDED_ADS": "false",
+        "EXPO_PUBLIC_ENABLE_REWARDED_CURRENCY": "false",
+        "EXPO_PUBLIC_ENABLE_INTERSTITIAL_ADS": "false",
+        "EXPO_PUBLIC_ENABLE_STORE_PURCHASES": "false",
+        "EXPO_PUBLIC_ENABLE_PROGRESSION_BETA": "false",
+        "EXPO_PUBLIC_ENABLE_DAILY_REWARDS": "false",
+        "EXPO_PUBLIC_ENABLE_DAILY_MISSIONS": "false",
+        "EXPO_PUBLIC_ENABLE_PURCHASE_DIAGNOSTICS": "false"
+      }
+    }
+  },
+  "submit": {
+    "production": {}
+  }
+}

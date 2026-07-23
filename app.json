@@ -2,15 +2,26 @@
   "expo": {
     "name": "21 Blaze",
     "slug": "21-blaze",
-    "version": "1.0.0",
+    "version": "0.9.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "scheme": "twentyoneblaze",
     "userInterfaceStyle": "dark",
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.twentyoneblaze.app",
+      "buildNumber": "901",
+      "infoPlist": {
+        "GADApplicationIdentifier": "ca-app-pub-3940256099942544~1458002511",
+        "NSUserTrackingUsageDescription": "This identifier is used to deliver personalized ads when you allow tracking. Declining does not block Solo Play.",
+        "SKAdNetworkItems": [
+          { "SKAdNetworkIdentifier": "cstr6suwn9.skadnetwork" }
+        ]
+      }
     },
     "android": {
+      "package": "com.twentyoneblaze.app",
+      "versionCode": 901,
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
         "foregroundImage": "./assets/android-icon-foreground.png",
@@ -21,6 +32,25 @@
     },
     "web": {
       "favicon": "./assets/favicon.png"
+    },
+    "plugins": [
+      "expo-font",
+      "expo-splash-screen",
+      "expo-dev-client",
+      [
+        "react-native-google-mobile-ads",
+        {
+          "androidAppId": "ca-app-pub-3940256099942544~3347511713",
+          "iosAppId": "ca-app-pub-3940256099942544~1458002511"
+        }
+      ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "00000000-0000-0000-0000-000000000000"
+      },
+      "rcVersion": "0.9.0",
+      "note": "EAS projectId is a PLACEHOLDER — replace via `eas init` / EXPO_TOKEN before preview builds. AdMob IDs above are Google TEST IDs (acceptable for Internal Beta preview; forbidden in production store binaries)."
     }
   }
 }
