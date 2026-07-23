@@ -8,7 +8,7 @@ This report reflects code hardening on the named branch — it does **not** clai
 |-------|-------|
 | Release | Production RC 0.9.0 |
 | Branch | `cursor/rc-0-9-0-1a6b` |
-| Commit | `TBD_COMMIT` |
+| Commit | (see tip of `cursor/rc-0-9-0-1a6b` after hardening commit) |
 | Version in repo | **`0.9.0`** (`versionCode` / `buildNumber` = `900`) |
 | Bundle ID | `com.twentyoneblaze.app` |
 | Feature freeze | Active — [FEATURE_FREEZE.md](./FEATURE_FREEZE.md) |
@@ -34,9 +34,9 @@ Store/production readiness remains blocked by placeholder EAS identity, AdMob te
 | EAS iOS build | **Not run / blocked by EAS projectId** (`00000000-0000-0000-0000-000000000000`) |
 | EAS Android build | **Not run / blocked by EAS projectId** |
 | Native store binary validation | **Not run / blocked by EAS projectId** |
-| Web export | In progress — **not claimed succeeded** |
+| Web export (`npx expo export --platform web --clear`) | **PASS** (local agent run) |
 | TypeScript (`tsc --noEmit`) | **PASS** |
-| Expo doctor | In progress — **not claimed succeeded** |
+| Expo doctor | **PASS** (20/20) |
 | `npm run test:game` | **PASS** |
 | `npm run test:ranked` | **PASS** |
 | `npm run test:monetization` | **PASS** |
@@ -136,5 +136,5 @@ Full list: [PRODUCTION_BLOCKERS.md](./PRODUCTION_BLOCKERS.md).
 - Sandbox purchases were **not** tested.  
 - Two-device multiplayer was **not** tested.  
 - Native EAS builds were **not** run (blocked by projectId).  
-- Expo doctor / web export success is **not** claimed.  
-- App is **not** production-ready for store submission.
+- App is **not** production-ready for store submission.  
+- Internal testing may proceed on **web** and local dev clients; native preview EAS builds remain blocked until P1-1.

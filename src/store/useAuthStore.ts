@@ -20,6 +20,8 @@ type AuthState = {
   refreshProfile: () => Promise<void>;
   updateDisplayName: (displayName: string) => Promise<{ ok: true } | { ok: false; message: string }>;
   signOutAndCreateNewGuest: () => Promise<void>;
+  /** Clears a failed/local initializePromise and retries without blocking Solo Play. */
+  retryOnlineAuth: () => Promise<void>;
 };
 
 let authSubscription: { unsubscribe: () => void } | null = null;
@@ -79,6 +81,8 @@ export const useAuthStore = create<AuthState>((set, get) => ({
           authStatus: 'local',
           authError: 'Supabase is not configured.',
         });
+        // Allow a later retry once env/config becomes available.
+        initializePromise = null;
         return;
       }
 
@@ -113,6 +117,8 @@ export const useAuthStore = create<AuthState>((set, get) => ({
             authStatus: 'local',
             authError: 'Could not connect. Playing in local mode.',
           });
+          // Clear so Retry Online can re-run initialization.
+          initializePromise = null;
           return;
         }
 
@@ -135,12 +141,16 @@ export const useAuthStore = create<AuthState>((set, get) => ({
             ? null
             : 'Profile unavailable. Playing in local mode.',
         });
+        if (!profile) {
+          initializePromise = null;
+        }
       } catch (error) {
         set({
           isInitializing: false,
           authStatus: 'local',
           authError: error instanceof Error ? error.message : 'Authentication failed.',
         });
+        initializePromise = null;
       }
     })();
 
@@ -207,6 +217,11 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       authError: null,
       isInitializing: true,
     });
+    await get().initializeAuth();
+  },
+
+  retryOnlineAuth: async () => {
+    initializePromise = null;
     await get().initializeAuth();
   },
 }));

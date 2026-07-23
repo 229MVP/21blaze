@@ -8,6 +8,7 @@ import {
   catalogIdToStoreProductId,
   productIdToCatalogId,
 } from './productIds';
+import { packageIdentifierToCatalogId } from './productIds.pure';
 import { hasEntitlement, mapCustomerEntitlements } from './purchaseService.pure';
 import {
   configureRevenueCat,
@@ -115,6 +116,8 @@ export async function purchaseProduct(
       (item) =>
         item.product.identifier === storeProductId ||
         item.identifier === storeProductId ||
+        item.identifier === catalogProductId ||
+        packageIdentifierToCatalogId(item.identifier) === catalogProductId ||
         productIdToCatalogId(item.product.identifier) === catalogProductId,
     );
     if (!pkg) {
@@ -190,8 +193,12 @@ export function findPackageForCatalogId(
   return (
     offering.packages.find((pkg) => pkg.productId === storeId) ??
     offering.packages.find((pkg) => pkg.identifier === storeId) ??
+    offering.packages.find((pkg) => pkg.identifier === catalogId) ??
     offering.packages.find(
       (pkg) => productIdToCatalogId(pkg.productId) === catalogId,
+    ) ??
+    offering.packages.find(
+      (pkg) => productIdToCatalogId(pkg.identifier) === catalogId,
     ) ??
     null
   );

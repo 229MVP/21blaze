@@ -12,8 +12,10 @@ import { ScreenContainer } from '../components/ScreenContainer';
 import {
   isDailyMissionsEnabled,
   isDailyRewardsEnabled,
+  isLiveDuelEnabled,
   isMonetizationBetaEnabled,
   isProgressionBetaEnabled,
+  isRankedBetaEnabled,
 } from '../config/featureFlags';
 import { getCosmetic } from '../cosmetics/catalog';
 import { APP_VERSION } from '../game/constants';
@@ -81,6 +83,9 @@ export function HomeScreen({ navigation, route }: HomeScreenProps) {
   const hydrateSettings = useSettingsStore((state) => state.hydrateSettings);
   const hydrateScoreHistory = useScoreHistoryStore((state) => state.hydrateScoreHistory);
   const authStatus = useAuthStore((state) => state.authStatus);
+  const authError = useAuthStore((state) => state.authError);
+  const retryOnlineAuth = useAuthStore((state) => state.retryOnlineAuth);
+  const isInitializingAuth = useAuthStore((state) => state.isInitializing);
   const balance = useWalletStore((state) => state.balance);
   const hydrateWallet = useWalletStore((state) => state.hydrateWallet);
   const hydrateCosmetics = useCosmeticStore((state) => state.hydrateCosmetics);
@@ -162,6 +167,23 @@ export function HomeScreen({ navigation, route }: HomeScreenProps) {
             <Text style={styles.statusDetail}>{statusDetail(authStatus)}</Text>
           </View>
         </View>
+        {authStatus === 'local' && authError ? (
+          <View style={styles.authRecovery}>
+            <Text style={styles.authRecoveryText}>
+              Online features unavailable. Solo Play still works offline.
+            </Text>
+            <BlazeButton
+              title={isInitializingAuth ? 'RETRYING…' : 'RETRY ONLINE'}
+              variant="outline"
+              loading={isInitializingAuth}
+              onPress={() => {
+                void retryOnlineAuth();
+              }}
+              accessibilityLabel="Retry online authentication"
+              fullWidth
+            />
+          </View>
+        ) : null}
 
         <PlayerProfileButton />
 
@@ -274,13 +296,24 @@ export function HomeScreen({ navigation, route }: HomeScreenProps) {
             accessibilityLabel="Solo play 21 Blaze"
             fullWidth
           />
-          <BlazeButton
-            title="LIVE DUEL"
-            variant="secondary"
-            onPress={() => navigation.navigate('LiveDuelHome')}
-            accessibilityLabel="Live Duel friend matches"
-            fullWidth
-          />
+          {isLiveDuelEnabled() ? (
+            <BlazeButton
+              title="LIVE DUEL"
+              variant="secondary"
+              onPress={() => navigation.navigate('LiveDuelHome')}
+              accessibilityLabel="Live Duel friend matches"
+              fullWidth
+            />
+          ) : null}
+          {isRankedBetaEnabled() ? (
+            <BlazeButton
+              title="RANKED"
+              variant="secondary"
+              onPress={() => navigation.navigate('RankedHome')}
+              accessibilityLabel="Ranked competitive matches"
+              fullWidth
+            />
+          ) : null}
           {storeEnabled ? (
             <BlazeButton
               title="BLAZE STORE"
@@ -378,6 +411,21 @@ const styles = StyleSheet.create({
     fontSize: 11,
     textTransform: 'none',
     color: colors.textSecondary,
+  },
+  authRecovery: {
+    width: '100%',
+    gap: spacing.sm,
+    padding: spacing.md,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.08)',
+    backgroundColor: 'rgba(0,0,0,0.2)',
+  },
+  authRecoveryText: {
+    fontFamily: fontFamilies.body,
+    fontSize: 13,
+    color: colors.textSecondary,
+    textAlign: 'center',
   },
   highScoreBox: {
     width: '100%',

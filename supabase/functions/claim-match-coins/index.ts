@@ -21,20 +21,14 @@ Deno.serve(async (request) => {
 
     const body = (await parseJsonBody(request)) ?? {};
     const matchId = typeof body.matchId === 'string' ? body.matchId : '';
-    const score = typeof body.score === 'number' ? body.score : NaN;
+    // Client score/reason are accepted for backward compatibility only.
+    // Migration 0007 makes claim_solo_match_coins ignore them and use verified_scores.
+    const score = typeof body.score === 'number' ? body.score : 0;
     const gameOverReason =
-      typeof body.gameOverReason === 'string' ? body.gameOverReason : '';
+      typeof body.gameOverReason === 'string' ? body.gameOverReason : 'unknown';
 
     if (!matchId) {
       return errorResponse('matchId is required.', 400);
-    }
-
-    if (!Number.isFinite(score)) {
-      return errorResponse('score is required.', 400);
-    }
-
-    if (!gameOverReason) {
-      return errorResponse('gameOverReason is required.', 400);
     }
 
     const { admin, userId } = auth;
@@ -56,7 +50,7 @@ Deno.serve(async (request) => {
     const { data: wallet, error } = await admin.rpc('claim_solo_match_coins', {
       p_user_id: userId,
       p_match_id: matchId,
-      p_score: Math.trunc(score),
+      p_score: Number.isFinite(score) ? Math.trunc(score) : 0,
       p_game_over_reason: gameOverReason,
     });
 

@@ -1,8 +1,12 @@
 import { calculateCasualLiveDuelCoins, calculateRankedCoins, calculateSoloMatchCoins } from './coinRewards';
 import {
   ENTITLEMENT_KEYS,
+  RC_OFFERING_ID,
+  RC_PACKAGE_IDS,
+  RC_PRODUCTS,
   catalogIdToStoreProductIdForPlatform,
   isEntitlementKey,
+  packageIdentifierToCatalogId,
 } from './productIds.pure';
 import { hasEntitlement, mapCustomerEntitlements } from './purchaseService.pure';
 import { hasBlazeProFromActiveIds } from './proConfig';
@@ -59,25 +63,36 @@ export function runMonetizationSelfTests(): void {
   assert(calculateRankedCoins('draw') === 35, 'ranked draw coins');
   assert(calculateRankedCoins('loss') === 20, 'ranked loss coins');
 
+  assert(RC_OFFERING_ID === 'default', 'offering id');
+  assert(RC_PRODUCTS.adFree === 'blaze_ad_free', 'ad free product id');
+  assert(RC_PRODUCTS.infernoPack === 'blaze_inferno_pack', 'inferno product id');
+  assert(RC_PRODUCTS.neonPack === 'blaze_neon_pack', 'neon product id');
+  assert(RC_PRODUCTS.foundersPack === 'blaze_founders_pack', 'founders product id');
+  assert(RC_PACKAGE_IDS.adFree === 'ad_free', 'ad_free package');
+  assert(RC_PACKAGE_IDS.inferno === 'inferno', 'inferno package');
+  assert(RC_PACKAGE_IDS.neon === 'neon', 'neon package');
+  assert(RC_PACKAGE_IDS.founders === 'founders', 'founders package');
+  assert(packageIdentifierToCatalogId('founders') === 'blaze_founders_pack', 'package map');
+
   assert(
     hasEntitlement(
       {
-        active: ['remove_ads'],
+        active: ['ad_free', 'remove_ads'],
         removeAds: true,
         hasPro: false,
-        rawActiveIds: ['remove_ads'],
+        rawActiveIds: ['ad_free'],
       },
-      'remove_ads',
+      'ad_free',
     ),
-    'remove ads entitlement',
+    'ad_free entitlement',
   );
   assert(
     hasEntitlement(
       {
-        active: ['founders_bundle'],
+        active: ['founders_pack', 'ad_free', 'remove_ads'],
         removeAds: true,
         hasPro: false,
-        rawActiveIds: ['founders_bundle'],
+        rawActiveIds: ['founders_pack'],
       },
       'remove_ads',
     ),
@@ -103,13 +118,31 @@ export function runMonetizationSelfTests(): void {
     '21 Blaze Pro entitlement',
   );
 
-  assert(isEntitlementKey('cards_inferno'), 'inferno entitlement key');
-  assert(!isEntitlementKey('not_real'), 'rejects unknown entitlement');
-  assert(ENTITLEMENT_KEYS.foundersBundle === 'founders_bundle', 'founders key');
+  const foundersMapped = mapCustomerEntitlements(['founders_pack']);
+  assert(foundersMapped.removeAds === true, 'founders_pack maps to ad-free');
+  assert(foundersMapped.active.includes('inferno_pack'), 'founders expands inferno');
+  assert(foundersMapped.active.includes('neon_pack'), 'founders expands neon');
+  assert(foundersMapped.active.includes('ad_free'), 'founders expands ad_free');
   assert(
-    catalogIdToStoreProductIdForPlatform('remove_ads', 'ios') ===
-      'com.twentyoneblaze.remove_ads',
-    'ios product id mapping',
+    mapCustomerEntitlements(['inferno_pack']).active.includes('cards_inferno'),
+    'inferno_pack expands to cards_inferno',
+  );
+  assert(
+    mapCustomerEntitlements(['neon_pack']).active.includes('arena_neon_casino'),
+    'neon_pack expands to neon arena',
+  );
+
+  assert(isEntitlementKey('inferno_pack'), 'inferno_pack entitlement key');
+  assert(isEntitlementKey('cards_inferno'), 'legacy inferno entitlement key');
+  assert(!isEntitlementKey('not_real'), 'rejects unknown entitlement');
+  assert(ENTITLEMENT_KEYS.foundersPack === 'founders_pack', 'founders key');
+  assert(
+    catalogIdToStoreProductIdForPlatform('blaze_ad_free', 'ios') === 'blaze_ad_free',
+    'ios ad free product id mapping',
+  );
+  assert(
+    catalogIdToStoreProductIdForPlatform('remove_ads', 'ios') === 'blaze_ad_free',
+    'legacy remove_ads maps to blaze_ad_free',
   );
   assert(
     catalogIdToStoreProductIdForPlatform('pro_monthly', 'android') === 'monthly',

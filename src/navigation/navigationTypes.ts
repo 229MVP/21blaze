@@ -37,6 +37,7 @@ export type RootStackParamList = {
   PlayerProgression: undefined;
   DailyReward: undefined;
   DailyMissions: undefined;
+  PurchaseDiagnostics: undefined;
 };
 
 export type HomeScreenProps = NativeStackScreenProps<RootStackParamList, 'Home'>;
@@ -123,4 +124,8 @@ export type DailyRewardScreenProps = NativeStackScreenProps<
 export type DailyMissionsScreenProps = NativeStackScreenProps<
   RootStackParamList,
   'DailyMissions'
+>;
+export type PurchaseDiagnosticsScreenProps = NativeStackScreenProps<
+  RootStackParamList,
+  'PurchaseDiagnostics'
 >;

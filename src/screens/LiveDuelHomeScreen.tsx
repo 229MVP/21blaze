@@ -3,7 +3,7 @@ import { StyleSheet, Text, View } from 'react-native';
 import { BlazeButton } from '../components/buttons/BlazeButton';
 import { ScreenHeader } from '../components/Navigation/ScreenHeader';
 import { ScreenContainer } from '../components/ScreenContainer';
-import { isRankedBetaEnabled } from '../config/featureFlags';
+import { isQuickMatchEnabled, isRankedBetaEnabled } from '../config/featureFlags';
 import type { LiveDuelHomeScreenProps } from '../navigation/navigationTypes';
 import { useAuthStore } from '../store/useAuthStore';
 import { useQuickMatchStore } from '../store/useQuickMatchStore';
@@ -19,12 +19,13 @@ export function LiveDuelHomeScreen({ navigation }: LiveDuelHomeScreenProps) {
   const resetRankedSession = useRankedStore((state) => state.resetRankedSession);
   const online = authStatus === 'online';
   const rankedEnabled = isRankedBetaEnabled();
+  const quickMatchEnabled = isQuickMatchEnabled();
 
   return (
     <ScreenContainer style={styles.container} intensity="normal" padded={false}>
       <View style={styles.padded}>
         <ScreenHeader title="LIVE DUEL" />
-        <Text style={styles.subtitle}>Casual + Ranked · Beta 0.4</Text>
+        <Text style={styles.subtitle}>Friend rooms · Beta</Text>
 
         {!online ? (
           <View style={styles.notice}>
@@ -36,15 +37,24 @@ export function LiveDuelHomeScreen({ navigation }: LiveDuelHomeScreenProps) {
         ) : null}
 
         <View style={styles.actions}>
-          <BlazeButton
-            title="QUICK MATCH"
-            onPress={() => {
-              resetQuickMatch();
-              navigation.navigate('QuickMatchSearch');
-            }}
-            disabled={!online}
-            fullWidth
-          />
+          {quickMatchEnabled ? (
+            <BlazeButton
+              title="QUICK MATCH"
+              onPress={() => {
+                resetQuickMatch();
+                navigation.navigate('QuickMatchSearch');
+              }}
+              disabled={!online}
+              fullWidth
+            />
+          ) : (
+            <View style={styles.comingSoon}>
+              <Text style={styles.comingSoonTitle}>QUICK MATCH</Text>
+              <Text style={styles.comingSoonBody}>
+                Disabled for RC until two-device QA passes
+              </Text>
+            </View>
+          )}
           <BlazeButton
             title="CHALLENGE A FRIEND"
             variant="secondary"
@@ -73,13 +83,11 @@ export function LiveDuelHomeScreen({ navigation }: LiveDuelHomeScreenProps) {
           ) : (
             <View style={styles.comingSoon}>
               <Text style={styles.comingSoonTitle}>RANKED</Text>
-              <Text style={styles.comingSoonBody}>Coming Soon</Text>
+              <Text style={styles.comingSoonBody}>
+                Disabled for RC until two-device QA passes
+              </Text>
             </View>
           )}
-          <View style={styles.comingSoon}>
-            <Text style={styles.comingSoonTitle}>MATCH HISTORY</Text>
-            <Text style={styles.comingSoonBody}>Coming Next</Text>
-          </View>
         </View>
 
         <BlazeButton

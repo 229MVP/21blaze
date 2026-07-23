@@ -14,7 +14,11 @@ import { ProductDetailModal } from '../components/Store/ProductDetailModal';
 import { BlazeButton } from '../components/buttons/BlazeButton';
 import { ScreenHeader } from '../components/Navigation/ScreenHeader';
 import { ScreenContainer } from '../components/ScreenContainer';
-import { isMonetizationTestMode, isStorePurchasesEnabled } from '../config/featureFlags';
+import {
+  isMonetizationTestMode,
+  isPurchaseDiagnosticsEnabled,
+  isStorePurchasesEnabled,
+} from '../config/featureFlags';
 import { COSMETIC_CATALOG } from '../cosmetics/catalog';
 import { findPackageForCatalogId } from '../monetization/purchaseService';
 import { STORE_PRODUCTS } from '../monetization/productIds';
@@ -65,6 +69,10 @@ export function BlazeStoreScreen({ navigation }: BlazeStoreScreenProps) {
   const paywallStatus = usePurchaseStore((state) => state.paywallStatus);
   const hasRemoveAds = useHasRemoveAdsEntitlement();
   const hasPro = useHasBlazeProEntitlement();
+  const customerActive = usePurchaseStore(
+    (state) => state.customerInfo?.active ?? [],
+  );
+  const serverEntitlements = usePurchaseStore((state) => state.serverEntitlements);
 
   const [detail, setDetail] = useState<DetailTarget | null>(null);
   const [busy, setBusy] = useState(false);
@@ -96,7 +104,14 @@ export function BlazeStoreScreen({ navigation }: BlazeStoreScreenProps) {
     () => COSMETIC_CATALOG.filter((item) => item.purchaseSource === 'coins'),
     [],
   );
-  const foundersOwned = owned.includes('inferno_cards') && hasRemoveAds;
+  const foundersOwned =
+    customerActive.includes('founders_pack') ||
+    customerActive.includes('founders_bundle') ||
+    serverEntitlements.includes('founders_pack') ||
+    serverEntitlements.includes('founders_bundle') ||
+    (owned.includes('inferno_cards') &&
+      owned.includes('blue_flame_cards') &&
+      hasRemoveAds);
 
   return (
     <ScreenContainer style={styles.container} intensity="normal" padded={false}>
@@ -189,26 +204,26 @@ export function BlazeStoreScreen({ navigation }: BlazeStoreScreenProps) {
 
           <Section title="FEATURED">
             <StoreRow
-              title="Founders Bundle"
-              subtitle="Remove Ads + Inferno + Volcano + Founder perks + 2,500 coins"
-              price={priceFor('bundle_founders')}
+              title="Founders Pack"
+              subtitle="Ad-Free + Inferno + Neon + Founder perks + 2,500 coins"
+              price={priceFor('blaze_founders_pack')}
               owned={foundersOwned}
               onPress={() =>
                 setDetail({
-                  id: 'bundle_founders',
-                  title: 'Founders Bundle',
+                  id: 'blaze_founders_pack',
+                  title: 'Founders Pack',
                   description:
-                    STORE_PRODUCTS.find((product) => product.id === 'bundle_founders')
+                    STORE_PRODUCTS.find((product) => product.id === 'blaze_founders_pack')
                       ?.description ?? '',
                   included: [
-                    'Remove Ads',
-                    'Inferno Cards',
-                    'Volcano Arena',
+                    'Ad-Free',
+                    'Inferno Pack',
+                    'Neon Pack',
                     'Founder Frame',
                     'Founder Title',
                     '2,500 Blaze Coins (once)',
                   ],
-                  priceLabel: priceFor('bundle_founders'),
+                  priceLabel: priceFor('blaze_founders_pack'),
                   kind: foundersOwned ? 'owned' : 'store',
                   cosmeticKey: 'inferno_cards',
                   category: 'card_theme',
@@ -221,16 +236,16 @@ export function BlazeStoreScreen({ navigation }: BlazeStoreScreenProps) {
             <StoreRow
               title="Remove Ads"
               subtitle="Stops interstitial ads. Optional rewarded ads remain."
-              price={priceFor('remove_ads')}
+              price={priceFor('blaze_ad_free')}
               owned={hasRemoveAds}
               onPress={() =>
                 setDetail({
-                  id: 'remove_ads',
+                  id: 'blaze_ad_free',
                   title: 'Remove Ads',
                   description:
                     'Removes interstitial ads. Rewarded ads you choose to watch stay available.',
                   included: ['No interstitial ads'],
-                  priceLabel: priceFor('remove_ads'),
+                  priceLabel: priceFor('blaze_ad_free'),
                   kind: hasRemoveAds ? 'owned' : 'store',
                 })
               }
@@ -344,6 +359,14 @@ export function BlazeStoreScreen({ navigation }: BlazeStoreScreenProps) {
             }}
             fullWidth
           />
+          {isPurchaseDiagnosticsEnabled() ? (
+            <BlazeButton
+              title="PURCHASE DIAGNOSTICS"
+              variant="outline"
+              onPress={() => navigation.navigate('PurchaseDiagnostics')}
+              fullWidth
+            />
+          ) : null}
           <BlazeButton
             title="BACK"
             variant="outline"

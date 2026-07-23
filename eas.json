@@ -11,23 +11,57 @@
         "buildType": "apk"
       },
       "env": {
+        "EXPO_PUBLIC_APP_ENV": "development",
+        "EXPO_PUBLIC_ENABLE_LIVE_DUEL": "true",
+        "EXPO_PUBLIC_ENABLE_QUICK_MATCH": "true",
+        "EXPO_PUBLIC_ENABLE_RANKED_BETA": "true",
         "EXPO_PUBLIC_ENABLE_MONETIZATION_BETA": "true",
         "EXPO_PUBLIC_ENABLE_REWARDED_ADS": "true",
+        "EXPO_PUBLIC_ENABLE_REWARDED_CURRENCY": "false",
         "EXPO_PUBLIC_ENABLE_INTERSTITIAL_ADS": "true",
-        "EXPO_PUBLIC_ENABLE_STORE_PURCHASES": "true"
+        "EXPO_PUBLIC_ENABLE_STORE_PURCHASES": "true",
+        "EXPO_PUBLIC_ENABLE_PROGRESSION_BETA": "true",
+        "EXPO_PUBLIC_ENABLE_DAILY_REWARDS": "true",
+        "EXPO_PUBLIC_ENABLE_DAILY_MISSIONS": "true",
+        "EXPO_PUBLIC_ENABLE_PURCHASE_DIAGNOSTICS": "true"
       }
     },
     "preview": {
       "distribution": "internal",
       "env": {
+        "EXPO_PUBLIC_APP_ENV": "preview",
+        "EXPO_PUBLIC_ENABLE_LIVE_DUEL": "true",
+        "EXPO_PUBLIC_ENABLE_QUICK_MATCH": "true",
+        "EXPO_PUBLIC_ENABLE_RANKED_BETA": "true",
         "EXPO_PUBLIC_ENABLE_MONETIZATION_BETA": "true",
         "EXPO_PUBLIC_ENABLE_REWARDED_ADS": "true",
+        "EXPO_PUBLIC_ENABLE_REWARDED_CURRENCY": "false",
         "EXPO_PUBLIC_ENABLE_INTERSTITIAL_ADS": "true",
-        "EXPO_PUBLIC_ENABLE_STORE_PURCHASES": "true"
+        "EXPO_PUBLIC_ENABLE_STORE_PURCHASES": "true",
+        "EXPO_PUBLIC_ENABLE_PROGRESSION_BETA": "true",
+        "EXPO_PUBLIC_ENABLE_DAILY_REWARDS": "true",
+        "EXPO_PUBLIC_ENABLE_DAILY_MISSIONS": "true",
+        "EXPO_PUBLIC_ENABLE_PURCHASE_DIAGNOSTICS": "true"
       }
     },
     "production": {
-      "autoIncrement": true
+      "autoIncrement": true,
+      "distribution": "store",
+      "env": {
+        "EXPO_PUBLIC_APP_ENV": "production",
+        "EXPO_PUBLIC_ENABLE_LIVE_DUEL": "false",
+        "EXPO_PUBLIC_ENABLE_QUICK_MATCH": "false",
+        "EXPO_PUBLIC_ENABLE_RANKED_BETA": "false",
+        "EXPO_PUBLIC_ENABLE_MONETIZATION_BETA": "false",
+        "EXPO_PUBLIC_ENABLE_REWARDED_ADS": "false",
+        "EXPO_PUBLIC_ENABLE_REWARDED_CURRENCY": "false",
+        "EXPO_PUBLIC_ENABLE_INTERSTITIAL_ADS": "false",
+        "EXPO_PUBLIC_ENABLE_STORE_PURCHASES": "false",
+        "EXPO_PUBLIC_ENABLE_PROGRESSION_BETA": "false",
+        "EXPO_PUBLIC_ENABLE_DAILY_REWARDS": "false",
+        "EXPO_PUBLIC_ENABLE_DAILY_MISSIONS": "false",
+        "EXPO_PUBLIC_ENABLE_PURCHASE_DIAGNOSTICS": "false"
+      }
     }
   },
   "submit": {

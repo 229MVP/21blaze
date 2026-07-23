@@ -17,6 +17,7 @@ import {
   CARD_STYLES,
   type CardStyle,
 } from '../settings/types';
+import { isPurchaseDiagnosticsEnabled } from '../config/featureFlags';
 import { openPrivacyOptions } from '../monetization/adConsentService';
 import { usePurchaseStore } from '../store/usePurchaseStore';
 import { useGameStore } from '../store/useGameStore';
@@ -213,8 +214,16 @@ export function SettingsScreen({ navigation }: SettingsScreenProps) {
                 );
               }}
               accessibilityLabel="Purchase support information"
-              isLast
+              isLast={!isPurchaseDiagnosticsEnabled()}
             />
+            {isPurchaseDiagnosticsEnabled() ? (
+              <SettingsRow
+                label="PURCHASE DIAGNOSTICS"
+                onPress={() => navigation.navigate('PurchaseDiagnostics')}
+                accessibilityLabel="Open purchase diagnostics (development builds only)"
+                isLast
+              />
+            ) : null}
           </View>
 
           <View style={[styles.panel, styles.panelSpaced]}>

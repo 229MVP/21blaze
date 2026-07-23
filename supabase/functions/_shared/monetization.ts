@@ -7,50 +7,128 @@ export type CosmeticUnlock = {
   category: string;
 };
 
-/** Store product ids (iOS + Android) → entitlement keys granted by that SKU. */
+/**
+ * Store product ids → entitlement keys.
+ * RC 0.9.0 primary IDs: blaze_* products / pack entitlements.
+ * Legacy SKUs retained for restore + webhook compatibility.
+ */
 export const PRODUCT_ID_TO_ENTITLEMENTS: Record<string, readonly string[]> = {
-  // iOS
-  'com.twentyoneblaze.remove_ads': ['remove_ads'],
-  'com.twentyoneblaze.cards.inferno': ['cards_inferno'],
-  'com.twentyoneblaze.cards.blue_flame': ['cards_blue_flame'],
-  'com.twentyoneblaze.cards.lava_gold': ['cards_lava_gold'],
-  'com.twentyoneblaze.arena.volcano': ['arena_volcano'],
-  'com.twentyoneblaze.arena.neon_casino': ['arena_neon_casino'],
-  'com.twentyoneblaze.bundle.founders': [
+  // RC 0.9.0 primary
+  blaze_ad_free: ['ad_free', 'remove_ads'],
+  blaze_inferno_pack: ['inferno_pack', 'cards_inferno'],
+  blaze_neon_pack: ['neon_pack', 'cards_blue_flame', 'arena_neon_casino'],
+  blaze_founders_pack: [
+    'founders_pack',
     'founders_bundle',
+    'ad_free',
     'remove_ads',
+    'inferno_pack',
     'cards_inferno',
-    'arena_volcano',
+    'neon_pack',
+    'cards_blue_flame',
+    'arena_neon_casino',
     'founder_frame',
     'founder_title',
   ],
-  // Android
-  remove_ads: ['remove_ads'],
-  cards_inferno: ['cards_inferno'],
-  cards_blue_flame: ['cards_blue_flame'],
+  // Package identifier aliases (RevenueCat custom packages)
+  ad_free: ['ad_free', 'remove_ads'],
+  inferno: ['inferno_pack', 'cards_inferno'],
+  neon: ['neon_pack', 'cards_blue_flame', 'arena_neon_casino'],
+  founders: [
+    'founders_pack',
+    'founders_bundle',
+    'ad_free',
+    'remove_ads',
+    'inferno_pack',
+    'cards_inferno',
+    'neon_pack',
+    'cards_blue_flame',
+    'arena_neon_casino',
+    'founder_frame',
+    'founder_title',
+  ],
+  // Legacy iOS
+  'com.twentyoneblaze.remove_ads': ['ad_free', 'remove_ads'],
+  'com.twentyoneblaze.cards.inferno': ['inferno_pack', 'cards_inferno'],
+  'com.twentyoneblaze.cards.blue_flame': [
+    'neon_pack',
+    'cards_blue_flame',
+  ],
+  'com.twentyoneblaze.cards.lava_gold': ['cards_lava_gold'],
+  'com.twentyoneblaze.arena.volcano': ['arena_volcano'],
+  'com.twentyoneblaze.arena.neon_casino': [
+    'neon_pack',
+    'arena_neon_casino',
+  ],
+  'com.twentyoneblaze.bundle.founders': [
+    'founders_pack',
+    'founders_bundle',
+    'ad_free',
+    'remove_ads',
+    'inferno_pack',
+    'cards_inferno',
+    'neon_pack',
+    'cards_blue_flame',
+    'arena_neon_casino',
+    'founder_frame',
+    'founder_title',
+  ],
+  // Legacy Android / generic
+  remove_ads: ['ad_free', 'remove_ads'],
+  cards_inferno: ['inferno_pack', 'cards_inferno'],
+  cards_blue_flame: ['neon_pack', 'cards_blue_flame'],
   cards_lava_gold: ['cards_lava_gold'],
   arena_volcano: ['arena_volcano'],
-  arena_neon_casino: ['arena_neon_casino'],
+  arena_neon_casino: ['neon_pack', 'arena_neon_casino'],
   bundle_founders: [
+    'founders_pack',
     'founders_bundle',
+    'ad_free',
     'remove_ads',
+    'inferno_pack',
     'cards_inferno',
-    'arena_volcano',
+    'neon_pack',
+    'cards_blue_flame',
+    'arena_neon_casino',
     'founder_frame',
     'founder_title',
   ],
   founders_bundle: [
+    'founders_pack',
     'founders_bundle',
+    'ad_free',
     'remove_ads',
+    'inferno_pack',
     'cards_inferno',
-    'arena_volcano',
+    'neon_pack',
+    'cards_blue_flame',
+    'arena_neon_casino',
     'founder_frame',
     'founder_title',
   ],
+  founders_pack: [
+    'founders_pack',
+    'founders_bundle',
+    'ad_free',
+    'remove_ads',
+    'inferno_pack',
+    'cards_inferno',
+    'neon_pack',
+    'cards_blue_flame',
+    'arena_neon_casino',
+    'founder_frame',
+    'founder_title',
+  ],
+  // Pro
+  lifetime: ['pro', 'ad_free', 'remove_ads'],
+  yearly: ['pro', 'ad_free', 'remove_ads'],
+  monthly: ['pro', 'ad_free', 'remove_ads'],
 };
 
 /** Entitlement key → cosmetic unlocked when that entitlement is active. */
 export const ENTITLEMENT_TO_COSMETIC: Record<string, CosmeticUnlock> = {
+  inferno_pack: { key: 'inferno_cards', category: 'card_theme' },
+  neon_pack: { key: 'blue_flame_cards', category: 'card_theme' },
   cards_inferno: { key: 'inferno_cards', category: 'card_theme' },
   cards_blue_flame: { key: 'blue_flame_cards', category: 'card_theme' },
   cards_lava_gold: { key: 'lava_gold_cards', category: 'card_theme' },
@@ -98,13 +176,15 @@ export function resolveEntitlementKeys(
 }
 
 export function includesFoundersBenefits(keys: readonly string[]): boolean {
-  if (keys.includes('founders_bundle')) {
+  if (keys.includes('founders_pack') || keys.includes('founders_bundle')) {
     return true;
   }
   return (
-    keys.includes('remove_ads') &&
-    keys.includes('cards_inferno') &&
-    keys.includes('arena_volcano')
+    (keys.includes('ad_free') || keys.includes('remove_ads')) &&
+    (keys.includes('inferno_pack') || keys.includes('cards_inferno')) &&
+    (keys.includes('neon_pack') ||
+      keys.includes('cards_blue_flame') ||
+      keys.includes('arena_neon_casino'))
   );
 }
 
@@ -113,17 +193,29 @@ export async function unlockCosmeticsForEntitlements(
   userId: string,
   entitlementKeys: readonly string[],
 ): Promise<void> {
+  const unlocked = new Set<string>();
   for (const entitlementKey of entitlementKeys) {
     const cosmetic = ENTITLEMENT_TO_COSMETIC[entitlementKey];
-    if (!cosmetic) {
+    if (!cosmetic || unlocked.has(cosmetic.key)) {
       continue;
     }
+    // Neon pack also unlocks neon arena
+    unlocked.add(cosmetic.key);
     await admin.rpc('unlock_cosmetic', {
       p_user_id: userId,
       p_cosmetic_key: cosmetic.key,
       p_category: cosmetic.category,
       p_source: 'revenuecat',
     });
+    if (entitlementKey === 'neon_pack') {
+      unlocked.add('neon_casino_arena');
+      await admin.rpc('unlock_cosmetic', {
+        p_user_id: userId,
+        p_cosmetic_key: 'neon_casino_arena',
+        p_category: 'arena',
+        p_source: 'revenuecat',
+      });
+    }
   }
 }
 

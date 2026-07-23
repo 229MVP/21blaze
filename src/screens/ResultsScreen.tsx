@@ -8,7 +8,10 @@ import { LevelUpOverlay } from '../components/Progression/LevelUpOverlay';
 import { XpProgressBar } from '../components/Progression/XpProgressBar';
 import { ResultsPanel } from '../components/Results/ResultsPanel';
 import { ScreenContainer } from '../components/ScreenContainer';
-import { isProgressionBetaEnabled, isRewardedAdsEnabled } from '../config/featureFlags';
+import {
+  isProgressionBetaEnabled,
+  isRewardedCurrencyEnabled,
+} from '../config/featureFlags';
 import { PROGRESSION_CONFIG } from '../config/progressionConfig';
 import { MAX_BUSTS } from '../game/constants';
 import { formatTimerSeconds } from '../game/timerEngine';
@@ -320,7 +323,7 @@ export function ResultsScreen({ navigation, route }: ResultsScreenProps) {
             <Text style={styles.coinValue}>
               +{(lastSoloGrant ?? 0).toLocaleString()}
             </Text>
-            {isRewardedAdsEnabled() &&
+            {isRewardedCurrencyEnabled() &&
             !doubleDone &&
             !(matchId && doubledMatchIds[matchId]) ? (
               <BlazeButton

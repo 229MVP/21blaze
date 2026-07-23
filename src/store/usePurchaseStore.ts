@@ -239,7 +239,9 @@ export function useHasRemoveAdsEntitlement(): boolean {
     return true;
   }
   return (
+    server.includes('ad_free') ||
     server.includes('remove_ads') ||
+    server.includes('founders_pack') ||
     server.includes('founders_bundle') ||
     server.includes('pro') ||
     server.includes('21 Blaze Pro') ||

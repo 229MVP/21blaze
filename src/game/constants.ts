@@ -2,7 +2,7 @@ import type { LaneId, Rank, Suit } from './types';
 
 export const APP_NAME = '21 Blaze';
 export const APP_TAGLINE = 'Build Your Streak. Beat 21.';
-export const APP_VERSION = '1.0.0';
+export const APP_VERSION = '0.9.0';
 /** Client/server game-rule compatibility key for Quick Match. */
 export const GAME_RULES_VERSION = '1.0.0';
 

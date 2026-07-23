@@ -31,6 +31,10 @@ export type AdConsentState =
   | 'error';
 
 export type EntitlementKey =
+  | 'ad_free'
+  | 'inferno_pack'
+  | 'neon_pack'
+  | 'founders_pack'
   | 'remove_ads'
   | 'cards_inferno'
   | 'cards_blue_flame'
