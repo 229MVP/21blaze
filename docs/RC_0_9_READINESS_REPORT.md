@@ -8,7 +8,7 @@ This report reflects code hardening on the named branch — it does **not** clai
 |-------|-------|
 | Release | Production RC 0.9.0 |
 | Branch | `cursor/rc-0-9-0-1a6b` |
-| Commit | (see tip of `cursor/rc-0-9-0-1a6b` after hardening commit) |
+| Commit | `fc80de58a76e6a9670e3bc25097186000a943147` |
 | Version in repo | **`0.9.0`** (`versionCode` / `buildNumber` = `900`) |
 | Bundle ID | `com.twentyoneblaze.app` |
 | Feature freeze | Active — [FEATURE_FREEZE.md](./FEATURE_FREEZE.md) |
