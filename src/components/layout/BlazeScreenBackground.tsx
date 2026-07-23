@@ -3,15 +3,16 @@ import { Image, ImageBackground, StyleSheet, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { blazeAssets } from '../../assets/blazeAssets';
 import { colors } from '../../theme/uiKit';
 
 type Variant = 'home' | 'gameplay' | 'plain' | 'dramatic';
 
 const sources = {
-  home: require('../../../assets/backgrounds/home-lava-portrait.webp'),
-  gameplay: require('../../../assets/backgrounds/gameplay-embers.webp'),
-  plain: require('../../../assets/backgrounds/gameplay-embers-subtle.webp'),
-  dramatic: require('../../../assets/backgrounds/home-lava-portrait.webp'),
+  home: blazeAssets.lavaBackground,
+  gameplay: blazeAssets.gameplayEmbers,
+  plain: blazeAssets.gameplayEmbersSubtle,
+  dramatic: blazeAssets.lavaBackground,
 } as const;
 
 type Props = {
@@ -39,7 +40,7 @@ export function BlazeScreenBackground({
         {embers ? (
           <View pointerEvents="none" style={styles.embers}>
             <Image
-              source={require('../../../assets/effects/embers-overlay.webp')}
+              source={blazeAssets.emberOverlay}
               style={styles.embersImage}
               resizeMode="cover"
             />

@@ -1,5 +1,6 @@
 import { Image, StyleSheet, Text, View } from 'react-native';
 
+import { blazeAssets } from '../../assets/blazeAssets';
 import { colors, spacing, typography } from '../../theme/uiKit';
 
 type Props = {
@@ -26,10 +27,7 @@ export function ResultHero({
       style={styles.wrap}
     >
       {crownVisible ? (
-        <Image
-          source={require('../../../assets/branding/flaming-crown-256.webp')}
-          style={styles.crown}
-        />
+        <Image source={blazeAssets.flamingCrown} style={styles.crown} />
       ) : null}
       {eyebrow ? <Text style={styles.eyebrow}>{eyebrow}</Text> : null}
       <Text style={[styles.title, isHighScore && styles.blazing]}>{title}</Text>

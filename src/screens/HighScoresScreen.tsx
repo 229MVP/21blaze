@@ -13,12 +13,10 @@ import { Path } from 'react-native-svg';
 
 import { FlameIcon } from '../components/branding/FlameIcon';
 import { BlazeButton } from '../components/buttons/BlazeButton';
-import { BlazeScreenBackground } from '../components/layout/BlazeScreenBackground';
-import { LeaderboardRow } from '../components/leaderboard/LeaderboardRow';
 import { BlazeSegmentedControl } from '../components/Navigation/BlazeSegmentedControl';
 import { ScreenHeader } from '../components/Navigation/ScreenHeader';
+import { ScreenContainer } from '../components/ScreenContainer';
 import { SvgRoot as Svg } from '../components/svg/SvgRoot';
-import { BlazePanel } from '../components/ui/BlazePanel';
 import type { GlobalLeaderboardRow } from '../lib/database.types';
 import type { RootStackParamList } from '../navigation/navigationTypes';
 import type { ScoreEntry } from '../scores/types';
@@ -81,12 +79,21 @@ function RankBadge({ rank }: { rank: number }) {
 
 function LocalRow({ entry, rank }: { entry: ScoreEntry; rank: number }) {
   return (
-    <LeaderboardRow
-      rank={rank}
-      playerName={`Local · ${formatCompletedDate(entry.completedAt)}`}
-      score={entry.score}
-      isCurrentPlayer={rank === 1}
-    />
+    <View
+      style={[styles.row, rank === 1 && styles.rowGold]}
+      accessibilityLabel={`Rank ${rank}, score ${entry.score}, ${entry.lanesCleared} lanes cleared, ${entry.cardsPlayed} cards played, ${formatCompletedDate(entry.completedAt)}`}
+    >
+      <RankBadge rank={rank} />
+      <View style={styles.rowCopy}>
+        <Text style={[styles.score, rank === 1 && styles.scoreGold]}>
+          {entry.score.toLocaleString()}
+        </Text>
+        <Text style={styles.meta}>
+          {entry.lanesCleared} lanes · {entry.cardsPlayed} cards
+        </Text>
+        <Text style={styles.date}>{formatCompletedDate(entry.completedAt)}</Text>
+      </View>
+    </View>
   );
 }
 
@@ -169,7 +176,7 @@ export function HighScoresScreen({ navigation }: HighScoresScreenProps) {
   }, [fetchGlobal, globalLoading, hasLoadedGlobal, tab]);
 
   return (
-    <BlazeScreenBackground variant="plain">
+    <ScreenContainer style={styles.container} intensity="normal" padded={false}>
       <View style={styles.padded}>
         <ScreenHeader title="HIGH SCORES" icon={<TrophyIcon />} />
 
@@ -217,11 +224,9 @@ export function HighScoresScreen({ navigation }: HighScoresScreenProps) {
                 />
               </View>
             ) : (
-              <BlazePanel padding={0}>
-                {entries.map((entry, index) => (
-                  <LocalRow key={entry.id} entry={entry} rank={index + 1} />
-                ))}
-              </BlazePanel>
+              entries.map((entry, index) => (
+                <LocalRow key={entry.id} entry={entry} rank={index + 1} />
+              ))
             )
           ) : null}
 
@@ -257,17 +262,13 @@ export function HighScoresScreen({ navigation }: HighScoresScreenProps) {
                 />
               </View>
             ) : (
-              <BlazePanel padding={0}>
-                {globalRows.map((entry) => (
-                  <LeaderboardRow
-                    key={`${entry.user_id}-${entry.rank}`}
-                    rank={entry.rank}
-                    playerName={entry.display_name}
-                    score={entry.score}
-                    isCurrentPlayer={Boolean(userId && entry.user_id === userId)}
-                  />
-                ))}
-              </BlazePanel>
+              globalRows.map((entry) => (
+                <GlobalRow
+                  key={`${entry.user_id}-${entry.rank}`}
+                  entry={entry}
+                  isCurrentPlayer={Boolean(userId && entry.user_id === userId)}
+                />
+              ))
             )
           ) : null}
 
@@ -289,7 +290,7 @@ export function HighScoresScreen({ navigation }: HighScoresScreenProps) {
           fullWidth
         />
       </View>
-    </BlazeScreenBackground>
+    </ScreenContainer>
   );
 }
 

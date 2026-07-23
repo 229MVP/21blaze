@@ -1,8 +1,11 @@
 import { StyleSheet, Text, View } from 'react-native';
 
-import { BlazeButton } from '../ui/BlazeButton';
-import { BlazePanel } from '../ui/BlazePanel';
-import { colors, spacing, typography } from '../../theme/uiKit';
+import { colors } from '../../theme/colors';
+import { radius } from '../../theme/radius';
+import { shadows } from '../../theme/shadows';
+import { spacing } from '../../theme/spacing';
+import { fontFamilies } from '../../theme/typography';
+import { BlazeButton } from '../buttons/BlazeButton';
 
 type PauseOverlayProps = {
   visible: boolean;
@@ -11,10 +14,6 @@ type PauseOverlayProps = {
   onQuit: () => void;
 };
 
-/**
- * Presentation overlay wired to the real pause/resume/restart/quit store actions.
- * Does not own timer state.
- */
 export function PauseOverlay({
   visible,
   onResume,
@@ -27,12 +26,25 @@ export function PauseOverlay({
 
   return (
     <View style={styles.overlay} pointerEvents="auto" accessibilityViewIsModal>
-      <BlazePanel glow style={styles.panel}>
+      <View style={[styles.card, shadows.soft]}>
         <Text style={styles.title}>GAME PAUSED</Text>
-        <BlazeButton label="RESUME" onPress={onResume} />
-        <BlazeButton label="RESTART GAME" onPress={onRestart} variant="danger" />
-        <BlazeButton label="QUIT TO HOME" onPress={onQuit} variant="secondary" />
-      </BlazePanel>
+        <View style={styles.divider} />
+        <View style={styles.actions}>
+          <BlazeButton title="RESUME" onPress={onResume} fullWidth />
+          <BlazeButton
+            title="RESTART GAME"
+            variant="danger"
+            onPress={onRestart}
+            fullWidth
+          />
+          <BlazeButton
+            title="QUIT TO HOME"
+            variant="secondary"
+            onPress={onQuit}
+            fullWidth
+          />
+        </View>
+      </View>
     </View>
   );
 }
@@ -41,21 +53,36 @@ const styles = StyleSheet.create({
   overlay: {
     ...StyleSheet.absoluteFill,
     zIndex: 40,
-    backgroundColor: 'rgba(0,0,0,0.75)',
+    backgroundColor: colors.overlay,
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: spacing.lg,
   },
-  panel: {
+  card: {
     width: '100%',
     maxWidth: 360,
+    backgroundColor: colors.backgroundCard,
+    borderColor: colors.blazeSubtle,
+    borderWidth: 1.5,
+    borderRadius: radius.lg,
+    padding: spacing.lg,
     gap: spacing.md,
+    shadowColor: colors.primary,
+    shadowOpacity: 0.2,
+    shadowRadius: 20,
   },
   title: {
-    color: colors.fire.gold,
-    fontFamily: typography.families.display,
-    fontSize: 28,
+    fontFamily: fontFamilies.display,
+    fontSize: 24,
+    letterSpacing: 1,
+    color: colors.textPrimary,
     textAlign: 'center',
-    marginBottom: spacing.sm,
+  },
+  divider: {
+    height: 1,
+    backgroundColor: colors.blazeSubtle,
+  },
+  actions: {
+    gap: spacing.sm,
   },
 });

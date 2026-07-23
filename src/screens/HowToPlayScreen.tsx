@@ -1,12 +1,11 @@
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
-import { Path } from 'react-native-svg';
+import { LinearGradient } from 'expo-linear-gradient';
+import { Path, Rect } from 'react-native-svg';
 
 import { BlazeButton } from '../components/buttons/BlazeButton';
-import { BlazeScreenBackground } from '../components/layout/BlazeScreenBackground';
 import { ScreenHeader } from '../components/Navigation/ScreenHeader';
+import { ScreenContainer } from '../components/ScreenContainer';
 import { SvgRoot as Svg } from '../components/svg/SvgRoot';
-import { HowToPlayRow } from '../components/tutorial/HowToPlayRow';
-import { BlazePanel } from '../components/ui/BlazePanel';
 import {
   MAX_MULTIPLIER,
   SCORE_CLEAR_21,
@@ -71,25 +70,73 @@ function BookIcon() {
   );
 }
 
+function StepIcon({ kind }: { kind: (typeof STEPS)[number]['icon'] }) {
+  return (
+    <LinearGradient
+      colors={['rgba(255,101,0,0.22)', 'rgba(255,182,41,0.12)']}
+      style={styles.iconBadge}
+    >
+      <Svg width={22} height={22} viewBox="0 0 24 24">
+        {kind === 'lanes' ? (
+          <>
+            <Rect x="3" y="4" width="7" height="7" rx="1.5" fill={colors.primary} />
+            <Rect x="14" y="4" width="7" height="7" rx="1.5" fill={colors.gold} />
+            <Rect x="3" y="13" width="7" height="7" rx="1.5" fill={colors.gold} />
+            <Rect x="14" y="13" width="7" height="7" rx="1.5" fill={colors.primary} />
+          </>
+        ) : null}
+        {kind === 'exact' ? (
+          <Path
+            d="M12 3l2.2 5.4L20 9.2l-4 4.1.9 5.7L12 16.5 7.1 19l.9-5.7-4-4.1 5.8-.8L12 3z"
+            fill={colors.gold}
+          />
+        ) : null}
+        {kind === 'five' ? (
+          <Path
+            d="M7 4h10v2H7V4zm0 4h10v12H7V8zm2 2v8h6v-8H9z"
+            fill={colors.primary}
+          />
+        ) : null}
+        {kind === 'bust' ? (
+          <Path
+            d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm1 5v6h-2V7h2zm0 8v2h-2v-2h2z"
+            fill={colors.warningRed}
+          />
+        ) : null}
+        {kind === 'clock' ? (
+          <Path
+            d="M12 2a10 10 0 1 0 .01 20.01A10 10 0 0 0 12 2zm1 5v5.2l3.4 2-1 1.6L11 13V7h2z"
+            fill={colors.brightOrange}
+          />
+        ) : null}
+      </Svg>
+    </LinearGradient>
+  );
+}
+
 export function HowToPlayScreen({ navigation }: HowToPlayScreenProps) {
   return (
-    <BlazeScreenBackground variant="plain">
+    <ScreenContainer style={styles.container} intensity="subtle" padded={false}>
       <View style={styles.padded}>
         <ScreenHeader title="HOW TO PLAY" icon={<BookIcon />} />
         <ScrollView
           contentContainerStyle={styles.scroll}
           showsVerticalScrollIndicator={false}
         >
-          <BlazePanel>
+          <View style={styles.panel}>
             {STEPS.map((step, index) => (
-              <HowToPlayRow
+              <View
                 key={step.title}
-                step={index + 1}
-                title={step.title}
-                description={step.detail}
-              />
+                style={[styles.step, index < STEPS.length - 1 && styles.stepBorder]}
+              >
+                <StepIcon kind={step.icon} />
+                <View style={styles.stepCopy}>
+                  <Text style={styles.stepTitle}>{step.title}</Text>
+                  <Text style={styles.stepDetail}>{step.detail}</Text>
+                </View>
+              </View>
             ))}
-          </BlazePanel>
+          </View>
 
           <View style={styles.scoringPanel}>
             <Text style={styles.scoringTitle}>SCORING</Text>
@@ -124,7 +171,7 @@ export function HowToPlayScreen({ navigation }: HowToPlayScreenProps) {
           fullWidth
         />
       </View>
-    </BlazeScreenBackground>
+    </ScreenContainer>
   );
 }
 
