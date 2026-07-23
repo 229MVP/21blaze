@@ -1,12 +1,15 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 
 import { FlameIcon } from '../components/branding/FlameIcon';
 import { BlazeButton } from '../components/buttons/BlazeButton';
+import { LevelUpOverlay } from '../components/Progression/LevelUpOverlay';
+import { XpProgressBar } from '../components/Progression/XpProgressBar';
 import { ResultsPanel } from '../components/Results/ResultsPanel';
 import { ScreenContainer } from '../components/ScreenContainer';
-import { isRewardedAdsEnabled } from '../config/featureFlags';
+import { isProgressionBetaEnabled, isRewardedAdsEnabled } from '../config/featureFlags';
+import { PROGRESSION_CONFIG } from '../config/progressionConfig';
 import { MAX_BUSTS } from '../game/constants';
 import { formatTimerSeconds } from '../game/timerEngine';
 import type { GameOverReason } from '../game/types';
@@ -15,6 +18,7 @@ import { showRewardedAd } from '../monetization/rewardedAdService';
 import type { ResultsScreenProps } from '../navigation/navigationTypes';
 import { findLocalRank, useScoreHistoryStore } from '../store/useScoreHistoryStore';
 import { useGameStore } from '../store/useGameStore';
+import { useProgressionStore } from '../store/useProgressionStore';
 import { useWalletStore } from '../store/useWalletStore';
 import { colors } from '../theme/colors';
 import { radius } from '../theme/radius';
@@ -86,6 +90,15 @@ export function ResultsScreen({ navigation, route }: ResultsScreenProps) {
   const [doubleBusy, setDoubleBusy] = useState(false);
   const [doubleDone, setDoubleDone] = useState(false);
 
+  const progressionEnabled = isProgressionBetaEnabled();
+  const progression = useProgressionStore((state) => state.progression);
+  const pendingLevelUp = useProgressionStore((state) => state.pendingLevelUp);
+  const refreshProgression = useProgressionStore((state) => state.refreshProgression);
+  const acknowledgeLevelUp = useProgressionStore((state) => state.acknowledgeLevelUp);
+  const levelBeforeRef = useRef<number | null>(null);
+  const totalXpBeforeRef = useRef<number | null>(null);
+  const [xpSnapshotReady, setXpSnapshotReady] = useState(false);
+
   useEffect(() => {
     void hydrateScoreHistory();
   }, [hydrateScoreHistory]);
@@ -98,12 +111,46 @@ export function ResultsScreen({ navigation, route }: ResultsScreenProps) {
     if (!matchId || gameOverReason === 'quit') {
       return;
     }
-    void claimSoloMatchReward({
-      matchId,
-      score,
-      gameOverReason: gameOverReason ?? 'timeExpired',
-    });
-  }, [claimSoloMatchReward, gameOverReason, matchId, score]);
+    void (async () => {
+      if (progressionEnabled && levelBeforeRef.current === null) {
+        const current = useProgressionStore.getState().progression;
+        if (current) {
+          levelBeforeRef.current = current.level;
+          totalXpBeforeRef.current = current.totalXp;
+        }
+      }
+      await claimSoloMatchReward({
+        matchId,
+        score,
+        gameOverReason: gameOverReason ?? 'timeExpired',
+      });
+      if (progressionEnabled) {
+        await refreshProgression();
+        setXpSnapshotReady(true);
+        trackEvent('xp_earned', {
+          source: 'solo_match',
+          amount: PROGRESSION_CONFIG.matchXp.solo,
+        });
+      }
+    })();
+  }, [
+    claimSoloMatchReward,
+    gameOverReason,
+    matchId,
+    progressionEnabled,
+    refreshProgression,
+    score,
+  ]);
+
+  useEffect(() => {
+    if (!progressionEnabled) {
+      return;
+    }
+    if (levelBeforeRef.current === null && progression) {
+      levelBeforeRef.current = progression.level;
+      totalXpBeforeRef.current = progression.totalXp;
+    }
+  }, [progression, progressionEnabled]);
 
   const isNewHighScore = score > 0 && score >= highScore;
   const title = getResultTitle(gameOverReason, isNewHighScore);
@@ -144,6 +191,61 @@ export function ResultsScreen({ navigation, route }: ResultsScreenProps) {
     }
     return 'Your local score is still saved.';
   }, [eligibility, submissionStatus]);
+
+  const xpSummary = useMemo(() => {
+    if (!progressionEnabled) {
+      return null;
+    }
+    if (eligibility === 'localOnly' || gameOverReason === 'quit') {
+      return {
+        state: 'local' as const,
+        label: 'LOCAL MATCH — NO ONLINE REWARDS',
+        xpEarned: 0,
+        levelBefore: progression?.level ?? 1,
+        levelAfter: progression?.level ?? 1,
+      };
+    }
+    if (
+      submissionStatus === 'submitting' ||
+      submissionStatus === 'idle' ||
+      !xpSnapshotReady
+    ) {
+      return {
+        state: 'syncing' as const,
+        label: 'SYNCING REWARDS…',
+        xpEarned: 0,
+        levelBefore: levelBeforeRef.current ?? progression?.level ?? 1,
+        levelAfter: progression?.level ?? 1,
+      };
+    }
+    if (submissionStatus === 'verified') {
+      const beforeXp = totalXpBeforeRef.current;
+      const afterXp = progression?.totalXp ?? beforeXp ?? 0;
+      const earned =
+        beforeXp != null ? Math.max(0, afterXp - beforeXp) : PROGRESSION_CONFIG.matchXp.solo;
+      return {
+        state: 'verified' as const,
+        label: 'REWARDS VERIFIED',
+        xpEarned: earned,
+        levelBefore: levelBeforeRef.current ?? progression?.level ?? 1,
+        levelAfter: progression?.level ?? 1,
+      };
+    }
+    return {
+      state: 'local' as const,
+      label: 'LOCAL MATCH — NO ONLINE REWARDS',
+      xpEarned: 0,
+      levelBefore: progression?.level ?? 1,
+      levelAfter: progression?.level ?? 1,
+    };
+  }, [
+    eligibility,
+    gameOverReason,
+    progression,
+    progressionEnabled,
+    submissionStatus,
+    xpSnapshotReady,
+  ]);
 
   const playAgain = () => {
     restartGame();
@@ -256,6 +358,28 @@ export function ResultsScreen({ navigation, route }: ResultsScreenProps) {
           </View>
         ) : null}
 
+        {xpSummary ? (
+          <View style={styles.xpPanel}>
+            <Text style={styles.xpState}>{xpSummary.label}</Text>
+            {xpSummary.state === 'verified' ? (
+              <>
+                <Text style={styles.xpEarned}>+{xpSummary.xpEarned} XP</Text>
+                <Text style={styles.xpLevels}>
+                  Level {xpSummary.levelBefore} → {xpSummary.levelAfter}
+                </Text>
+              </>
+            ) : null}
+            {progression ? (
+              <XpProgressBar
+                compact
+                level={progression.level}
+                currentLevelXp={progression.currentLevelXp}
+                xpRequiredForNextLevel={progression.xpRequiredForNextLevel}
+              />
+            ) : null}
+          </View>
+        ) : null}
+
         <View style={styles.actions}>
           <BlazeButton title="PLAY AGAIN" onPress={playAgain} fullWidth />
           {submissionStatus === 'verified' ? (
@@ -281,6 +405,13 @@ export function ResultsScreen({ navigation, route }: ResultsScreenProps) {
           />
         </View>
       </ScrollView>
+
+      {progressionEnabled ? (
+        <LevelUpOverlay
+          pending={pendingLevelUp}
+          onContinue={acknowledgeLevelUp}
+        />
+      ) : null}
     </ScreenContainer>
   );
 }
@@ -357,6 +488,31 @@ const styles = StyleSheet.create({
     padding: spacing.md,
     alignItems: 'center',
     gap: spacing.sm,
+  },
+  xpPanel: {
+    width: '100%',
+    borderRadius: radius.lg,
+    borderWidth: 1,
+    borderColor: colors.blazeSubtle,
+    backgroundColor: 'rgba(0,0,0,0.28)',
+    padding: spacing.md,
+    alignItems: 'center',
+    gap: spacing.sm,
+  },
+  xpState: {
+    fontFamily: fontFamilies.bodyBold,
+    letterSpacing: 1.1,
+    color: colors.gold,
+    textAlign: 'center',
+  },
+  xpEarned: {
+    fontFamily: fontFamilies.display,
+    fontSize: 28,
+    color: colors.primary,
+  },
+  xpLevels: {
+    ...typography.body,
+    color: colors.textSecondary,
   },
   coinTitle: {
     fontFamily: fontFamilies.bodyBold,

@@ -6,7 +6,11 @@ export type CosmeticCardThemeKey =
   | 'inferno_cards'
   | 'blue_flame_cards'
   | 'lava_gold_cards'
-  | 'midnight_cards';
+  | 'midnight_cards'
+  | 'ember_card_back'
+  | 'flame_card_face'
+  | 'veteran_blazer_card_back'
+  | 'level_50_champion_card_back';
 
 export type CardThemePalette = {
   face: [string, string];
@@ -71,6 +75,34 @@ const PALETTES: Record<string, CardThemePalette> = {
     border: '#FFB629',
     redSuit: '#B45309',
     blackSuit: '#1C1917',
+    glow: true,
+  },
+  ember_card_back: {
+    face: ['#FFF4EC', '#FFD8B8'],
+    border: '#FF8A00',
+    redSuit: '#C51A0A',
+    blackSuit: '#2A1208',
+    glow: true,
+  },
+  flame_card_face: {
+    face: ['#FFF8F0', '#FFC48A'],
+    border: '#FF6500',
+    redSuit: '#E11D48',
+    blackSuit: '#1A0F0A',
+    glow: true,
+  },
+  veteran_blazer_card_back: {
+    face: ['#FFF7ED', '#FED7AA'],
+    border: '#EA580C',
+    redSuit: '#B91C1C',
+    blackSuit: '#1C1917',
+    glow: true,
+  },
+  level_50_champion_card_back: {
+    face: ['#FFFBEB', '#FDE68A'],
+    border: '#F59E0B',
+    redSuit: '#B91C1C',
+    blackSuit: '#292524',
     glow: true,
   },
 };

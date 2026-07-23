@@ -1,12 +1,18 @@
+import { useEffect } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 
 import { FlameIcon } from '../components/branding/FlameIcon';
 import { BlazeButton } from '../components/buttons/BlazeButton';
+import { LevelUpOverlay } from '../components/Progression/LevelUpOverlay';
+import { XpProgressBar } from '../components/Progression/XpProgressBar';
 import { ScreenContainer } from '../components/ScreenContainer';
+import { isProgressionBetaEnabled } from '../config/featureFlags';
+import { PROGRESSION_CONFIG } from '../config/progressionConfig';
 import { formatTimerSeconds } from '../game/timerEngine';
 import type { LiveDuelResultsScreenProps } from '../navigation/navigationTypes';
 import { useAuthStore } from '../store/useAuthStore';
 import { useLiveMatchStore } from '../store/useLiveMatchStore';
+import { useProgressionStore } from '../store/useProgressionStore';
 import { useQuickMatchStore } from '../store/useQuickMatchStore';
 import { colors } from '../theme/colors';
 import { radius } from '../theme/radius';
@@ -45,6 +51,17 @@ export function LiveDuelResultsScreen({ navigation }: LiveDuelResultsScreenProps
   const matchState = useLiveMatchStore((state) => state.matchState);
   const resetLiveMatch = useLiveMatchStore((state) => state.resetLiveMatch);
   const resetQuickMatch = useQuickMatchStore((state) => state.reset);
+  const progressionEnabled = isProgressionBetaEnabled();
+  const progression = useProgressionStore((state) => state.progression);
+  const pendingLevelUp = useProgressionStore((state) => state.pendingLevelUp);
+  const refreshProgression = useProgressionStore((state) => state.refreshProgression);
+  const acknowledgeLevelUp = useProgressionStore((state) => state.acknowledgeLevelUp);
+
+  useEffect(() => {
+    if (progressionEnabled) {
+      void refreshProgression();
+    }
+  }, [progressionEnabled, refreshProgression]);
 
   const state = finalResult ?? matchState;
   const self = state?.self;
@@ -56,6 +73,9 @@ export function LiveDuelResultsScreen({ navigation }: LiveDuelResultsScreenProps
     userId,
     Boolean(isQuickMatch),
   );
+  const expectedXp = isQuickMatch
+    ? PROGRESSION_CONFIG.matchXp.casual
+    : PROGRESSION_CONFIG.matchXp.casual;
 
   const goHome = () => {
     resetLiveMatch();
@@ -111,6 +131,21 @@ export function LiveDuelResultsScreen({ navigation }: LiveDuelResultsScreenProps
           />
         </View>
 
+        {progressionEnabled ? (
+          <View style={styles.xpPanel}>
+            <Text style={styles.xpState}>REWARDS VERIFIED</Text>
+            <Text style={styles.xpEarned}>+{expectedXp} XP</Text>
+            {progression ? (
+              <XpProgressBar
+                compact
+                level={progression.level}
+                currentLevelXp={progression.currentLevelXp}
+                xpRequiredForNextLevel={progression.xpRequiredForNextLevel}
+              />
+            ) : null}
+          </View>
+        ) : null}
+
         <View style={styles.actions}>
           {isQuickMatch ? (
             <BlazeButton
@@ -127,6 +162,13 @@ export function LiveDuelResultsScreen({ navigation }: LiveDuelResultsScreenProps
           <BlazeButton title="RETURN HOME" variant="secondary" onPress={goHome} fullWidth />
         </View>
       </View>
+
+      {progressionEnabled ? (
+        <LevelUpOverlay
+          pending={pendingLevelUp}
+          onContinue={acknowledgeLevelUp}
+        />
+      ) : null}
     </ScreenContainer>
   );
 }
@@ -224,6 +266,26 @@ const styles = StyleSheet.create({
     width: '100%',
     marginTop: 'auto',
     gap: 10,
+  },
+  xpPanel: {
+    width: '100%',
+    borderRadius: radius.lg,
+    borderWidth: 1,
+    borderColor: colors.blazeSubtle,
+    backgroundColor: 'rgba(0,0,0,0.28)',
+    padding: spacing.md,
+    alignItems: 'center',
+    gap: spacing.sm,
+  },
+  xpState: {
+    fontFamily: fontFamilies.bodyBold,
+    letterSpacing: 1.1,
+    color: colors.gold,
+  },
+  xpEarned: {
+    fontFamily: fontFamilies.display,
+    fontSize: 24,
+    color: colors.primary,
   },
   comingSoon: {
     borderRadius: radius.md,

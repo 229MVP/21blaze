@@ -4,7 +4,8 @@ import {
   catalogIdToStoreProductIdForPlatform,
   isEntitlementKey,
 } from './productIds.pure';
-import { hasEntitlement } from './purchaseService.pure';
+import { hasEntitlement, mapCustomerEntitlements } from './purchaseService.pure';
+import { hasBlazeProFromActiveIds } from './proConfig';
 import { COSMETIC_CATALOG } from '../cosmetics/catalog';
 
 function assert(condition: boolean, message: string): void {
@@ -60,7 +61,12 @@ export function runMonetizationSelfTests(): void {
 
   assert(
     hasEntitlement(
-      { active: ['remove_ads'], removeAds: true, rawActiveIds: ['remove_ads'] },
+      {
+        active: ['remove_ads'],
+        removeAds: true,
+        hasPro: false,
+        rawActiveIds: ['remove_ads'],
+      },
       'remove_ads',
     ),
     'remove ads entitlement',
@@ -70,6 +76,7 @@ export function runMonetizationSelfTests(): void {
       {
         active: ['founders_bundle'],
         removeAds: true,
+        hasPro: false,
         rawActiveIds: ['founders_bundle'],
       },
       'remove_ads',
@@ -78,10 +85,22 @@ export function runMonetizationSelfTests(): void {
   );
   assert(
     !hasEntitlement(
-      { active: [], removeAds: false, rawActiveIds: [] },
+      { active: [], removeAds: false, hasPro: false, rawActiveIds: [] },
       'remove_ads',
     ),
     'no remove ads',
+  );
+  assert(
+    hasEntitlement(
+      {
+        active: ['pro'],
+        removeAds: true,
+        hasPro: true,
+        rawActiveIds: ['21 Blaze Pro'],
+      },
+      'pro',
+    ),
+    '21 Blaze Pro entitlement',
   );
 
   assert(isEntitlementKey('cards_inferno'), 'inferno entitlement key');
@@ -93,8 +112,17 @@ export function runMonetizationSelfTests(): void {
     'ios product id mapping',
   );
   assert(
-    catalogIdToStoreProductIdForPlatform('remove_ads', 'android') === 'remove_ads',
-    'android product id mapping',
+    catalogIdToStoreProductIdForPlatform('pro_monthly', 'android') === 'monthly',
+    'android monthly product id',
+  );
+  assert(hasBlazeProFromActiveIds(['21 Blaze Pro']), 'pro entitlement alias');
+  assert(
+    mapCustomerEntitlements(['21 Blaze Pro']).hasPro === true,
+    'mapCustomerEntitlements detects Pro',
+  );
+  assert(
+    mapCustomerEntitlements(['21 Blaze Pro']).removeAds === true,
+    'Pro implies remove ads',
   );
 
   assert(
