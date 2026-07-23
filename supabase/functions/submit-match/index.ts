@@ -3,7 +3,100 @@ import 'jsr:@supabase/functions-js/edge-runtime.d.ts';
 import { corsHeaders, errorResponse, jsonResponse } from '../_shared/cors.ts';
 import { GAME_DURATION_SECONDS } from '../_shared/game/constants.ts';
 import { replayMatch, validateMoveLog } from '../_shared/game/replayMatch.ts';
+import type { MoveLogEntry, OfficialMatchResult } from '../_shared/game/types.ts';
+import {
+  applyMissionProgressFromMatch,
+  buildMatchSummaryFromReplay,
+  buildMatchSummaryFromVerifiedFields,
+  grantMatchXp,
+  tryBuildMatchSummaryFromMoveLog,
+  type MissionProgressResult,
+  type XpGrantResult,
+} from '../_shared/progression.ts';
 import { createServiceClient } from '../_shared/supabaseAdmin.ts';
+
+type ProgressionPayload = {
+  xp: XpGrantResult | null;
+  missions: MissionProgressResult | null;
+};
+
+async function applySoloProgression(input: {
+  admin: ReturnType<typeof createServiceClient>;
+  userId: string;
+  matchId: string;
+  gameOverReason: string;
+  seed?: number;
+  moves?: MoveLogEntry[];
+  moveLog?: unknown;
+  lanesCleared?: number;
+}): Promise<ProgressionPayload | undefined> {
+  if (input.gameOverReason === 'quit') {
+    return undefined;
+  }
+
+  let xp: XpGrantResult | null = null;
+  let missions: MissionProgressResult | null = null;
+
+  try {
+    xp = await grantMatchXp(input.admin, input.userId, 'solo', input.matchId);
+  } catch {
+    xp = null;
+  }
+
+  try {
+    let summary;
+    if (typeof input.seed === 'number' && input.moves) {
+      summary = buildMatchSummaryFromReplay(input.seed, input.moves, {
+        matchMode: 'solo',
+        matchCompleted: true,
+        validCompletion: true,
+      });
+    } else if (typeof input.seed === 'number' && input.moveLog !== undefined) {
+      summary = tryBuildMatchSummaryFromMoveLog(input.seed, input.moveLog, {
+        matchMode: 'solo',
+        matchCompleted: true,
+        validCompletion: true,
+        lanesClearedFallback: input.lanesCleared ?? 0,
+      });
+    } else {
+      summary = buildMatchSummaryFromVerifiedFields({
+        lanesCleared: input.lanesCleared ?? 0,
+        matchMode: 'solo',
+        matchCompleted: true,
+        validCompletion: true,
+      });
+    }
+
+    missions = await applyMissionProgressFromMatch(
+      input.admin,
+      input.userId,
+      input.matchId,
+      summary,
+    );
+  } catch {
+    missions = null;
+  }
+
+  return { xp, missions };
+}
+
+function officialFromExisting(row: {
+  score: number;
+  lanes_cleared: number;
+  cards_played: number;
+  busts: number;
+  time_remaining_seconds: number;
+  game_over_reason: string;
+}): OfficialMatchResult {
+  return {
+    score: row.score,
+    lanesCleared: row.lanes_cleared,
+    cardsPlayed: row.cards_played,
+    busts: row.busts,
+    timeRemainingSeconds: row.time_remaining_seconds,
+    gameOverReason: row.game_over_reason as OfficialMatchResult['gameOverReason'],
+  };
+}
 
 Deno.serve(async (request) => {
   if (request.method === 'OPTIONS') {
@@ -69,23 +162,27 @@ Deno.serve(async (request) => {
     const { data: existingScore } = await admin
       .from('verified_scores')
       .select(
-        'id, score, lanes_cleared, cards_played, busts, time_remaining_seconds, game_over_reason',
+        'id, score, lanes_cleared, cards_played, busts, time_remaining_seconds, game_over_reason, move_log',
       )
       .eq('match_id', matchId)
       .maybeSingle();
 
     if (existingScore) {
+      const progression = await applySoloProgression({
+        admin,
+        userId: user.id,
+        matchId,
+        gameOverReason: String(existingScore.game_over_reason),
+        seed: typeof match.seed === 'number' ? match.seed : undefined,
+        moveLog: existingScore.move_log,
+        lanesCleared: existingScore.lanes_cleared,
+      });
+
       return jsonResponse({
         verified: true,
         scoreId: existingScore.id,
-        officialResult: {
-          score: existingScore.score,
-          lanesCleared: existingScore.lanes_cleared,
-          cardsPlayed: existingScore.cards_played,
-          busts: existingScore.busts,
-          timeRemainingSeconds: existingScore.time_remaining_seconds,
-          gameOverReason: existingScore.game_over_reason,
-        },
+        officialResult: officialFromExisting(existingScore),
+        ...(progression ? { progression } : {}),
       });
     }
 
@@ -171,17 +268,21 @@ Deno.serve(async (request) => {
           .maybeSingle();
 
         if (raced) {
+          const progression = await applySoloProgression({
+            admin,
+            userId: user.id,
+            matchId,
+            gameOverReason: String(raced.game_over_reason),
+            seed: match.seed,
+            moves: moveValidation.moves,
+            lanesCleared: raced.lanes_cleared,
+          });
+
           return jsonResponse({
             verified: true,
             scoreId: raced.id,
-            officialResult: {
-              score: raced.score,
-              lanesCleared: raced.lanes_cleared,
-              cardsPlayed: raced.cards_played,
-              busts: raced.busts,
-              timeRemainingSeconds: raced.time_remaining_seconds,
-              gameOverReason: raced.game_over_reason,
-            },
+            officialResult: officialFromExisting(raced),
+            ...(progression ? { progression } : {}),
           });
         }
       }
@@ -195,10 +296,21 @@ Deno.serve(async (request) => {
       .eq('id', matchId)
       .eq('status', 'active');
 
+    const progression = await applySoloProgression({
+      admin,
+      userId: user.id,
+      matchId,
+      gameOverReason: replay.result.gameOverReason,
+      seed: match.seed,
+      moves: moveValidation.moves,
+      lanesCleared: replay.result.lanesCleared,
+    });
+
     return jsonResponse({
       verified: true,
       scoreId: scoreRow.id,
       officialResult: replay.result,
+      ...(progression ? { progression } : {}),
     });
   } catch {
     return errorResponse('Unexpected server error.', 500);

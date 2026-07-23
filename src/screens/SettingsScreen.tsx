@@ -17,6 +17,7 @@ import {
   CARD_STYLES,
   type CardStyle,
 } from '../settings/types';
+import { isPurchaseDiagnosticsEnabled } from '../config/featureFlags';
 import { openPrivacyOptions } from '../monetization/adConsentService';
 import { usePurchaseStore } from '../store/usePurchaseStore';
 import { useGameStore } from '../store/useGameStore';
@@ -186,16 +187,43 @@ export function SettingsScreen({ navigation }: SettingsScreenProps) {
               isFirst
             />
             <SettingsRow
+              label="MANAGE SUBSCRIPTION"
+              onPress={() => {
+                void usePurchaseStore.getState().openCustomerCenter().then((status) => {
+                  if (status === 'unavailable') {
+                    Alert.alert(
+                      'Unavailable',
+                      'Customer Center requires a native development build with RevenueCat configured.',
+                    );
+                  } else if (status === 'error') {
+                    Alert.alert(
+                      'Unable to open',
+                      'Customer Center could not be opened. Try Restore Purchases.',
+                    );
+                  }
+                });
+              }}
+              accessibilityLabel="Manage subscription in Customer Center"
+            />
+            <SettingsRow
               label="PURCHASE SUPPORT"
               onPress={() => {
                 Alert.alert(
                   'Purchase Support',
-                  'Purchases are optional. Cosmetics do not affect gameplay. Store prices come from the app store. Use Restore Purchases after reinstalling. Remove Ads does not remove optional rewarded ads you choose to watch.',
+                  'Purchases are optional. Cosmetics and Pro do not affect gameplay. Store prices come from the app store. Use Restore Purchases or Manage Subscription after reinstalling. Remove Ads / Pro do not remove optional rewarded ads you choose to watch.',
                 );
               }}
               accessibilityLabel="Purchase support information"
-              isLast
+              isLast={!isPurchaseDiagnosticsEnabled()}
             />
+            {isPurchaseDiagnosticsEnabled() ? (
+              <SettingsRow
+                label="PURCHASE DIAGNOSTICS"
+                onPress={() => navigation.navigate('PurchaseDiagnostics')}
+                accessibilityLabel="Open purchase diagnostics (development builds only)"
+                isLast
+              />
+            ) : null}
           </View>
 
           <View style={[styles.panel, styles.panelSpaced]}>

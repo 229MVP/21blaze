@@ -1,16 +1,15 @@
 import type {
   CustomerEntitlements,
-  EntitlementKey,
   PurchasePackage,
   PurchaseStatus,
   StoreOffering,
 } from './types';
 import {
   catalogIdToStoreProductId,
-  isEntitlementKey,
   productIdToCatalogId,
 } from './productIds';
-import { hasEntitlement } from './purchaseService.pure';
+import { packageIdentifierToCatalogId } from './productIds.pure';
+import { hasEntitlement, mapCustomerEntitlements } from './purchaseService.pure';
 import {
   configureRevenueCat,
   getRevenueCatApiKey,
@@ -18,7 +17,7 @@ import {
   wasPurchasesConfigured,
 } from './revenueCatClient';
 
-export { hasEntitlement };
+export { hasEntitlement, mapCustomerEntitlements };
 
 export type PurchaseResult =
   | { status: Extract<PurchaseStatus, 'success'>; entitlements: CustomerEntitlements }
@@ -27,16 +26,6 @@ export type PurchaseResult =
   | { status: Extract<PurchaseStatus, 'unavailable' | 'error'>; message: string };
 
 let purchaseInFlight = false;
-
-function mapEntitlements(activeKeys: string[]): CustomerEntitlements {
-  const active = activeKeys.filter(isEntitlementKey);
-  return {
-    active,
-    removeAds:
-      active.includes('remove_ads') || active.includes('founders_bundle'),
-    rawActiveIds: activeKeys,
-  };
-}
 
 export async function refreshCustomerInfo(
   appUserId: string,
@@ -51,7 +40,7 @@ export async function refreshCustomerInfo(
   try {
     const Purchases = (await import('react-native-purchases')).default;
     const info = await Purchases.getCustomerInfo();
-    return mapEntitlements(Object.keys(info.entitlements.active));
+    return mapCustomerEntitlements(Object.keys(info.entitlements.active));
   } catch {
     return null;
   }
@@ -124,7 +113,12 @@ export async function purchaseProduct(
     const Purchases = (await import('react-native-purchases')).default;
     const offerings = await Purchases.getOfferings();
     const pkg = offerings.current?.availablePackages.find(
-      (item) => item.product.identifier === storeProductId,
+      (item) =>
+        item.product.identifier === storeProductId ||
+        item.identifier === storeProductId ||
+        item.identifier === catalogProductId ||
+        packageIdentifierToCatalogId(item.identifier) === catalogProductId ||
+        productIdToCatalogId(item.product.identifier) === catalogProductId,
     );
     if (!pkg) {
       return { status: 'unavailable', message: 'Product is not available.' };
@@ -133,7 +127,9 @@ export async function purchaseProduct(
     const { customerInfo } = await Purchases.purchasePackage(pkg);
     return {
       status: 'success',
-      entitlements: mapEntitlements(Object.keys(customerInfo.entitlements.active)),
+      entitlements: mapCustomerEntitlements(
+        Object.keys(customerInfo.entitlements.active),
+      ),
     };
   } catch (error: unknown) {
     const maybe = error as { userCancelled?: boolean; code?: string };
@@ -173,7 +169,7 @@ export async function restorePurchases(
     const info = await Purchases.restorePurchases();
     return {
       status: 'success',
-      entitlements: mapEntitlements(Object.keys(info.entitlements.active)),
+      entitlements: mapCustomerEntitlements(Object.keys(info.entitlements.active)),
     };
   } catch {
     return {
@@ -196,8 +192,13 @@ export function findPackageForCatalogId(
   }
   return (
     offering.packages.find((pkg) => pkg.productId === storeId) ??
+    offering.packages.find((pkg) => pkg.identifier === storeId) ??
+    offering.packages.find((pkg) => pkg.identifier === catalogId) ??
     offering.packages.find(
       (pkg) => productIdToCatalogId(pkg.productId) === catalogId,
+    ) ??
+    offering.packages.find(
+      (pkg) => productIdToCatalogId(pkg.identifier) === catalogId,
     ) ??
     null
   );

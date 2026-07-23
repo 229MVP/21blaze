@@ -13,7 +13,8 @@ import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
-import { AppNavigator } from './src/navigation/AppNavigator';
+import { ErrorBoundary } from './src/components/ErrorBoundary';
+import { AppNavigator, navigationRef } from './src/navigation/AppNavigator';
 import { useAuthStore } from './src/store/useAuthStore';
 import { useScoreHistoryStore } from './src/store/useScoreHistoryStore';
 import { useSettingsStore } from './src/store/useSettingsStore';
@@ -76,10 +77,18 @@ export default function App() {
 
   return (
     <SafeAreaProvider>
-      <NavigationContainer theme={navigationTheme}>
-        <StatusBar style="light" />
-        <AppNavigator />
-      </NavigationContainer>
+      <ErrorBoundary
+        onReturnHome={() => {
+          if (navigationRef.isReady()) {
+            navigationRef.navigate('Home');
+          }
+        }}
+      >
+        <NavigationContainer ref={navigationRef} theme={navigationTheme}>
+          <StatusBar style="light" />
+          <AppNavigator />
+        </NavigationContainer>
+      </ErrorBoundary>
     </SafeAreaProvider>
   );
 }

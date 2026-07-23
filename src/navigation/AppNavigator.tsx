@@ -1,7 +1,10 @@
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
+import { createNavigationContainerRef } from '@react-navigation/native';
 
 import { BlazeStoreScreen } from '../screens/BlazeStoreScreen';
 import { CreateLiveRoomScreen } from '../screens/CreateLiveRoomScreen';
+import { DailyMissionsScreen } from '../screens/DailyMissionsScreen';
+import { DailyRewardScreen } from '../screens/DailyRewardScreen';
 import { GameScreen } from '../screens/GameScreen';
 import { HighScoresScreen } from '../screens/HighScoresScreen';
 import { HomeScreen } from '../screens/HomeScreen';
@@ -12,6 +15,8 @@ import { LiveDuelHomeScreen } from '../screens/LiveDuelHomeScreen';
 import { LiveDuelResultsScreen } from '../screens/LiveDuelResultsScreen';
 import { LiveGameScreen } from '../screens/LiveGameScreen';
 import { LiveLobbyScreen } from '../screens/LiveLobbyScreen';
+import { PlayerProgressionScreen } from '../screens/PlayerProgressionScreen';
+import { PurchaseDiagnosticsScreen } from '../screens/PurchaseDiagnosticsScreen';
 import { QuickMatchFoundScreen } from '../screens/QuickMatchFoundScreen';
 import { QuickMatchSearchScreen } from '../screens/QuickMatchSearchScreen';
 import { RankedFoundScreen } from '../screens/RankedFoundScreen';
@@ -26,6 +31,8 @@ import { colors } from '../theme/colors';
 import type { RootStackParamList } from './navigationTypes';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
+
+export const navigationRef = createNavigationContainerRef<RootStackParamList>();
 
 export function AppNavigator() {
   return (
@@ -59,6 +66,14 @@ export function AppNavigator() {
       <Stack.Screen name="RankedMatchHistory" component={RankedMatchHistoryScreen} />
       <Stack.Screen name="HowRankedWorks" component={HowRankedWorksScreen} />
       <Stack.Screen name="BlazeStore" component={BlazeStoreScreen} />
+      <Stack.Screen name="PlayerProgression" component={PlayerProgressionScreen} />
+      <Stack.Screen name="DailyReward" component={DailyRewardScreen} />
+      <Stack.Screen name="DailyMissions" component={DailyMissionsScreen} />
+      {/* Entry points are production-gated; screen itself refuses production env. */}
+      <Stack.Screen
+        name="PurchaseDiagnostics"
+        component={PurchaseDiagnosticsScreen}
+      />
     </Stack.Navigator>
   );
 }

@@ -34,6 +34,10 @@ export type RootStackParamList = {
   RankedMatchHistory: undefined;
   HowRankedWorks: undefined;
   BlazeStore: undefined;
+  PlayerProgression: undefined;
+  DailyReward: undefined;
+  DailyMissions: undefined;
+  PurchaseDiagnostics: undefined;
 };
 
 export type HomeScreenProps = NativeStackScreenProps<RootStackParamList, 'Home'>;
@@ -108,4 +112,20 @@ export type HowRankedWorksScreenProps = NativeStackScreenProps<
 export type BlazeStoreScreenProps = NativeStackScreenProps<
   RootStackParamList,
   'BlazeStore'
+>;
+export type PlayerProgressionScreenProps = NativeStackScreenProps<
+  RootStackParamList,
+  'PlayerProgression'
+>;
+export type DailyRewardScreenProps = NativeStackScreenProps<
+  RootStackParamList,
+  'DailyReward'
+>;
+export type DailyMissionsScreenProps = NativeStackScreenProps<
+  RootStackParamList,
+  'DailyMissions'
+>;
+export type PurchaseDiagnosticsScreenProps = NativeStackScreenProps<
+  RootStackParamList,
+  'PurchaseDiagnostics'
 >;

@@ -9,20 +9,30 @@ export function isNativePurchasesSupported(): boolean {
   return Platform.OS === 'ios' || Platform.OS === 'android';
 }
 
+/**
+ * Public SDK keys only. Prefer platform-specific keys; fall back to shared
+ * EXPO_PUBLIC_REVENUECAT_API_KEY (RevenueCat Test Store uses a single test_ key).
+ */
 export function getRevenueCatApiKey(): string | null {
   if (!isNativePurchasesSupported()) {
     return null;
   }
+
+  const shared = readEnv('EXPO_PUBLIC_REVENUECAT_API_KEY');
   if (Platform.OS === 'ios') {
-    const key = readEnv('EXPO_PUBLIC_REVENUECAT_IOS_API_KEY');
+    const ios = readEnv('EXPO_PUBLIC_REVENUECAT_IOS_API_KEY');
+    const key = ios || shared;
     return key.length > 0 ? key : null;
   }
-  const key = readEnv('EXPO_PUBLIC_REVENUECAT_ANDROID_API_KEY');
+
+  const android = readEnv('EXPO_PUBLIC_REVENUECAT_ANDROID_API_KEY');
+  const key = android || shared;
   return key.length > 0 ? key : null;
 }
 
 let configured = false;
 let configuredUserId: string | null = null;
+let configureInFlight: Promise<boolean> | null = null;
 
 export function wasPurchasesConfigured(): boolean {
   return configured;
@@ -46,39 +56,48 @@ export async function configureRevenueCat(appUserId: string): Promise<boolean> {
   if (configured && configuredUserId === appUserId) {
     return true;
   }
-
-  const apiKey = getRevenueCatApiKey();
-  if (!apiKey) {
-    return false;
+  if (configureInFlight) {
+    return configureInFlight;
   }
 
-  try {
-    const Purchases = (await import('react-native-purchases')).default;
-    Purchases.setLogLevel(
-      __DEV__
-        ? (await import('react-native-purchases')).LOG_LEVEL.DEBUG
-        : (await import('react-native-purchases')).LOG_LEVEL.WARN,
-    );
+  configureInFlight = (async () => {
+    const apiKey = getRevenueCatApiKey();
+    if (!apiKey) {
+      return false;
+    }
 
-    if (!configured) {
-      Purchases.configure({ apiKey, appUserID: appUserId });
-      configured = true;
-      configuredUserId = appUserId;
+    try {
+      const PurchasesModule = await import('react-native-purchases');
+      const Purchases = PurchasesModule.default;
+      Purchases.setLogLevel(
+        __DEV__ ? PurchasesModule.LOG_LEVEL.DEBUG : PurchasesModule.LOG_LEVEL.WARN,
+      );
+
+      if (!configured) {
+        Purchases.configure({ apiKey, appUserID: appUserId });
+        configured = true;
+        configuredUserId = appUserId;
+        return true;
+      }
+
+      if (configuredUserId !== appUserId) {
+        await Purchases.logIn(appUserId);
+        configuredUserId = appUserId;
+      }
       return true;
+    } catch {
+      return false;
+    } finally {
+      configureInFlight = null;
     }
+  })();
 
-    if (configuredUserId !== appUserId) {
-      await Purchases.logIn(appUserId);
-      configuredUserId = appUserId;
-    }
-    return true;
-  } catch {
-    return false;
-  }
+  return configureInFlight;
 }
 
 /** Test helper — resets module configure state. */
 export function __resetRevenueCatClientForTests(): void {
   configured = false;
   configuredUserId = null;
+  configureInFlight = null;
 }

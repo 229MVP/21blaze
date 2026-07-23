@@ -5,9 +5,19 @@ import Svg, { Path } from 'react-native-svg';
 import { BlazeLogo } from '../components/branding/BlazeLogo';
 import { FlameIcon } from '../components/branding/FlameIcon';
 import { BlazeButton } from '../components/buttons/BlazeButton';
+import { XpProgressBar } from '../components/Progression/XpProgressBar';
+import { LevelUpOverlay } from '../components/Progression/LevelUpOverlay';
 import { PlayerProfileButton } from '../components/Profile/PlayerProfileButton';
 import { ScreenContainer } from '../components/ScreenContainer';
-import { isMonetizationBetaEnabled } from '../config/featureFlags';
+import {
+  isDailyMissionsEnabled,
+  isDailyRewardsEnabled,
+  isLiveDuelEnabled,
+  isMonetizationBetaEnabled,
+  isProgressionBetaEnabled,
+  isRankedBetaEnabled,
+} from '../config/featureFlags';
+import { getCosmetic } from '../cosmetics/catalog';
 import { APP_VERSION } from '../game/constants';
 import type { HomeScreenProps } from '../navigation/navigationTypes';
 import { loadHighScore } from '../storage/highScoreStorage';
@@ -15,6 +25,7 @@ import { useAuthStore } from '../store/useAuthStore';
 import { useCosmeticStore } from '../store/useCosmeticStore';
 import { useGameStore } from '../store/useGameStore';
 import { useHasRemoveAdsEntitlement, usePurchaseStore } from '../store/usePurchaseStore';
+import { useProgressionStore } from '../store/useProgressionStore';
 import { useScoreHistoryStore } from '../store/useScoreHistoryStore';
 import { useSettingsStore } from '../store/useSettingsStore';
 import { useWalletStore } from '../store/useWalletStore';
@@ -72,12 +83,24 @@ export function HomeScreen({ navigation, route }: HomeScreenProps) {
   const hydrateSettings = useSettingsStore((state) => state.hydrateSettings);
   const hydrateScoreHistory = useScoreHistoryStore((state) => state.hydrateScoreHistory);
   const authStatus = useAuthStore((state) => state.authStatus);
+  const authError = useAuthStore((state) => state.authError);
+  const retryOnlineAuth = useAuthStore((state) => state.retryOnlineAuth);
+  const isInitializingAuth = useAuthStore((state) => state.isInitializing);
   const balance = useWalletStore((state) => state.balance);
   const hydrateWallet = useWalletStore((state) => state.hydrateWallet);
   const hydrateCosmetics = useCosmeticStore((state) => state.hydrateCosmetics);
+  const equipped = useCosmeticStore((state) => state.equippedCosmetics);
   const initializePurchases = usePurchaseStore((state) => state.initializePurchases);
   const hasRemoveAds = useHasRemoveAdsEntitlement();
   const storeEnabled = isMonetizationBetaEnabled();
+  const progressionEnabled = isProgressionBetaEnabled();
+  const profile = useAuthStore((state) => state.profile);
+  const progression = useProgressionStore((state) => state.progression);
+  const dailyRewardStatus = useProgressionStore((state) => state.dailyRewardStatus);
+  const dailyMissions = useProgressionStore((state) => state.dailyMissions);
+  const pendingLevelUp = useProgressionStore((state) => state.pendingLevelUp);
+  const hydrateProgression = useProgressionStore((state) => state.hydrateProgression);
+  const acknowledgeLevelUp = useProgressionStore((state) => state.acknowledgeLevelUp);
 
   useEffect(() => {
     let isMounted = true;
@@ -89,6 +112,10 @@ export function HomeScreen({ navigation, route }: HomeScreenProps) {
       await hydrateWallet();
       await hydrateCosmetics();
       await initializePurchases();
+      // Progression must not block PLAY — fire and forget.
+      if (progressionEnabled) {
+        void hydrateProgression();
+      }
 
       if (isMounted) {
         setHighScore(savedScore);
@@ -102,10 +129,12 @@ export function HomeScreen({ navigation, route }: HomeScreenProps) {
     };
   }, [
     hydrateCosmetics,
+    hydrateProgression,
     hydrateScoreHistory,
     hydrateSettings,
     hydrateWallet,
     initializePurchases,
+    progressionEnabled,
     setHighScore,
   ]);
 
@@ -138,8 +167,107 @@ export function HomeScreen({ navigation, route }: HomeScreenProps) {
             <Text style={styles.statusDetail}>{statusDetail(authStatus)}</Text>
           </View>
         </View>
+        {authStatus === 'local' && authError ? (
+          <View style={styles.authRecovery}>
+            <Text style={styles.authRecoveryText}>
+              Online features unavailable. Solo Play still works offline.
+            </Text>
+            <BlazeButton
+              title={isInitializingAuth ? 'RETRYING…' : 'RETRY ONLINE'}
+              variant="outline"
+              loading={isInitializingAuth}
+              onPress={() => {
+                void retryOnlineAuth();
+              }}
+              accessibilityLabel="Retry online authentication"
+              fullWidth
+            />
+          </View>
+        ) : null}
 
         <PlayerProfileButton />
+
+        {progressionEnabled ? (
+          <View style={styles.progressionPanel}>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={`Level ${progression?.level ?? 1}. Open progression.`}
+              onPress={() => navigation.navigate('PlayerProgression')}
+              style={({ pressed }) => [
+                styles.levelBadge,
+                pressed && styles.pressed,
+              ]}
+            >
+              <Text style={styles.levelBadgeText}>
+                LVL {progression?.level ?? 1}
+              </Text>
+            </Pressable>
+            <View style={styles.progressionCopy}>
+              <Text style={styles.progressionName} numberOfLines={1}>
+                {profile?.display_name ?? 'Player'}
+              </Text>
+              {equipped.playerTitle ? (
+                <Text style={styles.progressionTitle} numberOfLines={1}>
+                  {getCosmetic(equipped.playerTitle)?.displayName ??
+                    equipped.playerTitle}
+                </Text>
+              ) : null}
+              <XpProgressBar
+                compact
+                level={progression?.level ?? 1}
+                currentLevelXp={progression?.currentLevelXp ?? 0}
+                xpRequiredForNextLevel={
+                  progression?.xpRequiredForNextLevel ?? 100
+                }
+              />
+              <View style={styles.progressionLinks}>
+                {isDailyRewardsEnabled() ? (
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel="Open daily rewards"
+                    onPress={() => navigation.navigate('DailyReward')}
+                    style={({ pressed }) => pressed && styles.pressed}
+                  >
+                    <Text
+                      style={[
+                        styles.progLink,
+                        (dailyRewardStatus?.isAvailable ||
+                          progression?.isDailyRewardAvailable) &&
+                          styles.progLinkReady,
+                      ]}
+                    >
+                      {dailyRewardStatus?.isAvailable ||
+                      progression?.isDailyRewardAvailable
+                        ? 'DAILY READY'
+                        : 'DAILY'}
+                    </Text>
+                  </Pressable>
+                ) : null}
+                {isDailyMissionsEnabled() ? (
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel="Open daily missions"
+                    onPress={() => navigation.navigate('DailyMissions')}
+                    style={({ pressed }) => pressed && styles.pressed}
+                  >
+                    <Text
+                      style={[
+                        styles.progLink,
+                        (dailyMissions?.claimableCount ?? 0) > 0 &&
+                          styles.progLinkReady,
+                      ]}
+                    >
+                      MISSIONS
+                      {(dailyMissions?.claimableCount ?? 0) > 0
+                        ? ` · ${dailyMissions?.claimableCount}`
+                        : ''}
+                    </Text>
+                  </Pressable>
+                ) : null}
+              </View>
+            </View>
+          </View>
+        ) : null}
 
         {storeEnabled ? (
           <View style={styles.economyRow}>
@@ -168,13 +296,24 @@ export function HomeScreen({ navigation, route }: HomeScreenProps) {
             accessibilityLabel="Solo play 21 Blaze"
             fullWidth
           />
-          <BlazeButton
-            title="LIVE DUEL"
-            variant="secondary"
-            onPress={() => navigation.navigate('LiveDuelHome')}
-            accessibilityLabel="Live Duel friend matches"
-            fullWidth
-          />
+          {isLiveDuelEnabled() ? (
+            <BlazeButton
+              title="LIVE DUEL"
+              variant="secondary"
+              onPress={() => navigation.navigate('LiveDuelHome')}
+              accessibilityLabel="Live Duel friend matches"
+              fullWidth
+            />
+          ) : null}
+          {isRankedBetaEnabled() ? (
+            <BlazeButton
+              title="RANKED"
+              variant="secondary"
+              onPress={() => navigation.navigate('RankedHome')}
+              accessibilityLabel="Ranked competitive matches"
+              fullWidth
+            />
+          ) : null}
           {storeEnabled ? (
             <BlazeButton
               title="BLAZE STORE"
@@ -205,6 +344,13 @@ export function HomeScreen({ navigation, route }: HomeScreenProps) {
         <FlameIcon width={10} height={14} />
         <Text style={styles.version}>v{APP_VERSION}</Text>
       </View>
+
+      {progressionEnabled ? (
+        <LevelUpOverlay
+          pending={pendingLevelUp}
+          onContinue={acknowledgeLevelUp}
+        />
+      ) : null}
     </ScreenContainer>
   );
 }
@@ -266,6 +412,21 @@ const styles = StyleSheet.create({
     textTransform: 'none',
     color: colors.textSecondary,
   },
+  authRecovery: {
+    width: '100%',
+    gap: spacing.sm,
+    padding: spacing.md,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.08)',
+    backgroundColor: 'rgba(0,0,0,0.2)',
+  },
+  authRecoveryText: {
+    fontFamily: fontFamilies.body,
+    fontSize: 13,
+    color: colors.textSecondary,
+    textAlign: 'center',
+  },
   highScoreBox: {
     width: '100%',
     backgroundColor: colors.backgroundCard,
@@ -284,6 +445,64 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     gap: 12,
+  },
+  progressionPanel: {
+    width: '100%',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: colors.blazeSubtle,
+    backgroundColor: 'rgba(0,0,0,0.28)',
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.sm,
+  },
+  levelBadge: {
+    minWidth: 64,
+    paddingVertical: 10,
+    paddingHorizontal: 10,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: colors.blazeStrong,
+    backgroundColor: 'rgba(255,101,0,0.16)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  levelBadgeText: {
+    fontFamily: fontFamilies.display,
+    fontSize: 16,
+    color: colors.primary,
+  },
+  progressionCopy: {
+    flex: 1,
+    minWidth: 0,
+    gap: 4,
+  },
+  progressionName: {
+    fontFamily: fontFamilies.bodyBold,
+    fontSize: 14,
+    color: colors.textPrimary,
+  },
+  progressionTitle: {
+    fontFamily: fontFamilies.body,
+    fontSize: 11,
+    color: colors.gold,
+  },
+  progressionLinks: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 10,
+    marginTop: 2,
+  },
+  progLink: {
+    fontFamily: fontFamilies.bodyBold,
+    fontSize: 11,
+    letterSpacing: 0.8,
+    color: colors.textSecondary,
+  },
+  progLinkReady: {
+    color: colors.brightOrange,
   },
   coinBalance: {
     fontFamily: fontFamilies.bodyBold,

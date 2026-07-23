@@ -1,6 +1,8 @@
 import { create } from 'zustand';
 
 import { trackEvent } from '../monetization/analytics';
+import { presentCustomerCenter } from '../monetization/customerCenterService';
+import { presentBlazeProPaywall } from '../monetization/paywallService';
 import {
   findPackageForCatalogId,
   loadOfferings,
@@ -27,11 +29,14 @@ type PurchaseStore = {
   isLoadingOfferings: boolean;
   activePurchaseProductId: string | null;
   restoreStatus: PurchaseStatus;
+  paywallStatus: PurchaseStatus;
   error: string | null;
   initializePurchases: () => Promise<void>;
   loadOfferings: () => Promise<void>;
   purchaseProduct: (catalogProductId: string) => Promise<PurchaseStatus>;
   restorePurchases: () => Promise<PurchaseStatus>;
+  presentProPaywall: () => Promise<PurchaseStatus>;
+  openCustomerCenter: () => Promise<PurchaseStatus>;
   refreshCustomerInfo: () => Promise<void>;
   clearPurchaseError: () => void;
 };
@@ -48,6 +53,7 @@ export const usePurchaseStore = create<PurchaseStore>((set, get) => ({
   isLoadingOfferings: false,
   activePurchaseProductId: null,
   restoreStatus: 'idle',
+  paywallStatus: 'idle',
   error: null,
 
   initializePurchases: async () => {
@@ -160,6 +166,57 @@ export const usePurchaseStore = create<PurchaseStore>((set, get) => ({
     return result.status === 'unavailable' ? 'unavailable' : 'error';
   },
 
+  presentProPaywall: async () => {
+    const userId = currentUserId();
+    if (!userId) {
+      set({ error: 'Sign in required for purchases.' });
+      return 'error';
+    }
+    if (get().paywallStatus === 'purchasing') {
+      return 'purchasing';
+    }
+    set({ paywallStatus: 'purchasing', error: null });
+    const result = await presentBlazeProPaywall(userId);
+    if (result.status === 'success') {
+      if (result.entitlements) {
+        set({ customerInfo: result.entitlements, paywallStatus: 'success' });
+        await useCosmeticStore
+          .getState()
+          .restoreStoreOwnership([...result.entitlements.active]);
+      } else {
+        set({ paywallStatus: 'success' });
+        await get().refreshCustomerInfo();
+      }
+      return 'success';
+    }
+    if (result.status === 'cancelled') {
+      set({ paywallStatus: 'cancelled' });
+      return 'cancelled';
+    }
+    set({
+      paywallStatus: result.status,
+      error: result.message ?? 'Unable to present paywall.',
+    });
+    return result.status;
+  },
+
+  openCustomerCenter: async () => {
+    const userId = currentUserId();
+    if (!userId) {
+      set({ error: 'Sign in required.' });
+      return 'error';
+    }
+    const result = await presentCustomerCenter(userId);
+    if (result.status === 'opened') {
+      await get().refreshCustomerInfo();
+      return 'success';
+    }
+    set({
+      error: result.message,
+    });
+    return result.status === 'unavailable' ? 'unavailable' : 'error';
+  },
+
   refreshCustomerInfo: async () => {
     const userId = currentUserId();
     if (!userId) {
@@ -178,11 +235,30 @@ export const usePurchaseStore = create<PurchaseStore>((set, get) => ({
 export function useHasRemoveAdsEntitlement(): boolean {
   const customer = usePurchaseStore((state) => state.customerInfo);
   const server = usePurchaseStore((state) => state.serverEntitlements);
-  if (customer?.removeAds) {
+  if (customer?.removeAds || customer?.hasPro) {
     return true;
   }
   return (
-    server.includes('remove_ads') || server.includes('founders_bundle')
+    server.includes('ad_free') ||
+    server.includes('remove_ads') ||
+    server.includes('founders_pack') ||
+    server.includes('founders_bundle') ||
+    server.includes('pro') ||
+    server.includes('21 Blaze Pro') ||
+    server.includes('21_blaze_pro')
+  );
+}
+
+export function useHasBlazeProEntitlement(): boolean {
+  const customer = usePurchaseStore((state) => state.customerInfo);
+  const server = usePurchaseStore((state) => state.serverEntitlements);
+  if (customer?.hasPro) {
+    return true;
+  }
+  return (
+    server.includes('pro') ||
+    server.includes('21 Blaze Pro') ||
+    server.includes('21_blaze_pro')
   );
 }
 
