@@ -3,6 +3,7 @@ import { create } from 'zustand';
 
 import { isSupabaseConfigured, supabase } from '../lib/supabase';
 import type { ProfileRow } from '../lib/database.types';
+import { safeReleaseLog } from '../monetization/safeLog';
 
 const DISPLAY_NAME_PATTERN = /^[A-Za-z0-9_]{3,16}$/;
 
@@ -145,6 +146,9 @@ export const useAuthStore = create<AuthState>((set, get) => ({
           initializePromise = null;
         }
       } catch (error) {
+        safeReleaseLog('auth_initialization_failure', {
+          message: error instanceof Error ? error.name : 'unknown',
+        });
         set({
           isInitializing: false,
           authStatus: 'local',

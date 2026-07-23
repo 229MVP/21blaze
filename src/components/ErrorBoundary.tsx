@@ -26,8 +26,11 @@ export class ErrorBoundary extends Component<Props, State> {
     return { hasError: true };
   }
 
-  componentDidCatch(_error: Error, _info: ErrorInfo): void {
-    // Intentionally no console dump of potentially sensitive details in production UI.
+  componentDidCatch(error: Error, _info: ErrorInfo): void {
+    // Development-only safe breadcrumb — never include tokens, receipts, or payloads.
+    if (typeof __DEV__ !== 'undefined' && __DEV__) {
+      console.warn('[ErrorBoundary]', error.name, error.message.slice(0, 200));
+    }
   }
 
   private handleRetry = (): void => {
@@ -46,10 +49,10 @@ export class ErrorBoundary extends Component<Props, State> {
 
     return (
       <View style={styles.container} accessibilityRole="alert">
-        <Text style={styles.title}>SOMETHING WENT WRONG</Text>
+        <Text style={styles.title}>21 BLAZE</Text>
         <Text style={styles.body}>
-          21 Blaze hit an unexpected error. Solo Play usually still works after a
-          retry. No account data was shown here.
+          21 Blaze hit an unexpected problem. Solo Play usually still works after
+          a retry. No account data is shown here.
         </Text>
         <Pressable
           accessibilityRole="button"

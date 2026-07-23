@@ -17,7 +17,7 @@ export type PurchaseResult =
   | { status: Extract<PurchaseStatus, 'unavailable' | 'error'>; message: string };
 
 const WEB_UNAVAILABLE =
-  'In-app purchases are not available on web. Use a native development build.';
+  'Mobile purchases require the iOS or Android app. Web cannot complete store purchases.';
 
 export async function refreshCustomerInfo(
   _appUserId: string,
@@ -46,13 +46,16 @@ export function findPackageForCatalogId(
   offering: StoreOffering | null,
   catalogId: string,
 ): PurchasePackage | null {
+  // Web never loads native offerings; keep signature parity with native.
   if (!offering) {
     return null;
   }
   return (
     offering.packages.find(
       (pkg) => productIdToCatalogId(pkg.productId) === catalogId,
-    ) ?? null
+    ) ??
+    offering.packages.find((pkg) => pkg.identifier === catalogId) ??
+    null
   );
 }
 

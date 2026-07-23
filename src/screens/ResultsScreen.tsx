@@ -9,6 +9,7 @@ import { XpProgressBar } from '../components/Progression/XpProgressBar';
 import { ResultsPanel } from '../components/Results/ResultsPanel';
 import { ScreenContainer } from '../components/ScreenContainer';
 import {
+  isMonetizationBetaEnabled,
   isProgressionBetaEnabled,
   isRewardedCurrencyEnabled,
 } from '../config/featureFlags';
@@ -317,7 +318,9 @@ export function ResultsScreen({ navigation, route }: ResultsScreenProps) {
           ]}
         />
 
-        {gameOverReason !== 'quit' && matchId ? (
+        {isMonetizationBetaEnabled() &&
+        gameOverReason !== 'quit' &&
+        matchId ? (
           <View style={styles.coinPanel}>
             <Text style={styles.coinTitle}>COINS EARNED</Text>
             <Text style={styles.coinValue}>

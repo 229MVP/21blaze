@@ -10,7 +10,7 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.twentyoneblaze.app",
-      "buildNumber": "900",
+      "buildNumber": "901",
       "infoPlist": {
         "GADApplicationIdentifier": "ca-app-pub-3940256099942544~1458002511",
         "NSUserTrackingUsageDescription": "This identifier is used to deliver personalized ads when you allow tracking. Declining does not block Solo Play.",
@@ -21,7 +21,7 @@
     },
     "android": {
       "package": "com.twentyoneblaze.app",
-      "versionCode": 900,
+      "versionCode": 901,
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
         "foregroundImage": "./assets/android-icon-foreground.png",
@@ -50,7 +50,7 @@
         "projectId": "00000000-0000-0000-0000-000000000000"
       },
       "rcVersion": "0.9.0",
-      "note": "EAS projectId is a PLACEHOLDER — replace before any real EAS build. AdMob IDs above are Google TEST IDs and must not ship in store binaries."
+      "note": "EAS projectId is a PLACEHOLDER — replace via `eas init` / EXPO_TOKEN before preview builds. AdMob IDs above are Google TEST IDs (acceptable for Internal Beta preview; forbidden in production store binaries)."
     }
   }
 }
