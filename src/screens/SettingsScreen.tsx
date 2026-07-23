@@ -265,8 +265,16 @@ export function SettingsScreen({ navigation }: SettingsScreenProps) {
               onPress={confirmResetSettings}
               danger
               accessibilityLabel="Reset all settings preferences"
-              isLast
+              isLast={!__DEV__}
             />
+            {__DEV__ ? (
+              <SettingsRow
+                label="OPEN UI KIT PREVIEW"
+                onPress={() => navigation.navigate('BlazeUIKitPreview')}
+                accessibilityLabel="Open UI kit preview"
+                isLast
+              />
+            ) : null}
           </View>
         </ScrollView>
 

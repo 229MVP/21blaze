@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { Text, type TextStyle } from 'react-native';
-import { colors } from '../../theme';
+import { colors } from '../../theme/uiKit';
 import type { CardSuit as Suit } from './cardTypes';
 import { suitSymbol } from './cardUtils';
 export function CardSuit({ suit, size=20, style }: { suit: Suit; size?: number; style?: TextStyle }) {

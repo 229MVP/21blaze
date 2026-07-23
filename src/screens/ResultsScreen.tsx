@@ -1,13 +1,13 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
 
-import { FlameIcon } from '../components/branding/FlameIcon';
 import { BlazeButton } from '../components/buttons/BlazeButton';
+import { BlazeScreenBackground } from '../components/layout/BlazeScreenBackground';
 import { LevelUpOverlay } from '../components/Progression/LevelUpOverlay';
 import { XpProgressBar } from '../components/Progression/XpProgressBar';
-import { ResultsPanel } from '../components/Results/ResultsPanel';
-import { ScreenContainer } from '../components/ScreenContainer';
+import { ResultHero } from '../components/results/ResultHero';
+import { ResultsTable } from '../components/results/ResultsTable';
+import { BlazeButton as KitBlazeButton } from '../components/ui/BlazeButton';
 import {
   isMonetizationBetaEnabled,
   isProgressionBetaEnabled,
@@ -264,56 +264,50 @@ export function ResultsScreen({ navigation, route }: ResultsScreenProps) {
   };
 
   return (
-    <ScreenContainer style={styles.container} intensity="intense" padded={false}>
+    <BlazeScreenBackground variant="dramatic" embers>
       <ScrollView
         contentContainerStyle={styles.scroll}
         showsVerticalScrollIndicator={false}
       >
-        <View style={styles.header}>
-          <FlameIcon width={36} height={48} />
-          <Text style={styles.title}>{title}</Text>
-          {isNewHighScore ? (
-            <Text style={styles.newHigh}>NEW HIGH SCORE!</Text>
-          ) : null}
-          {localRank ? (
-            <Text
-              style={styles.localRank}
-              accessibilityLabel={`New local rank number ${localRank}`}
-            >
-              NEW LOCAL RANK #{localRank}
-            </Text>
-          ) : null}
-        </View>
+        <ResultHero
+          title={title}
+          subtitle={isNewHighScore ? 'NEW HIGH SCORE!' : undefined}
+          score={score}
+          crownVisible={isNewHighScore}
+          isHighScore={isNewHighScore}
+        />
+        {localRank ? (
+          <Text
+            style={styles.localRank}
+            accessibilityLabel={`New local rank number ${localRank}`}
+          >
+            NEW LOCAL RANK #{localRank}
+          </Text>
+        ) : null}
 
         <View style={styles.verifyBanner}>
           <Text style={styles.verifyLabel}>{verificationLabel}</Text>
           <Text style={styles.verifyDetail}>{verificationDetail}</Text>
         </View>
 
-        <LinearGradient
-          colors={[colors.backgroundCard, '#222222']}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={styles.scoreCard}
-        >
-          <Text style={styles.scoreLabel}>SCORE</Text>
-          <Text style={styles.scoreValue}>{score.toLocaleString()}</Text>
-        </LinearGradient>
-
-        <ResultsPanel
+        <ResultsTable
           rows={[
             {
-              label: 'High Score',
-              value: String(highScore),
-              highlight: isNewHighScore,
-              showNewBadge: isNewHighScore,
+              label: 'HIGH SCORE',
+              value: highScore.toLocaleString(),
+              gold: isNewHighScore,
             },
-            { label: 'Lanes Cleared', value: String(clearedLanes) },
-            { label: 'Cards Played', value: String(cardsPlayed) },
-            { label: 'Busts', value: `${busts}/${MAX_BUSTS}` },
+            { label: 'LANES CLEARED', value: clearedLanes },
+            { label: 'CARDS PLAYED', value: cardsPlayed },
+            { label: 'BUSTS', value: `${busts}/${MAX_BUSTS}` },
             {
-              label: 'Time Remaining',
+              label: 'TIME REMAINING',
               value: formatTimerSeconds(timeRemainingSeconds),
+              danger: timeRemainingSeconds === 0,
+            },
+            {
+              label: 'ENDING',
+              value: gameOverReason ?? '—',
             },
           ]}
         />
@@ -387,27 +381,20 @@ export function ResultsScreen({ navigation, route }: ResultsScreenProps) {
         ) : null}
 
         <View style={styles.actions}>
-          <BlazeButton title="PLAY AGAIN" onPress={playAgain} fullWidth />
-          {submissionStatus === 'verified' ? (
-            <BlazeButton
-              title="VIEW GLOBAL RANKING"
-              variant="outline"
-              onPress={() => navigation.navigate('HighScores')}
-              fullWidth
-            />
-          ) : (
-            <BlazeButton
-              title="VIEW HIGH SCORES"
-              variant="outline"
-              onPress={() => navigation.navigate('HighScores')}
-              fullWidth
-            />
-          )}
-          <BlazeButton
-            title="RETURN HOME"
+          <KitBlazeButton label="PLAY AGAIN" onPress={playAgain} size="lg" />
+          <KitBlazeButton
+            label={
+              submissionStatus === 'verified'
+                ? 'VIEW GLOBAL RANKING'
+                : 'VIEW HIGH SCORES'
+            }
             variant="secondary"
+            onPress={() => navigation.navigate('HighScores')}
+          />
+          <KitBlazeButton
+            label="RETURN HOME"
+            variant="ghost"
             onPress={returnHome}
-            fullWidth
           />
         </View>
       </ScrollView>
@@ -418,7 +405,7 @@ export function ResultsScreen({ navigation, route }: ResultsScreenProps) {
           onContinue={acknowledgeLevelUp}
         />
       ) : null}
-    </ScreenContainer>
+    </BlazeScreenBackground>
   );
 }
 

@@ -1,7 +1,7 @@
 
 import React, { memo } from 'react';
 import { View, Text, StyleSheet, type ViewStyle } from 'react-native';
-import { colors, radii, shadows } from '../../theme';
+import { colors, radii, shadows } from '../../theme/uiKit';
 import { CardSuit } from './CardSuit';
 import { CardBack } from './CardBack';
 import { cardAccessibilityLabel, suitSymbol } from './cardUtils';

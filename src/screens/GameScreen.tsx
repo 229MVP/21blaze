@@ -16,16 +16,17 @@ import Animated, {
 } from 'react-native-reanimated';
 import { LinearGradient } from 'expo-linear-gradient';
 
-import { BlazeButton } from '../components/buttons/BlazeButton';
-import { PlayingCard } from '../components/Card/PlayingCard';
+import { toKitCardProps } from '../components/cards/adaptGameCard';
+import { PlayingCard as KitPlayingCard } from '../components/cards/PlayingCard';
 import { GameFeedbackBanner } from '../components/GameFeedback/GameFeedbackBanner';
-import { BlazeStreakMeter } from '../components/GameHUD/BlazeStreakMeter';
-import { HUDStatBox } from '../components/GameHUD/HUDStatBox';
+import { BlazeStreak } from '../components/game/BlazeStreak';
+import { StatCounterRow } from '../components/game/StatCounterRow';
 import { GameLane } from '../components/GameLane/GameLane';
 import { GameStartCountdown } from '../components/GameTimer/GameStartCountdown';
 import { PauseOverlay } from '../components/GameTimer/PauseOverlay';
 import { TimerDisplay } from '../components/GameTimer/TimerDisplay';
-import { ScreenContainer } from '../components/ScreenContainer';
+import { BlazeScreenBackground } from '../components/layout/BlazeScreenBackground';
+import { BottomActionBar } from '../components/navigation/BottomActionBar';
 import { FINAL_WARNING_SECONDS, LANE_IDS, MAX_BUSTS } from '../game/constants';
 import type { Card } from '../game/types';
 import type { GameScreenProps } from '../navigation/navigationTypes';
@@ -282,12 +283,15 @@ export function GameScreen({ navigation }: GameScreenProps) {
   const showFinalBlaze =
     timerStatus === 'running' && timeRemainingSeconds <= FINAL_WARNING_SECONDS;
 
+  // Keep pulse tokens referenced so HUD feedback effects remain wired.
+  void scorePulseToken;
+  void multiplierPulseToken;
+  void multiplierFlashDanger;
+  void bustPulseToken;
+
   return (
-    <ScreenContainer
-      style={styles.screen}
-      intensity={showFinalBlaze ? 'intense' : 'subtle'}
-      padded={false}
-    >
+    <BlazeScreenBackground variant="gameplay" embers={showFinalBlaze}>
+      <View style={styles.screen}>
       <LinearGradient
         colors={[colors.backgroundSecondary, 'transparent']}
         style={styles.hudGlow}
@@ -304,31 +308,30 @@ export function GameScreen({ navigation }: GameScreenProps) {
       ) : null}
 
       <View style={styles.padded}>
-        <View style={styles.statsRow}>
-          <HUDStatBox
-            label="SCORE"
-            value={score.toLocaleString()}
-            pulseToken={scorePulseToken}
-            mode="pulse"
-          />
-          <HUDStatBox
-            label="MULTIPLIER"
-            value={`x${multiplier}`}
-            valueColor={showFinalBlaze ? colors.gold : colors.primary}
-            pulseToken={multiplierPulseToken}
-            mode={multiplierFlashDanger ? 'danger' : 'pulse'}
-          />
-          <HUDStatBox
-            label="BUSTS"
-            value={`${busts}/${MAX_BUSTS}`}
-            valueColor={busts > 0 ? colors.warningRed : colors.gold}
-            pulseToken={bustPulseToken}
-            mode="shake"
-          />
-          <HUDStatBox label="CARDS" value={String(cardsRemaining)} />
-        </View>
+        <StatCounterRow
+          items={[
+            { label: 'SCORE', value: score.toLocaleString(), accent: true },
+            {
+              label: 'MULTIPLIER',
+              value: `x${multiplier}`,
+              accent: showFinalBlaze,
+            },
+            {
+              label: 'BUSTS',
+              value: `${busts}/${MAX_BUSTS}`,
+              danger: busts > 0,
+            },
+            { label: 'CARDS', value: cardsRemaining },
+          ]}
+        />
 
-        <BlazeStreakMeter multiplier={multiplier} />
+        <View style={styles.streakBlock}>
+          <BlazeStreak
+            current={Math.max(0, Math.min(multiplier, 7))}
+            compact={isCompact}
+            label="BLAZE STREAK"
+          />
+        </View>
 
         <View style={styles.timerBlock}>
           {showFinalBlaze ? (
@@ -394,22 +397,21 @@ export function GameScreen({ navigation }: GameScreenProps) {
           />
         </View>
 
-        <View style={styles.actions}>
-          <BlazeButton
-            title="PAUSE"
-            variant="secondary"
-            onPress={handlePause}
-            disabled={timerStatus !== 'running'}
-            style={styles.actionBtn}
-          />
-          <BlazeButton
-            title="RESTART"
-            onPress={confirmRestart}
-            style={styles.actionBtn}
-          />
-        </View>
+        <BottomActionBar
+          primaryAction={{
+            label: 'RESTART',
+            onPress: confirmRestart,
+          }}
+          secondaryAction={{
+            label: 'PAUSE',
+            onPress: handlePause,
+            variant: 'secondary',
+          }}
+          safeAreaEnabled={false}
+        />
       </View>
-    </ScreenContainer>
+      </View>
+    </BlazeScreenBackground>
   );
 }
 
@@ -441,14 +443,18 @@ function ActiveCardStage({ card, compact, cardStyle }: ActiveCardStageProps) {
     transform: [{ scale: scale.value }],
   }));
 
+  const kitProps = toKitCardProps(card);
+  // Preserve theme selection side-effect without forcing legacy card chrome.
+  void cardStyle;
+
   return (
     <Animated.View key={card.id} style={[styles.activeCardWrap, animatedStyle]}>
       <View style={styles.cardGlow} pointerEvents="none" />
-      <PlayingCard
-        card={card}
+      <KitPlayingCard
+        rank={kitProps.rank}
+        suit={kitProps.suit}
         size={compact ? 'medium' : 'large'}
-        glowing
-        cardStyle={cardStyle}
+        highlighted
       />
     </Animated.View>
   );
@@ -456,7 +462,11 @@ function ActiveCardStage({ card, compact, cardStyle }: ActiveCardStageProps) {
 
 const styles = StyleSheet.create({
   screen: {
+    flex: 1,
     overflow: 'hidden',
+  },
+  streakBlock: {
+    marginBottom: spacing.sm,
   },
   hudGlow: {
     position: 'absolute',

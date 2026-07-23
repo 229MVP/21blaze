@@ -1,14 +1,22 @@
 import { useEffect } from 'react';
-import { Pressable, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
-import Svg, { Path } from 'react-native-svg';
+import {
+  Image,
+  Pressable,
+  StyleSheet,
+  Text,
+  View,
+  useWindowDimensions,
+} from 'react-native';
+import { Path } from 'react-native-svg';
 
-import { BlazeLogo } from '../components/branding/BlazeLogo';
 import { FlameIcon } from '../components/branding/FlameIcon';
-import { BlazeButton } from '../components/buttons/BlazeButton';
+import { BlazeButton as LegacyBlazeButton } from '../components/buttons/BlazeButton';
+import { BlazeScreenBackground } from '../components/layout/BlazeScreenBackground';
+import { SvgRoot as Svg } from '../components/svg/SvgRoot';
+import { BlazeButton } from '../components/ui/BlazeButton';
 import { XpProgressBar } from '../components/Progression/XpProgressBar';
 import { LevelUpOverlay } from '../components/Progression/LevelUpOverlay';
 import { PlayerProfileButton } from '../components/Profile/PlayerProfileButton';
-import { ScreenContainer } from '../components/ScreenContainer';
 import {
   isDailyMissionsEnabled,
   isDailyRewardsEnabled,
@@ -40,18 +48,18 @@ import { fontFamilies, typography } from '../theme/typography';
 
 function TrophyIcon({ size = 14 }: { size?: number }) {
   return (
-    <Svg
-      width={size}
-      height={size}
-      viewBox="0 0 24 24"
+    <View
       accessibilityElementsHidden
       importantForAccessibility="no-hide-descendants"
+      style={{ width: size, height: size }}
     >
-      <Path
-        d="M7 4h10v2h3v2c0 2.2-1.5 4-3.5 4.6A4.5 4.5 0 0 1 14 15.9V18h2v2H8v-2h2v-2.1A4.5 4.5 0 0 1 7.5 12.6C5.5 12 4 10.2 4 8V6h3V4zm2 2v1.5H6.1c.2 1 .9 1.8 1.9 2.1V6zm8.9 0H15v3.6c1-.3 1.7-1.1 1.9-2.1H17.9z"
-        fill={colors.gold}
-      />
-    </Svg>
+      <Svg width={size} height={size} viewBox="0 0 24 24">
+        <Path
+          d="M7 4h10v2h3v2c0 2.2-1.5 4-3.5 4.6A4.5 4.5 0 0 1 14 15.9V18h2v2H8v-2h2v-2.1A4.5 4.5 0 0 1 7.5 12.6C5.5 12 4 10.2 4 8V6h3V4zm2 2v1.5H6.1c.2 1 .9 1.8 1.9 2.1V6zm8.9 0H15v3.6c1-.3 1.7-1.1 1.9-2.1H17.9z"
+          fill={colors.gold}
+        />
+      </Svg>
+    </View>
   );
 }
 
@@ -148,10 +156,20 @@ export function HomeScreen({ navigation, route }: HomeScreenProps) {
     navigation.setParams({ fromSoloComplete: undefined });
   }, [hasRemoveAds, navigation, route.params?.fromSoloComplete]);
 
+  const logoDimension = logoSize === 'lg' ? 220 : logoSize === 'md' ? 180 : 140;
+
   return (
-    <ScreenContainer style={styles.container} intensity="intense">
+    <BlazeScreenBackground variant="home" embers>
+      <View style={styles.container}>
       <View style={styles.content}>
-        <BlazeLogo size={logoSize} showTagline />
+        <Image
+          source={require('../../assets/branding/21-blaze-logo-512.png')}
+          style={[styles.logo, { width: logoDimension, height: logoDimension }]}
+          resizeMode="contain"
+          accessibilityLabel="21 Blaze"
+          accessibilityRole="image"
+        />
+        <Text style={styles.tagline}>BUILD YOUR STREAK. BEAT 21.</Text>
 
         <View style={styles.statusChip} accessibilityRole="text">
           <View
@@ -172,7 +190,7 @@ export function HomeScreen({ navigation, route }: HomeScreenProps) {
             <Text style={styles.authRecoveryText}>
               Online features unavailable. Solo Play still works offline.
             </Text>
-            <BlazeButton
+            <LegacyBlazeButton
               title={isInitializingAuth ? 'RETRYING…' : 'RETRY ONLINE'}
               variant="outline"
               loading={isInitializingAuth}
@@ -291,51 +309,50 @@ export function HomeScreen({ navigation, route }: HomeScreenProps) {
 
         <View style={styles.actions}>
           <BlazeButton
-            title="SOLO PLAY"
+            label="SOLO PLAY"
             onPress={() => navigation.navigate('Game')}
             accessibilityLabel="Solo play 21 Blaze"
-            fullWidth
+            size="lg"
           />
           {isLiveDuelEnabled() ? (
             <BlazeButton
-              title="LIVE DUEL"
+              label="LIVE DUEL"
               variant="secondary"
               onPress={() => navigation.navigate('LiveDuelHome')}
               accessibilityLabel="Live Duel friend matches"
-              fullWidth
             />
           ) : null}
           {isRankedBetaEnabled() ? (
             <BlazeButton
-              title="RANKED"
+              label="RANKED"
               variant="secondary"
               onPress={() => navigation.navigate('RankedHome')}
               accessibilityLabel="Ranked competitive matches"
-              fullWidth
             />
           ) : null}
           {storeEnabled ? (
             <BlazeButton
-              title="BLAZE STORE"
-              variant="outline"
+              label="BLAZE STORE"
+              variant="secondary"
               onPress={() => navigation.navigate('BlazeStore')}
               accessibilityLabel="Open Blaze Store"
-              fullWidth
             />
           ) : null}
           <View style={styles.secondaryRow}>
-            <BlazeButton
-              title="HOW TO PLAY"
-              variant="outline"
-              onPress={() => navigation.navigate('HowToPlay')}
-              style={styles.halfButton}
-            />
-            <BlazeButton
-              title="SETTINGS"
-              variant="outline"
-              onPress={() => navigation.navigate('Settings')}
-              style={styles.halfButton}
-            />
+            <View style={styles.halfButton}>
+              <BlazeButton
+                label="HOW TO PLAY"
+                variant="ghost"
+                onPress={() => navigation.navigate('HowToPlay')}
+              />
+            </View>
+            <View style={styles.halfButton}>
+              <BlazeButton
+                label="SETTINGS"
+                variant="ghost"
+                onPress={() => navigation.navigate('Settings')}
+              />
+            </View>
           </View>
         </View>
       </View>
@@ -351,13 +368,17 @@ export function HomeScreen({ navigation, route }: HomeScreenProps) {
           onContinue={acknowledgeLevelUp}
         />
       ) : null}
-    </ScreenContainer>
+      </View>
+    </BlazeScreenBackground>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
+    flex: 1,
     justifyContent: 'space-between',
+    paddingHorizontal: spacing.md,
+    paddingBottom: spacing.sm,
   },
   content: {
     flex: 1,
@@ -367,6 +388,16 @@ const styles = StyleSheet.create({
     maxWidth: 420,
     alignSelf: 'center',
     gap: spacing.md,
+  },
+  logo: {
+    alignSelf: 'center',
+  },
+  tagline: {
+    fontFamily: fontFamilies.bodyBold,
+    fontSize: 13,
+    letterSpacing: 1.4,
+    color: colors.gold,
+    textAlign: 'center',
   },
   statusChip: {
     flexDirection: 'row',
