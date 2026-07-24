@@ -8,12 +8,9 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated';
 
-import { useReducedMotionSetting } from '../../hooks/useReducedMotionSetting';
 import { formatTimerSeconds } from '../../game/timerEngine';
-import { colors } from '../../theme/colors';
-import { radius } from '../../theme/radius';
-import { spacing } from '../../theme/spacing';
-import { fontFamilies, typography } from '../../theme/typography';
+import { useReducedMotionSetting } from '../../hooks/useReducedMotionSetting';
+import { colors as kitColors, radii, spacing, typography } from '../../theme/uiKit';
 
 type TimerDisplayProps = {
   seconds: number;
@@ -52,14 +49,21 @@ export function TimerDisplay({
 
   return (
     <View
-      style={styles.container}
-      accessibilityLabel={`Timer ${formatTimerSeconds(seconds)}`}
+      style={[styles.container, isWarning && styles.containerWarning]}
+      accessibilityLabel={`Timer ${formatTimerSeconds(seconds)}${
+        isPaused ? ', paused' : ''
+      }`}
     >
       <Text style={styles.label}>TIME</Text>
       <Animated.Text
         style={[
           styles.value,
-          { color: isWarning ? colors.warningRed : colors.primary },
+          {
+            color: isWarning
+              ? kitColors.status.danger
+              : kitColors.fire.brightOrange,
+          },
+          isWarning && styles.valueWarning,
           animatedStyle,
         ]}
       >
@@ -72,30 +76,42 @@ export function TimerDisplay({
 
 const styles = StyleSheet.create({
   container: {
-    minWidth: 88,
+    minWidth: 96,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: colors.backgroundCard,
-    borderColor: colors.blazeSubtle,
+    backgroundColor: 'rgba(0,0,0,0.45)',
+    borderColor: kitColors.border.orange,
     borderWidth: 1,
-    borderRadius: radius.md,
-    paddingHorizontal: spacing.sm,
+    borderRadius: radii.md,
+    paddingHorizontal: spacing.md,
     paddingVertical: spacing.sm,
   },
+  containerWarning: {
+    borderColor: 'rgba(255,52,38,0.55)',
+    backgroundColor: 'rgba(40,8,6,0.55)',
+  },
   label: {
-    ...typography.label,
+    color: kitColors.text.secondary,
+    fontFamily: typography.families.condensed,
     fontSize: 10,
+    letterSpacing: 1.1,
     marginBottom: 2,
   },
   value: {
-    fontFamily: fontFamilies.display,
-    fontSize: 22,
-    lineHeight: 24,
+    fontFamily: typography.families.display,
+    fontSize: 26,
+    lineHeight: 28,
+  },
+  valueWarning: {
+    textShadowColor: 'rgba(255,52,38,0.55)',
+    textShadowOffset: { width: 0, height: 0 },
+    textShadowRadius: 10,
   },
   paused: {
-    ...typography.label,
     marginTop: 2,
-    color: colors.gold,
+    color: kitColors.fire.gold,
+    fontFamily: typography.families.condensed,
     fontSize: 10,
+    letterSpacing: 1,
   },
 });

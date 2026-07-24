@@ -11,9 +11,7 @@ import Animated, {
 } from 'react-native-reanimated';
 
 import type { MoveEvent } from '../../game/types';
-import { colors } from '../../theme/colors';
-import { spacing } from '../../theme/spacing';
-import { typography } from '../../theme/typography';
+import { colors as kitColors, radii, spacing, typography } from '../../theme/uiKit';
 
 type GameFeedbackBannerProps = {
   event: MoveEvent | null;
@@ -47,7 +45,10 @@ function getBannerCopy(event: MoveEvent): { title: string; detail: string } | nu
   }
 }
 
-export function GameFeedbackBanner({ event, onFinished }: GameFeedbackBannerProps) {
+export function GameFeedbackBanner({
+  event,
+  onFinished,
+}: GameFeedbackBannerProps) {
   const opacity = useSharedValue(0);
   const translateY = useSharedValue(10);
   const scale = useSharedValue(0.94);
@@ -58,7 +59,6 @@ export function GameFeedbackBanner({ event, onFinished }: GameFeedbackBannerProp
     }
 
     if (event.type === 'placed') {
-      // Keep the event briefly so matching lane pulse can run.
       const timer = setTimeout(() => {
         onFinished();
       }, 280);
@@ -75,11 +75,15 @@ export function GameFeedbackBanner({ event, onFinished }: GameFeedbackBannerProp
       withTiming(1, { duration: ENTER_MS, easing: Easing.out(Easing.cubic) }),
       withDelay(
         HOLD_MS,
-        withTiming(0, { duration: EXIT_MS, easing: Easing.in(Easing.cubic) }, (finished) => {
-          if (finished) {
-            runOnJS(onFinished)();
-          }
-        }),
+        withTiming(
+          0,
+          { duration: EXIT_MS, easing: Easing.in(Easing.cubic) },
+          (finished) => {
+            if (finished) {
+              runOnJS(onFinished)();
+            }
+          },
+        ),
       ),
     );
 
@@ -97,10 +101,7 @@ export function GameFeedbackBanner({ event, onFinished }: GameFeedbackBannerProp
 
   const animatedStyle = useAnimatedStyle(() => ({
     opacity: opacity.value,
-    transform: [
-      { translateY: translateY.value },
-      { scale: scale.value },
-    ],
+    transform: [{ translateY: translateY.value }, { scale: scale.value }],
   }));
 
   if (!event || event.type === 'placed') {
@@ -113,7 +114,7 @@ export function GameFeedbackBanner({ event, onFinished }: GameFeedbackBannerProp
   }
 
   const isBust = event.type === 'bust';
-  const accent = isBust ? colors.danger : colors.primary;
+  const accent = isBust ? kitColors.status.danger : kitColors.fire.gold;
 
   return (
     <Animated.View
@@ -122,7 +123,9 @@ export function GameFeedbackBanner({ event, onFinished }: GameFeedbackBannerProp
         styles.banner,
         {
           borderColor: accent,
-          backgroundColor: isBust ? 'rgba(231, 76, 60, 0.18)' : 'rgba(255, 106, 0, 0.18)',
+          backgroundColor: isBust
+            ? 'rgba(255,52,38,0.18)'
+            : 'rgba(255,101,0,0.18)',
         },
         animatedStyle,
       ]}
@@ -142,21 +145,23 @@ const styles = StyleSheet.create({
     minWidth: 220,
     maxWidth: '90%',
     borderWidth: 1,
-    borderRadius: 14,
+    borderRadius: radii.lg,
     paddingHorizontal: spacing.lg,
     paddingVertical: spacing.md,
     alignItems: 'center',
     gap: spacing.xs,
   },
   title: {
-    ...typography.title,
+    fontFamily: typography.families.display,
     fontSize: 22,
     textAlign: 'center',
+    letterSpacing: 1,
   },
   detail: {
-    ...typography.body,
-    color: colors.textPrimary,
+    fontFamily: typography.families.condensed,
     fontWeight: '700',
+    color: kitColors.text.primary,
     textAlign: 'center',
+    fontSize: 13,
   },
 });

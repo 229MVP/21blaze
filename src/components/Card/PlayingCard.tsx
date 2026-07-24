@@ -5,9 +5,8 @@ import { paletteForCardTheme } from '../../cosmetics/themePalettes';
 import { SUIT_SYMBOLS } from '../../game/constants';
 import type { Card, Rank, Suit } from '../../game/types';
 import type { CardStyle } from '../../settings/types';
-import { colors } from '../../theme/colors';
+import { colors as kitColors, radii, shadows as kitShadows } from '../../theme/uiKit';
 import { fontFamilies } from '../../theme/typography';
-import { shadows } from '../../theme/shadows';
 
 export type PlayingCardSize = 'small' | 'medium' | 'large';
 
@@ -15,6 +14,9 @@ type PlayingCardProps = {
   card: Card;
   size?: PlayingCardSize;
   glowing?: boolean;
+  selected?: boolean;
+  disabled?: boolean;
+  faceDown?: boolean;
   cardStyle?: CardStyle | string;
   /** @deprecated Prefer size="small". Kept for existing call sites. */
   compact?: boolean;
@@ -28,6 +30,7 @@ type SizeConfig = {
   centerSuitFontSize: number;
   padding: number;
   borderRadius: number;
+  showCenter: boolean;
 };
 
 type StylePalette = {
@@ -42,29 +45,32 @@ const SIZE_CONFIG: Record<PlayingCardSize, SizeConfig> = {
   small: {
     width: 36,
     height: 50,
-    rankFontSize: 10,
-    suitFontSize: 9,
-    centerSuitFontSize: 18,
+    rankFontSize: 11,
+    suitFontSize: 10,
+    centerSuitFontSize: 0,
     padding: 3,
-    borderRadius: 4,
+    borderRadius: radii.xs,
+    showCenter: false,
   },
   medium: {
     width: 72,
-    height: 100,
-    rankFontSize: 16,
-    suitFontSize: 14,
-    centerSuitFontSize: 34,
+    height: 104,
+    rankFontSize: 18,
+    suitFontSize: 15,
+    centerSuitFontSize: 32,
     padding: 5,
-    borderRadius: 6,
+    borderRadius: radii.sm,
+    showCenter: true,
   },
   large: {
-    width: 100,
-    height: 140,
-    rankFontSize: 22,
-    suitFontSize: 18,
+    width: 108,
+    height: 154,
+    rankFontSize: 25,
+    suitFontSize: 20,
     centerSuitFontSize: 48,
     padding: 7,
-    borderRadius: 8,
+    borderRadius: radii.sm,
+    showCenter: true,
   },
 };
 
@@ -85,11 +91,25 @@ const VALID_RANKS: readonly Rank[] = [
   'K',
 ];
 
+/** Kit-forward defaults for classic / unset themes. */
+function resolvePalette(cardStyle: string): StylePalette {
+  const theme = String(cardStyle || 'classic');
+  if (theme === 'classic' || theme === 'classic_cards') {
+    return {
+      face: ['#F7F3EA', '#EFE8DA'],
+      border: '#2A2E33',
+      redSuit: kitColors.suits.red,
+      blackSuit: kitColors.suits.black,
+      glow: false,
+    };
+  }
+  return paletteForCardTheme(theme);
+}
+
 function getSuitColor(suit: Suit, palette: StylePalette): string {
   if (suit === 'hearts' || suit === 'diamonds') {
     return palette.redSuit;
   }
-
   return palette.blackSuit;
 }
 
@@ -122,22 +142,72 @@ function resolveCardDisplay(
   };
 }
 
+function FaceDownCard({
+  width,
+  height,
+  borderRadius,
+}: {
+  width: number;
+  height: number;
+  borderRadius: number;
+}) {
+  return (
+    <View
+      accessibilityLabel="Face-down card"
+      style={[
+        styles.shell,
+        {
+          width,
+          height,
+          borderRadius,
+          borderColor: kitColors.border.orange,
+          backgroundColor: kitColors.background.elevated,
+        },
+        kitShadows.panel,
+      ]}
+    >
+      <LinearGradient
+        colors={['#2A1810', '#15181B', '#3A1C0A']}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={[styles.card, { borderRadius, padding: 6 }]}
+      >
+        <View style={styles.faceDownMark} />
+      </LinearGradient>
+    </View>
+  );
+}
+
 export function PlayingCard({
   card,
   size,
   glowing = false,
+  selected = false,
+  disabled = false,
+  faceDown = false,
   cardStyle = 'classic',
   compact = false,
 }: PlayingCardProps) {
   const resolvedSize: PlayingCardSize = size ?? (compact ? 'small' : 'medium');
   const config = SIZE_CONFIG[resolvedSize];
-  const palette = paletteForCardTheme(String(cardStyle));
+  const palette = resolvePalette(String(cardStyle));
   const { rankLabel, suitSymbol, suitColor, accessibilityLabel } =
     resolveCardDisplay(card, palette);
-  const showGlow = glowing || (palette.glow && glowing);
+  const showGlow = glowing || selected;
+
+  if (faceDown) {
+    return (
+      <FaceDownCard
+        width={config.width}
+        height={config.height}
+        borderRadius={config.borderRadius}
+      />
+    );
+  }
 
   return (
     <View
+      accessibilityRole="image"
       accessibilityLabel={`${accessibilityLabel}, ${cardStyle} style`}
       style={[
         styles.shell,
@@ -145,9 +215,10 @@ export function PlayingCard({
           width: config.width,
           height: config.height,
           borderRadius: config.borderRadius,
-          borderColor: palette.border,
+          borderColor: showGlow ? kitColors.border.active : palette.border,
+          opacity: disabled ? 0.45 : 1,
         },
-        showGlow || (glowing && palette.glow) ? shadows.cardGlow : shadows.card,
+        showGlow ? kitShadows.glow : kitShadows.panel,
         glowing && styles.activeGlow,
       ]}
     >
@@ -187,18 +258,20 @@ export function PlayingCard({
           </Text>
         </View>
 
-        <View style={styles.center}>
-          <Text
-            style={{
-              color: suitColor,
-              fontSize: config.centerSuitFontSize,
-              lineHeight: config.centerSuitFontSize + 2,
-              textAlign: 'center',
-            }}
-          >
-            {suitSymbol}
-          </Text>
-        </View>
+        {config.showCenter ? (
+          <View style={styles.center}>
+            <Text
+              style={{
+                color: suitColor,
+                fontSize: config.centerSuitFontSize,
+                lineHeight: config.centerSuitFontSize + 2,
+                textAlign: 'center',
+              }}
+            >
+              {suitSymbol}
+            </Text>
+          </View>
+        ) : null}
 
         <View style={[styles.corner, styles.cornerBottom]}>
           <Text
@@ -231,13 +304,13 @@ export function PlayingCard({
 const styles = StyleSheet.create({
   shell: {
     position: 'relative',
-    borderWidth: 1.5,
+    borderWidth: 1.2,
     overflow: 'hidden',
-    backgroundColor: colors.cardFace,
+    backgroundColor: '#F7F3EA',
   },
   activeGlow: {
-    shadowColor: colors.primary,
-    shadowOpacity: 0.65,
+    shadowColor: kitColors.fire.orange,
+    shadowOpacity: 0.55,
     shadowRadius: 14,
   },
   card: {
@@ -255,17 +328,24 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   cornerTop: {
-    top: 2,
-    left: 3,
+    top: 3,
+    left: 4,
   },
   cornerBottom: {
-    right: 3,
-    bottom: 2,
+    right: 4,
+    bottom: 3,
     transform: [{ rotate: '180deg' }],
   },
   rank: {
     fontFamily: fontFamilies.bodyBold,
-    fontWeight: '700',
+    fontWeight: '900',
     textAlign: 'center',
+  },
+  faceDownMark: {
+    flex: 1,
+    borderWidth: 1,
+    borderColor: 'rgba(255,138,0,0.35)',
+    borderRadius: radii.xs,
+    margin: 4,
   },
 });
