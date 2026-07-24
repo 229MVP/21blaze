@@ -1,2 +1,0 @@
-
-import { useEffect } from 'react'; import { useAnimatedStyle,useSharedValue,withSequence,withTiming } from 'react-native-reanimated'; export function useLaneClearAnimation(trigger:unknown,reduced=false){const s=useSharedValue(1);useEffect(()=>{if(trigger==null)return;s.value=reduced?1:withSequence(withTiming(1.05,{duration:120}),withTiming(1,{duration:180}))},[trigger,reduced,s]);return useAnimatedStyle(()=>({transform:[{scale:s.value}]}))}

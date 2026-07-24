@@ -7,9 +7,11 @@ Copy `assets/` and the required `src/` folders into your existing Expo project. 
 ## 2. Install Expo-compatible dependencies
 
 ```bash
-npx expo install expo-linear-gradient react-native-svg react-native-reanimated react-native-safe-area-context expo-haptics expo-av expo-font
+npx expo install expo-linear-gradient react-native-svg react-native-reanimated react-native-safe-area-context expo-haptics expo-audio expo-font
 npm install @expo-google-fonts/anton @expo-google-fonts/roboto-condensed
 ```
+
+Use `expo-audio` for short sound effects. Do not add `expo-av` for new audio work on Expo SDK 57+.
 
 The included fire-ring uses a frame-sequence fallback, so Lottie is optional.
 

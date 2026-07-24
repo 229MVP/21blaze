@@ -31,6 +31,8 @@ import { useReducedMotionSetting } from '../hooks/useReducedMotionSetting';
 import { trackEvent } from '../monetization/analytics';
 import { showRewardedAd } from '../monetization/rewardedAdService';
 import type { ResultsScreenProps } from '../navigation/navigationTypes';
+import { blazeAudio } from '../services/audio/blazeAudio';
+import { blazeHaptics } from '../services/haptics/blazeHaptics';
 import {
   findLocalRank,
   useScoreHistoryStore,
@@ -191,6 +193,16 @@ export function ResultsScreen({ navigation, route }: ResultsScreenProps) {
   }, [progression, progressionEnabled]);
 
   const isNewHighScore = score > 0 && score >= highScore;
+  const highScoreFeedbackKey = matchId ?? `${score}-${gameOverReason ?? 'result'}`;
+
+  useEffect(() => {
+    if (!isNewHighScore) {
+      return;
+    }
+    blazeAudio.play('newHighScore', `high:${highScoreFeedbackKey}`);
+    blazeHaptics.highScore(`high:${highScoreFeedbackKey}`);
+  }, [highScoreFeedbackKey, isNewHighScore]);
+
   const { title, subtitle } = getResultCopy(gameOverReason, isNewHighScore);
   const showStopwatch =
     gameOverReason === 'timeExpired' && !isNewHighScore;

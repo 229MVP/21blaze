@@ -1,2 +1,0 @@
-
-import { useEffect,useState } from 'react'; export function useScoreCountAnimation(target:number,duration=500,reduced=false){const [value,setValue]=useState(target);useEffect(()=>{if(reduced){setValue(target);return}const start=value,delta=target-start,t0=Date.now();const id=setInterval(()=>{const p=Math.min(1,(Date.now()-t0)/duration);setValue(Math.round(start+delta*p));if(p>=1)clearInterval(id)},16);return()=>clearInterval(id)},[target,duration,reduced]);return value}
