@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   Platform,
@@ -7,31 +7,49 @@ import {
   StyleSheet,
   Text,
   View,
+  useWindowDimensions,
 } from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { Path } from 'react-native-svg';
 
 import { FlameIcon } from '../components/branding/FlameIcon';
-import { BlazeButton } from '../components/buttons/BlazeButton';
+import { BlazeScreenBackground } from '../components/layout/BlazeScreenBackground';
+import { ScreenHeader } from '../components/layout/ScreenHeader';
+import {
+  LeaderboardTable,
+  type LeaderboardEntry,
+} from '../components/leaderboard/LeaderboardTable';
 import { BlazeSegmentedControl } from '../components/Navigation/BlazeSegmentedControl';
-import { ScreenHeader } from '../components/Navigation/ScreenHeader';
-import { ScreenContainer } from '../components/ScreenContainer';
 import { SvgRoot as Svg } from '../components/svg/SvgRoot';
+import { BlazeButton } from '../components/ui/BlazeButton';
+import { BlazePanel } from '../components/ui/BlazePanel';
 import type { GlobalLeaderboardRow } from '../lib/database.types';
 import type { RootStackParamList } from '../navigation/navigationTypes';
-import type { ScoreEntry } from '../scores/types';
 import { loadGlobalLeaderboard } from '../services/leaderboardService';
 import { useAuthStore } from '../store/useAuthStore';
 import { useScoreHistoryStore } from '../store/useScoreHistoryStore';
-import { colors } from '../theme/colors';
-import { radius } from '../theme/radius';
-import { spacing } from '../theme/spacing';
-import { fontFamilies, typography } from '../theme/typography';
+import {
+  colors as kitColors,
+  spacing as kitSpacing,
+  typography as kitTypography,
+} from '../theme/uiKit';
 import { formatCompletedDate } from '../utils/formatCompletedDate';
 
-type HighScoresScreenProps = NativeStackScreenProps<RootStackParamList, 'HighScores'>;
+type HighScoresScreenProps = NativeStackScreenProps<
+  RootStackParamList,
+  'HighScores'
+>;
 
 type LeaderboardTab = 'local' | 'global' | 'friends';
+
+const TAB_OPTIONS: { label: string; value: LeaderboardTab }[] = [
+  { label: 'LOCAL', value: 'local' },
+  { label: 'GLOBAL', value: 'global' },
+  { label: 'FRIENDS', value: 'friends' },
+];
+
+const GLOBAL_TIMEOUT_MS = 12000;
+const CONTENT_MAX = 410;
 
 function TrophyIcon() {
   return (
@@ -43,99 +61,45 @@ function TrophyIcon() {
       <Svg width={28} height={28} viewBox="0 0 24 24">
         <Path
           d="M7 4h10v2h3v2c0 2.2-1.5 4-3.5 4.6A4.5 4.5 0 0 1 14 15.9V18h2v2H8v-2h2v-2.1A4.5 4.5 0 0 1 7.5 12.6C5.5 12 4 10.2 4 8V6h3V4zm2 2v1.5H6.1c.2 1 .9 1.8 1.9 2.1V6zm8.9 0H15v3.6c1-.3 1.7-1.1 1.9-2.1H17.9z"
-          fill={colors.gold}
+          fill={kitColors.fire.gold}
         />
       </Svg>
     </View>
   );
 }
 
-function rankColor(rank: number): string {
-  if (rank === 1) {
-    return colors.gold;
+async function loadGlobalWithTimeout(
+  limit: number,
+): Promise<GlobalLeaderboardRow[]> {
+  let timeoutId: ReturnType<typeof setTimeout> | undefined;
+  try {
+    return await Promise.race([
+      loadGlobalLeaderboard(limit),
+      new Promise<never>((_, reject) => {
+        timeoutId = setTimeout(() => {
+          reject(new Error('Request timed out. Try again.'));
+        }, GLOBAL_TIMEOUT_MS);
+      }),
+    ]);
+  } finally {
+    if (timeoutId) {
+      clearTimeout(timeoutId);
+    }
   }
-  if (rank === 2) {
-    return '#C0C0C0';
-  }
-  if (rank === 3) {
-    return '#CD7F32';
-  }
-  return colors.textSecondary;
-}
-
-function RankBadge({ rank }: { rank: number }) {
-  const medal =
-    rank === 1 ? '1st' : rank === 2 ? '2nd' : rank === 3 ? '3rd' : `#${rank}`;
-
-  return (
-    <View style={styles.rankWrap}>
-      <Text style={[styles.rank, { color: rankColor(rank) }]}>{rank}</Text>
-      {rank <= 3 ? (
-        <Text style={[styles.medal, { color: rankColor(rank) }]}>{medal}</Text>
-      ) : null}
-    </View>
-  );
-}
-
-function LocalRow({ entry, rank }: { entry: ScoreEntry; rank: number }) {
-  return (
-    <View
-      style={[styles.row, rank === 1 && styles.rowGold]}
-      accessibilityLabel={`Rank ${rank}, score ${entry.score}, ${entry.lanesCleared} lanes cleared, ${entry.cardsPlayed} cards played, ${formatCompletedDate(entry.completedAt)}`}
-    >
-      <RankBadge rank={rank} />
-      <View style={styles.rowCopy}>
-        <Text style={[styles.score, rank === 1 && styles.scoreGold]}>
-          {entry.score.toLocaleString()}
-        </Text>
-        <Text style={styles.meta}>
-          {entry.lanesCleared} lanes · {entry.cardsPlayed} cards
-        </Text>
-        <Text style={styles.date}>{formatCompletedDate(entry.completedAt)}</Text>
-      </View>
-    </View>
-  );
-}
-
-function GlobalRow({
-  entry,
-  isCurrentPlayer,
-}: {
-  entry: GlobalLeaderboardRow;
-  isCurrentPlayer: boolean;
-}) {
-  return (
-    <View
-      style={[
-        styles.row,
-        entry.rank === 1 && styles.rowGold,
-        isCurrentPlayer && styles.rowCurrent,
-      ]}
-      accessibilityLabel={`Rank ${entry.rank}, ${entry.display_name}, score ${entry.score}, ${entry.lanes_cleared} lanes cleared, ${entry.cards_played} cards played`}
-    >
-      <RankBadge rank={entry.rank} />
-      <View style={styles.rowCopy}>
-        <Text style={[styles.playerName, isCurrentPlayer && styles.playerNameCurrent]}>
-          {entry.display_name}
-          {isCurrentPlayer ? ' (YOU)' : ''}
-        </Text>
-        <Text style={[styles.score, entry.rank === 1 && styles.scoreGold]}>
-          {entry.score.toLocaleString()}
-        </Text>
-        <Text style={styles.meta}>
-          {entry.lanes_cleared} lanes · {entry.cards_played} cards
-        </Text>
-      </View>
-    </View>
-  );
 }
 
 export function HighScoresScreen({ navigation }: HighScoresScreenProps) {
+  const { width } = useWindowDimensions();
+  const columnWidth = Math.min(CONTENT_MAX, width - 24);
   const [tab, setTab] = useState<LeaderboardTab>('local');
+
   const entries = useScoreHistoryStore((state) => state.entries);
   const isHydrated = useScoreHistoryStore((state) => state.isHydrated);
-  const hydrateScoreHistory = useScoreHistoryStore((state) => state.hydrateScoreHistory);
+  const hydrateScoreHistory = useScoreHistoryStore(
+    (state) => state.hydrateScoreHistory,
+  );
   const userId = useAuthStore((state) => state.user?.id ?? null);
+  const authStatus = useAuthStore((state) => state.authStatus);
 
   const [globalRows, setGlobalRows] = useState<GlobalLeaderboardRow[]>([]);
   const [globalLoading, setGlobalLoading] = useState(false);
@@ -156,13 +120,16 @@ export function HighScoresScreen({ navigation }: HighScoresScreenProps) {
     setGlobalError(null);
 
     try {
-      const rows = await loadGlobalLeaderboard(25);
+      const rows = await loadGlobalWithTimeout(25);
       setGlobalRows(rows);
       setHasLoadedGlobal(true);
     } catch (error) {
       setGlobalError(
-        error instanceof Error ? error.message : 'Unable to load global leaderboard.',
+        error instanceof Error
+          ? error.message
+          : 'Unable to load global leaderboard.',
       );
+      setHasLoadedGlobal(true);
     } finally {
       setGlobalLoading(false);
       setGlobalRefreshing(false);
@@ -170,22 +137,63 @@ export function HighScoresScreen({ navigation }: HighScoresScreenProps) {
   }, []);
 
   useEffect(() => {
-    if (tab === 'global' && !hasLoadedGlobal && !globalLoading) {
+    if (
+      tab === 'global' &&
+      !hasLoadedGlobal &&
+      !globalLoading &&
+      authStatus === 'online'
+    ) {
       void fetchGlobal('load');
     }
-  }, [fetchGlobal, globalLoading, hasLoadedGlobal, tab]);
+  }, [authStatus, fetchGlobal, globalLoading, hasLoadedGlobal, tab]);
+
+  const localEntries: LeaderboardEntry[] = useMemo(
+    () =>
+      entries.map((entry, index) => ({
+        rank: index + 1,
+        playerName: 'YOU',
+        score: entry.score,
+        subtitle: `${entry.lanesCleared} lanes · ${entry.cardsPlayed} cards · ${entry.busts} busts`,
+        meta: formatCompletedDate(entry.completedAt),
+        isCurrentPlayer: index === 0,
+      })),
+    [entries],
+  );
+
+  const globalEntries: LeaderboardEntry[] = useMemo(
+    () =>
+      globalRows.map((entry) => {
+        const rawName = entry.display_name?.trim() ?? '';
+        const looksLikeUuid =
+          /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
+            rawName,
+          );
+        return {
+          rank: entry.rank,
+          playerName: !rawName || looksLikeUuid ? 'Player' : rawName,
+          score: entry.score,
+          isCurrentPlayer: Boolean(userId && entry.user_id === userId),
+          subtitle: `${entry.lanes_cleared} lanes · ${entry.cards_played} cards`,
+        };
+      }),
+    [globalRows, userId],
+  );
+
+  const offline = authStatus === 'local';
+  const connecting = authStatus === 'connecting';
 
   return (
-    <ScreenContainer style={styles.container} intensity="normal" padded={false}>
-      <View style={styles.padded}>
+    <BlazeScreenBackground variant="plain">
+      <View
+        style={[
+          styles.column,
+          { width: columnWidth, maxWidth: CONTENT_MAX, alignSelf: 'center' },
+        ]}
+      >
         <ScreenHeader title="HIGH SCORES" icon={<TrophyIcon />} />
 
         <BlazeSegmentedControl
-          options={[
-            { label: 'LOCAL', value: 'local' },
-            { label: 'GLOBAL', value: 'global' },
-            { label: 'FRIENDS', value: 'friends' },
-          ]}
+          options={TAB_OPTIONS}
           selectedValue={tab}
           onChange={setTab}
         />
@@ -201,15 +209,18 @@ export function HighScoresScreen({ navigation }: HighScoresScreenProps) {
                 onRefresh={() => {
                   void fetchGlobal('refresh');
                 }}
-                tintColor={colors.primary}
+                tintColor={kitColors.fire.orange}
               />
             ) : undefined
           }
         >
           {tab === 'local' ? (
             !isHydrated ? (
-              <Text style={styles.comingSoon}>Loading local scores…</Text>
-            ) : entries.length === 0 ? (
+              <View style={styles.loadingBlock}>
+                <ActivityIndicator color={kitColors.fire.orange} />
+                <Text style={styles.stateText}>Loading local scores…</Text>
+              </View>
+            ) : localEntries.length === 0 ? (
               <View style={styles.empty}>
                 <FlameIcon width={36} height={48} />
                 <Text style={styles.emptyTitle}>NO SCORES YET</Text>
@@ -217,215 +228,161 @@ export function HighScoresScreen({ navigation }: HighScoresScreenProps) {
                   Finish a game to enter your local leaderboard.
                 </Text>
                 <BlazeButton
-                  title="PLAY"
+                  label="SOLO PLAY"
                   onPress={() => navigation.navigate('Game')}
-                  accessibilityLabel="Play 21 Blaze"
-                  style={styles.emptyPlay}
+                  accessibilityLabel="Solo play 21 Blaze"
                 />
               </View>
             ) : (
-              entries.map((entry, index) => (
-                <LocalRow key={entry.id} entry={entry} rank={index + 1} />
-              ))
+              <LeaderboardTable entries={localEntries} />
             )
           ) : null}
 
           {tab === 'global' ? (
-            globalLoading && !hasLoadedGlobal ? (
-              <View style={styles.loadingBlock}>
-                <ActivityIndicator color={colors.primary} />
-                <Text style={styles.comingSoon}>Loading global scores…</Text>
+            connecting && !hasLoadedGlobal && !globalLoading ? (
+              <View
+                style={styles.loadingBlock}
+                accessibilityLiveRegion="polite"
+                accessibilityLabel="Connecting to load global scores"
+              >
+                <ActivityIndicator color={kitColors.fire.orange} />
+                <Text style={styles.stateText}>Loading global scores…</Text>
+              </View>
+            ) : offline && !hasLoadedGlobal && !globalLoading ? (
+              <View
+                accessible
+                accessibilityLabel="Offline. Connect online to view verified global scores."
+              >
+                <BlazePanel style={styles.statePanel}>
+                  <Text style={styles.stateTitle}>OFFLINE</Text>
+                  <Text style={styles.stateText}>
+                    Connect online to view verified global scores.
+                  </Text>
+                </BlazePanel>
+              </View>
+            ) : globalLoading && !globalRefreshing ? (
+              <View
+                style={styles.loadingBlock}
+                accessibilityLiveRegion="polite"
+                accessibilityLabel="Loading global scores"
+              >
+                <ActivityIndicator color={kitColors.fire.orange} />
+                <Text style={styles.stateText}>Loading global scores…</Text>
               </View>
             ) : globalError ? (
-              <View style={styles.comingSoonPanel}>
-                <Text style={styles.comingSoonTitle}>GLOBAL</Text>
-                <Text style={styles.comingSoon}>{globalError}</Text>
-                <BlazeButton
-                  title="RETRY"
-                  onPress={() => {
-                    void fetchGlobal('load');
-                  }}
-                  style={styles.retryButton}
-                />
+              <View
+                accessible
+                accessibilityLabel="Global scores unavailable"
+              >
+                <BlazePanel style={styles.statePanel}>
+                  <Text style={styles.stateTitle}>GLOBAL SCORES UNAVAILABLE</Text>
+                  <Text style={styles.stateText}>{globalError}</Text>
+                  <Text style={styles.stateHint}>
+                    Local scores remain available on the Local tab.
+                  </Text>
+                  <BlazeButton
+                    label="RETRY"
+                    onPress={() => {
+                      void fetchGlobal('load');
+                    }}
+                  />
+                </BlazePanel>
               </View>
-            ) : globalRows.length === 0 ? (
+            ) : globalEntries.length === 0 ? (
               <View style={styles.empty}>
                 <FlameIcon width={36} height={48} />
                 <Text style={styles.emptyTitle}>NO VERIFIED SCORES YET</Text>
                 <Text style={styles.emptyDetail}>
-                  Finish an online match to claim the first spot.
+                  Finish an online verified match to claim a position.
                 </Text>
                 <BlazeButton
-                  title="PLAY"
+                  label="SOLO PLAY"
                   onPress={() => navigation.navigate('Game')}
-                  style={styles.emptyPlay}
                 />
               </View>
             ) : (
-              globalRows.map((entry) => (
-                <GlobalRow
-                  key={`${entry.user_id}-${entry.rank}`}
-                  entry={entry}
-                  isCurrentPlayer={Boolean(userId && entry.user_id === userId)}
-                />
-              ))
+              <LeaderboardTable entries={globalEntries} />
             )
           ) : null}
 
           {tab === 'friends' ? (
-            <View style={styles.comingSoonPanel}>
-              <Text style={styles.comingSoonTitle}>FRIENDS</Text>
-              <Text style={styles.comingSoon}>
-                Friend rankings are coming in a future update.
+            <BlazePanel style={styles.statePanel}>
+              <Text style={styles.stateTitle}>FRIEND RANKINGS</Text>
+              <Text style={styles.stateText}>
+                Coming in a future update.
               </Text>
-            </View>
+            </BlazePanel>
           ) : null}
         </ScrollView>
 
         <BlazeButton
-          title="BACK"
+          label="BACK"
           variant="secondary"
           onPress={() => navigation.goBack()}
           accessibilityLabel="Back"
-          fullWidth
         />
       </View>
-    </ScreenContainer>
+    </BlazeScreenBackground>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
+  column: {
     flex: 1,
-  },
-  padded: {
-    flex: 1,
-    paddingHorizontal: spacing.md,
-    paddingBottom: spacing.md,
-    gap: spacing.md,
+    paddingHorizontal: kitSpacing.md,
+    paddingBottom: kitSpacing.md,
+    gap: kitSpacing.md,
   },
   list: {
     flex: 1,
   },
   listContent: {
-    gap: 6,
-    paddingBottom: spacing.sm,
-  },
-  row: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.md,
-    paddingVertical: 10,
-    paddingHorizontal: spacing.md,
-    borderRadius: radius.md,
-    backgroundColor: colors.backgroundCard,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.04)',
-  },
-  rowGold: {
-    backgroundColor: 'rgba(255,101,0,0.1)',
-    borderColor: 'rgba(255,101,0,0.5)',
-  },
-  rowCurrent: {
-    borderColor: colors.gold,
-  },
-  rankWrap: {
-    width: 36,
-    alignItems: 'center',
-  },
-  rank: {
-    fontFamily: fontFamilies.display,
-    fontSize: 18,
-  },
-  medal: {
-    ...typography.label,
-    fontSize: 9,
-    marginTop: 1,
-  },
-  rowCopy: {
-    flex: 1,
-    minWidth: 0,
-    gap: 2,
-  },
-  playerName: {
-    fontFamily: fontFamilies.bodyBold,
-    fontSize: 13,
-    color: colors.textPrimary,
-  },
-  playerNameCurrent: {
-    color: colors.gold,
-  },
-  score: {
-    fontFamily: fontFamilies.display,
-    fontSize: 18,
-    color: colors.textPrimary,
-  },
-  scoreGold: {
-    color: colors.gold,
-  },
-  meta: {
-    ...typography.label,
-    fontSize: 11,
-    textTransform: 'none',
-    color: colors.textSecondary,
-  },
-  date: {
-    ...typography.label,
-    fontSize: 11,
-    textTransform: 'none',
-    color: colors.textMuted,
+    gap: kitSpacing.sm,
+    paddingBottom: kitSpacing.sm,
   },
   empty: {
     alignItems: 'center',
-    paddingVertical: spacing.xl,
-    gap: spacing.sm,
+    paddingVertical: kitSpacing.xl,
+    gap: kitSpacing.sm,
   },
   emptyTitle: {
-    fontFamily: fontFamilies.display,
+    fontFamily: kitTypography.families.display,
     fontSize: 24,
     letterSpacing: 1,
-    color: colors.textPrimary,
+    color: kitColors.text.primary,
   },
   emptyDetail: {
-    ...typography.body,
+    fontFamily: kitTypography.families.body,
     fontSize: 14,
-    color: colors.textSecondary,
+    color: kitColors.text.secondary,
     textAlign: 'center',
-    paddingHorizontal: spacing.lg,
-  },
-  emptyPlay: {
-    marginTop: spacing.sm,
-    minWidth: 160,
-  },
-  comingSoonPanel: {
-    backgroundColor: colors.backgroundCard,
-    borderColor: colors.blazeSubtle,
-    borderWidth: 1,
-    borderRadius: radius.lg,
-    padding: spacing.lg,
-    gap: spacing.sm,
-    marginTop: spacing.md,
-  },
-  comingSoonTitle: {
-    fontFamily: fontFamilies.display,
-    fontSize: 20,
-    color: colors.primary,
-    textAlign: 'center',
-  },
-  comingSoon: {
-    ...typography.body,
-    fontSize: 14,
-    color: colors.textSecondary,
-    textAlign: 'center',
+    paddingHorizontal: kitSpacing.lg,
   },
   loadingBlock: {
     alignItems: 'center',
-    gap: spacing.sm,
-    paddingVertical: spacing.xl,
+    gap: kitSpacing.sm,
+    paddingVertical: kitSpacing.xl,
   },
-  retryButton: {
-    marginTop: spacing.sm,
-    alignSelf: 'center',
-    minWidth: 140,
+  statePanel: {
+    gap: kitSpacing.sm,
+    alignItems: 'center',
+  },
+  stateTitle: {
+    fontFamily: kitTypography.families.display,
+    fontSize: 20,
+    color: kitColors.fire.orange,
+    textAlign: 'center',
+  },
+  stateText: {
+    fontFamily: kitTypography.families.body,
+    fontSize: 14,
+    color: kitColors.text.secondary,
+    textAlign: 'center',
+  },
+  stateHint: {
+    fontFamily: kitTypography.families.body,
+    fontSize: 12,
+    color: kitColors.text.muted,
+    textAlign: 'center',
   },
 });

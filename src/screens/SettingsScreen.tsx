@@ -1,41 +1,60 @@
-import { useState } from 'react';
-import { Alert, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useEffect, useState } from 'react';
+import {
+  ActivityIndicator,
+  Alert,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+  useWindowDimensions,
+} from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { Circle, Path } from 'react-native-svg';
 
 import { PlayingCard } from '../components/Card/PlayingCard';
-import { SvgRoot as Svg } from '../components/svg/SvgRoot';
-import { BlazeButton } from '../components/buttons/BlazeButton';
-import { ScreenHeader } from '../components/Navigation/ScreenHeader';
+import { BlazeScreenBackground } from '../components/layout/BlazeScreenBackground';
+import { ScreenHeader } from '../components/layout/ScreenHeader';
+import { ConfirmationModal } from '../components/modals/ConfirmationModal';
 import { BlazeModal } from '../components/Settings/BlazeModal';
-import { SettingsRow } from '../components/Settings/SettingsRow';
-import { SettingsToggle } from '../components/Settings/SettingsToggle';
-import { ScreenContainer } from '../components/ScreenContainer';
+import { SettingsActionRow } from '../components/settings/SettingsActionRow';
+import { SettingsToggleRow } from '../components/settings/SettingsToggleRow';
+import { SvgRoot as Svg } from '../components/svg/SvgRoot';
+import { BlazeButton } from '../components/ui/BlazeButton';
+import { BlazePanel } from '../components/ui/BlazePanel';
+import { isPurchaseDiagnosticsEnabled } from '../config/featureFlags';
 import type { Card } from '../game/types';
+import { openPrivacyOptions } from '../monetization/adConsentService';
 import type { RootStackParamList } from '../navigation/navigationTypes';
 import {
   CARD_STYLE_LABELS,
   CARD_STYLES,
   type CardStyle,
 } from '../settings/types';
-import { isPurchaseDiagnosticsEnabled } from '../config/featureFlags';
-import { openPrivacyOptions } from '../monetization/adConsentService';
-import { usePurchaseStore } from '../store/usePurchaseStore';
 import { useGameStore } from '../store/useGameStore';
+import {
+  useHasRemoveAdsEntitlement,
+  usePurchaseStore,
+} from '../store/usePurchaseStore';
 import { useScoreHistoryStore } from '../store/useScoreHistoryStore';
 import { useSettingsStore } from '../store/useSettingsStore';
-import { colors } from '../theme/colors';
-import { radius } from '../theme/radius';
-import { spacing } from '../theme/spacing';
-import { fontFamilies } from '../theme/typography';
+import {
+  colors as kitColors,
+  spacing as kitSpacing,
+  typography as kitTypography,
+} from '../theme/uiKit';
 
-type SettingsScreenProps = NativeStackScreenProps<RootStackParamList, 'Settings'>;
+type SettingsScreenProps = NativeStackScreenProps<
+  RootStackParamList,
+  'Settings'
+>;
 
 const PREVIEW_CARD: Card = {
   id: 'settings-preview',
   rank: 'A',
   suit: 'hearts',
 };
+
+const CONTENT_MAX = 410;
 
 function GearIcon() {
   return (
@@ -48,37 +67,58 @@ function GearIcon() {
         <Path
           d="M12 8.5a3.5 3.5 0 1 0 0 7 3.5 3.5 0 0 0 0-7z"
           fill="none"
-          stroke={colors.primary}
+          stroke={kitColors.fire.orange}
           strokeWidth={1.8}
         />
         <Path
           d="M19.4 13.5a7.6 7.6 0 0 0 .05-1l2-1.5-2-3.5-2.4 1a7.7 7.7 0 0 0-1.7-1l-.3-2.5H9.9l-.3 2.5a7.7 7.7 0 0 0-1.7 1l-2.4-1-2 3.5 2 1.5a7.6 7.6 0 0 0 0 2l-2 1.5 2 3.5 2.4-1a7.7 7.7 0 0 0 1.7 1l.3 2.5h4.2l.3-2.5a7.7 7.7 0 0 0 1.7-1l2.4 1 2-3.5-2-1.5z"
           fill="none"
-          stroke={colors.gold}
+          stroke={kitColors.fire.gold}
           strokeWidth={1.4}
         />
-        <Circle cx="12" cy="12" r="1.2" fill={colors.gold} />
+        <Circle cx="12" cy="12" r="1.2" fill={kitColors.fire.gold} />
       </Svg>
     </View>
   );
 }
 
 export function SettingsScreen({ navigation }: SettingsScreenProps) {
+  const { width } = useWindowDimensions();
+  const columnWidth = Math.min(CONTENT_MAX, width - 24);
+
   const settings = useSettingsStore((state) => state.settings);
-  const setSoundEffectsEnabled = useSettingsStore((s) => s.setSoundEffectsEnabled);
+  const isHydrated = useSettingsStore((state) => state.isHydrated);
+  const hydrateSettings = useSettingsStore((state) => state.hydrateSettings);
+  const setSoundEffectsEnabled = useSettingsStore(
+    (s) => s.setSoundEffectsEnabled,
+  );
   const setMusicEnabled = useSettingsStore((s) => s.setMusicEnabled);
   const setHapticsEnabled = useSettingsStore((s) => s.setHapticsEnabled);
-  const setTutorialHintsEnabled = useSettingsStore((s) => s.setTutorialHintsEnabled);
-  const setReducedMotionEnabled = useSettingsStore((s) => s.setReducedMotionEnabled);
+  const setTutorialHintsEnabled = useSettingsStore(
+    (s) => s.setTutorialHintsEnabled,
+  );
+  const setReducedMotionEnabled = useSettingsStore(
+    (s) => s.setReducedMotionEnabled,
+  );
   const setCardStyle = useSettingsStore((s) => s.setCardStyle);
   const resetSettings = useSettingsStore((s) => s.resetSettings);
   const resetHighScore = useGameStore((s) => s.resetHighScore);
   const clearHistory = useScoreHistoryStore((s) => s.clearHistory);
+  const hasRemoveAds = useHasRemoveAdsEntitlement();
+  const restoreStatus = usePurchaseStore((s) => s.restoreStatus);
+  const restoreBusy = restoreStatus === 'restoring';
 
   const [cardModalVisible, setCardModalVisible] = useState(false);
   const [pendingCardStyle, setPendingCardStyle] = useState<CardStyle>(
     settings.cardStyle,
   );
+  const [confirmKind, setConfirmKind] = useState<
+    'highScore' | 'settings' | null
+  >(null);
+
+  useEffect(() => {
+    void hydrateSettings();
+  }, [hydrateSettings]);
 
   const openCardModal = () => {
     setPendingCardStyle(settings.cardStyle);
@@ -90,207 +130,220 @@ export function SettingsScreen({ navigation }: SettingsScreenProps) {
     setCardModalVisible(false);
   };
 
-  const confirmResetHighScore = () => {
-    Alert.alert(
-      'Reset High Score?',
-      'This permanently deletes your high score and local Top 10 history. This cannot be undone.',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Reset',
-          style: 'destructive',
-          onPress: () => {
-            void (async () => {
-              await resetHighScore();
-              await clearHistory();
-              Alert.alert('Cleared', 'High score and local history were reset.');
-            })();
-          },
-        },
-      ],
-    );
+  const performResetHighScore = () => {
+    setConfirmKind(null);
+    void (async () => {
+      await resetHighScore();
+      await clearHistory();
+      Alert.alert('Cleared', 'High score and local history were reset.');
+    })();
   };
 
-  const confirmResetSettings = () => {
-    Alert.alert(
-      'Reset All Settings?',
-      'This restores default preferences only. Your high score and local history are kept.',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Reset Settings',
-          style: 'destructive',
-          onPress: () => {
-            void (async () => {
-              await resetSettings();
-              Alert.alert('Restored', 'Settings were reset to defaults.');
-            })();
-          },
-        },
-      ],
-    );
+  const performResetSettings = () => {
+    setConfirmKind(null);
+    void (async () => {
+      await resetSettings();
+      Alert.alert('Restored', 'Settings were reset to defaults.');
+    })();
   };
 
   return (
-    <ScreenContainer style={styles.container} intensity="subtle" padded={false}>
-      <View style={styles.padded}>
+    <BlazeScreenBackground variant="plain">
+      <View
+        style={[
+          styles.column,
+          { width: columnWidth, maxWidth: CONTENT_MAX, alignSelf: 'center' },
+        ]}
+      >
         <ScreenHeader title="SETTINGS" icon={<GearIcon />} />
+
         <ScrollView
           contentContainerStyle={styles.scroll}
           showsVerticalScrollIndicator={false}
         >
-          <View style={styles.panel}>
-            <SettingsToggle
-              label="SOUND EFFECTS"
-              description="Preference only — audio not wired yet."
-              value={settings.soundEffectsEnabled}
-              onValueChange={setSoundEffectsEnabled}
-            />
-            <SettingsToggle
-              label="MUSIC"
-              description="Preference only — music not wired yet."
-              value={settings.musicEnabled}
-              onValueChange={setMusicEnabled}
-            />
-            <SettingsToggle
-              label="HAPTICS"
-              description="Preference only — vibration not wired yet."
-              value={settings.hapticsEnabled}
-              onValueChange={setHapticsEnabled}
-            />
-            <SettingsToggle
-              label="TUTORIAL HINTS"
-              value={settings.tutorialHintsEnabled}
-              onValueChange={setTutorialHintsEnabled}
-            />
-            <SettingsToggle
-              label="REDUCED MOTION"
-              description="Shortens decorative animations."
-              value={settings.reducedMotionEnabled}
-              onValueChange={setReducedMotionEnabled}
-              isLast
-            />
-          </View>
+          {!isHydrated ? (
+            <View
+              style={styles.loadingBlock}
+              accessibilityLiveRegion="polite"
+              accessibilityLabel="Loading settings"
+            >
+              <ActivityIndicator color={kitColors.fire.orange} />
+              <Text style={styles.loadingText}>Loading settings…</Text>
+            </View>
+          ) : (
+            <>
+              <Text style={styles.sectionLabel}>GAMEPLAY</Text>
+              <BlazePanel padding={0} style={styles.panel}>
+                <SettingsToggleRow
+                  label="SOUND EFFECTS"
+                  description="Preference only — audio not wired yet."
+                  value={settings.soundEffectsEnabled}
+                  onValueChange={setSoundEffectsEnabled}
+                />
+                <SettingsToggleRow
+                  label="MUSIC"
+                  description="Preference only — music not wired yet."
+                  value={settings.musicEnabled}
+                  onValueChange={setMusicEnabled}
+                />
+                <SettingsToggleRow
+                  label="HAPTICS"
+                  description="Preference only — vibration not wired yet."
+                  value={settings.hapticsEnabled}
+                  onValueChange={setHapticsEnabled}
+                />
+                <SettingsToggleRow
+                  label="TUTORIAL HINTS"
+                  value={settings.tutorialHintsEnabled}
+                  onValueChange={setTutorialHintsEnabled}
+                />
+                <SettingsToggleRow
+                  label="REDUCED MOTION"
+                  description="Shortens decorative animations."
+                  value={settings.reducedMotionEnabled}
+                  onValueChange={setReducedMotionEnabled}
+                />
+              </BlazePanel>
 
-          <View style={[styles.panel, styles.panelSpaced]}>
-            <Text style={styles.sectionLabel}>PURCHASES</Text>
-            <SettingsRow
-              label="RESTORE PURCHASES"
-              onPress={() => {
-                void usePurchaseStore.getState().restorePurchases().then((status) => {
-                  if (status === 'success') {
-                    Alert.alert('Restored', 'Eligible purchases were restored.');
-                  } else if (status === 'unavailable') {
-                    Alert.alert(
-                      'Unavailable',
-                      'Purchases require a native development build.',
-                    );
-                  } else if (status !== 'cancelled') {
-                    Alert.alert('Restore failed', 'Please try again later.');
-                  }
-                });
-              }}
-              accessibilityLabel="Restore purchases"
-              isFirst
-            />
-            <SettingsRow
-              label="MANAGE SUBSCRIPTION"
-              onPress={() => {
-                void usePurchaseStore.getState().openCustomerCenter().then((status) => {
-                  if (status === 'unavailable') {
-                    Alert.alert(
-                      'Unavailable',
-                      'Customer Center requires a native development build with RevenueCat configured.',
-                    );
-                  } else if (status === 'error') {
-                    Alert.alert(
-                      'Unable to open',
-                      'Customer Center could not be opened. Try Restore Purchases.',
-                    );
-                  }
-                });
-              }}
-              accessibilityLabel="Manage subscription in Customer Center"
-            />
-            <SettingsRow
-              label="PURCHASE SUPPORT"
-              onPress={() => {
-                Alert.alert(
-                  'Purchase Support',
-                  'Purchases are optional. Cosmetics and Pro do not affect gameplay. Store prices come from the app store. Use Restore Purchases or Manage Subscription after reinstalling. Remove Ads / Pro do not remove optional rewarded ads you choose to watch.',
-                );
-              }}
-              accessibilityLabel="Purchase support information"
-              isLast={!isPurchaseDiagnosticsEnabled()}
-            />
-            {isPurchaseDiagnosticsEnabled() ? (
-              <SettingsRow
-                label="PURCHASE DIAGNOSTICS"
-                onPress={() => navigation.navigate('PurchaseDiagnostics')}
-                accessibilityLabel="Open purchase diagnostics (development builds only)"
-                isLast
-              />
-            ) : null}
-          </View>
+              <Text style={styles.sectionLabel}>APPEARANCE</Text>
+              <BlazePanel padding={0} style={styles.panel}>
+                <SettingsActionRow
+                  label="CARD STYLE"
+                  value={CARD_STYLE_LABELS[settings.cardStyle]}
+                  onPress={openCardModal}
+                />
+              </BlazePanel>
 
-          <View style={[styles.panel, styles.panelSpaced]}>
-            <Text style={styles.sectionLabel}>ADS</Text>
-            <SettingsRow
-              label="PRIVACY OPTIONS"
-              onPress={() => {
-                void openPrivacyOptions().then((opened) => {
-                  if (!opened) {
-                    Alert.alert(
-                      'Privacy Options',
-                      'Privacy options are unavailable on this platform.',
-                    );
+              <Text style={styles.sectionLabel}>ACCOUNT AND PURCHASES</Text>
+              <BlazePanel padding={0} style={styles.panel}>
+                <SettingsActionRow
+                  label="RESTORE PURCHASES"
+                  value={
+                    restoreBusy
+                      ? 'WORKING…'
+                      : restoreStatus === 'success'
+                        ? 'RESTORED'
+                        : undefined
                   }
-                });
-              }}
-              accessibilityLabel="Open privacy options"
-              isFirst
-              isLast
-            />
-          </View>
+                  disabled={restoreBusy}
+                  onPress={() => {
+                    if (restoreBusy) {
+                      return;
+                    }
+                    void usePurchaseStore
+                      .getState()
+                      .restorePurchases()
+                      .then((status) => {
+                        if (status === 'success') {
+                          Alert.alert(
+                            'Restored',
+                            'Eligible purchases were restored.',
+                          );
+                        } else if (status === 'unavailable') {
+                          Alert.alert(
+                            'Unavailable',
+                            'Purchases require a native development build.',
+                          );
+                        } else if (status !== 'cancelled') {
+                          const message =
+                            usePurchaseStore.getState().error ??
+                            'Please try again later.';
+                          Alert.alert('Restore failed', message);
+                        }
+                      });
+                  }}
+                />
+                <SettingsActionRow
+                  label="MANAGE SUBSCRIPTION"
+                  onPress={() => {
+                    void usePurchaseStore
+                      .getState()
+                      .openCustomerCenter()
+                      .then((status) => {
+                        if (status === 'unavailable') {
+                          Alert.alert(
+                            'Unavailable',
+                            'Customer Center requires a native development build with RevenueCat configured.',
+                          );
+                        } else if (status === 'error') {
+                          Alert.alert(
+                            'Unable to open',
+                            'Customer Center could not be opened. Try Restore Purchases.',
+                          );
+                        }
+                      });
+                  }}
+                />
+                <SettingsActionRow
+                  label="AD-FREE STATUS"
+                  value={hasRemoveAds ? 'ACTIVE' : 'NOT OWNED'}
+                  onPress={() => {
+                    Alert.alert(
+                      'Ad-Free Status',
+                      hasRemoveAds
+                        ? 'Remove Ads / Pro is active on this device.'
+                        : 'No Remove Ads entitlement is active.',
+                    );
+                  }}
+                />
+                <SettingsActionRow
+                  label="PRIVACY OPTIONS"
+                  onPress={() => {
+                    void openPrivacyOptions().then((opened) => {
+                      if (!opened) {
+                        Alert.alert(
+                          'Privacy Options',
+                          'Privacy options are unavailable on this platform.',
+                        );
+                      }
+                    });
+                  }}
+                />
+                <SettingsActionRow
+                  label="PURCHASE SUPPORT"
+                  onPress={() => {
+                    Alert.alert(
+                      'Purchase Support',
+                      'Purchases are optional. Cosmetics and Pro do not affect gameplay. Store prices come from the app store. Use Restore Purchases or Manage Subscription after reinstalling. Remove Ads / Pro do not remove optional rewarded ads you choose to watch.',
+                    );
+                  }}
+                />
+                {isPurchaseDiagnosticsEnabled() ? (
+                  <SettingsActionRow
+                    label="PURCHASE DIAGNOSTICS"
+                    onPress={() => navigation.navigate('PurchaseDiagnostics')}
+                  />
+                ) : null}
+              </BlazePanel>
 
-          <View style={[styles.panel, styles.panelSpaced]}>
-            <SettingsRow
-              label="CARD STYLE"
-              value={CARD_STYLE_LABELS[settings.cardStyle]}
-              onPress={openCardModal}
-              accessibilityLabel={`Card style, ${CARD_STYLE_LABELS[settings.cardStyle]}`}
-              isFirst
-            />
-            <SettingsRow
-              label="RESET HIGH SCORE"
-              onPress={confirmResetHighScore}
-              danger
-              accessibilityLabel="Reset high score and local history"
-            />
-            <SettingsRow
-              label="RESET ALL SETTINGS"
-              onPress={confirmResetSettings}
-              danger
-              accessibilityLabel="Reset all settings preferences"
-              isLast={!__DEV__}
-            />
-            {__DEV__ ? (
-              <SettingsRow
-                label="OPEN UI KIT PREVIEW"
-                onPress={() => navigation.navigate('BlazeUIKitPreview')}
-                accessibilityLabel="Open UI kit preview"
-                isLast
-              />
-            ) : null}
-          </View>
+              <Text style={styles.sectionLabel}>DATA</Text>
+              <BlazePanel padding={0} style={styles.panel}>
+                <SettingsActionRow
+                  label="RESET HIGH SCORE"
+                  danger
+                  onPress={() => setConfirmKind('highScore')}
+                />
+                <SettingsActionRow
+                  label="RESET SETTINGS"
+                  danger
+                  onPress={() => setConfirmKind('settings')}
+                />
+                {__DEV__ ? (
+                  <SettingsActionRow
+                    label="OPEN UI KIT PREVIEW"
+                    onPress={() => navigation.navigate('BlazeUIKitPreview')}
+                  />
+                ) : null}
+              </BlazePanel>
+            </>
+          )}
         </ScrollView>
 
         <BlazeButton
-          title="BACK"
+          label="BACK"
           variant="secondary"
           onPress={() => navigation.goBack()}
           accessibilityLabel="Back to home"
-          fullWidth
         />
       </View>
 
@@ -304,90 +357,127 @@ export function SettingsScreen({ navigation }: SettingsScreenProps) {
           {CARD_STYLES.map((style) => {
             const selected = pendingCardStyle === style;
             return (
-              <View key={style} style={[styles.cardOption, selected && styles.cardOptionSelected]}>
-                <PlayingCard card={PREVIEW_CARD} size="small" cardStyle={style} />
+              <View
+                key={style}
+                style={[
+                  styles.cardOption,
+                  selected && styles.cardOptionSelected,
+                ]}
+              >
+                <PlayingCard
+                  card={PREVIEW_CARD}
+                  size="small"
+                  cardStyle={style}
+                />
                 <View style={styles.cardOptionCopy}>
-                  <Text style={styles.cardOptionTitle}>{CARD_STYLE_LABELS[style]}</Text>
+                  <Text style={styles.cardOptionTitle}>
+                    {CARD_STYLE_LABELS[style]}
+                  </Text>
                   <BlazeButton
-                    title={selected ? 'SELECTED' : 'SELECT'}
-                    variant={selected ? 'primary' : 'outline'}
+                    label={selected ? 'SELECTED' : 'SELECT'}
+                    variant={selected ? 'primary' : 'secondary'}
+                    size="sm"
                     onPress={() => setPendingCardStyle(style)}
-                    accessibilityLabel={`${CARD_STYLE_LABELS[style]} card style${selected ? ', selected' : ''}`}
-                    style={styles.selectBtn}
+                    accessibilityLabel={`${CARD_STYLE_LABELS[style]} card style${
+                      selected ? ', selected' : ''
+                    }`}
                   />
                 </View>
               </View>
             );
           })}
         </View>
-        <BlazeButton title="SAVE" onPress={confirmCardStyle} fullWidth />
+        <BlazeButton label="SAVE" onPress={confirmCardStyle} />
         <BlazeButton
-          title="CANCEL"
+          label="CANCEL"
           variant="secondary"
           onPress={() => setCardModalVisible(false)}
-          fullWidth
         />
       </BlazeModal>
-    </ScreenContainer>
+
+      <ConfirmationModal
+        visible={confirmKind === 'highScore'}
+        title="RESET HIGH SCORE?"
+        message="This will permanently clear your saved high score and local score history on this device."
+        confirmLabel="RESET"
+        cancelLabel="CANCEL"
+        danger
+        onConfirm={performResetHighScore}
+        onCancel={() => setConfirmKind(null)}
+      />
+      <ConfirmationModal
+        visible={confirmKind === 'settings'}
+        title="RESET SETTINGS?"
+        message="This will restore game preferences to their defaults. Scores and purchases will not be removed."
+        confirmLabel="RESET"
+        cancelLabel="CANCEL"
+        danger
+        onConfirm={performResetSettings}
+        onCancel={() => setConfirmKind(null)}
+      />
+    </BlazeScreenBackground>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
+  column: {
     flex: 1,
-  },
-  padded: {
-    flex: 1,
-    paddingHorizontal: spacing.md,
-    paddingBottom: spacing.md,
+    paddingHorizontal: kitSpacing.md,
+    paddingBottom: kitSpacing.md,
+    gap: kitSpacing.sm,
   },
   scroll: {
-    paddingBottom: spacing.md,
+    paddingBottom: kitSpacing.md,
+    gap: 4,
   },
-  panel: {
-    borderWidth: 1,
-    borderColor: colors.blazeSubtle,
-    borderRadius: radius.md,
-    overflow: 'hidden',
+  loadingBlock: {
+    alignItems: 'center',
+    gap: kitSpacing.sm,
+    paddingVertical: kitSpacing.xl,
   },
-  panelSpaced: {
-    marginTop: spacing.md,
+  loadingText: {
+    fontFamily: kitTypography.families.body,
+    fontSize: 14,
+    color: kitColors.text.secondary,
   },
   sectionLabel: {
-    fontFamily: fontFamilies.bodyBold,
+    marginTop: kitSpacing.sm,
+    marginBottom: 4,
+    paddingHorizontal: 4,
+    fontFamily: kitTypography.families.condensed,
+    fontWeight: '700',
     fontSize: 11,
     letterSpacing: 1.4,
-    color: colors.gold,
-    paddingHorizontal: spacing.md,
-    paddingTop: spacing.sm,
-    paddingBottom: 4,
+    color: kitColors.fire.gold,
+  },
+  panel: {
+    width: '100%',
+    overflow: 'hidden',
   },
   cardOptions: {
-    gap: spacing.sm,
+    gap: kitSpacing.sm,
   },
   cardOption: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: spacing.md,
-    padding: spacing.sm,
-    borderRadius: radius.md,
+    gap: kitSpacing.md,
+    padding: kitSpacing.sm,
+    borderRadius: 10,
     borderWidth: 1,
-    borderColor: colors.whiteSubtle,
-    backgroundColor: colors.backgroundElevated,
+    borderColor: kitColors.border.default,
+    backgroundColor: kitColors.background.elevated,
   },
   cardOptionSelected: {
-    borderColor: colors.blazeStrong,
+    borderColor: kitColors.border.active,
   },
   cardOptionCopy: {
     flex: 1,
     gap: 6,
   },
   cardOptionTitle: {
-    fontFamily: fontFamilies.bodySemi,
+    fontFamily: kitTypography.families.condensed,
+    fontWeight: '700',
     fontSize: 15,
-    color: colors.textPrimary,
-  },
-  selectBtn: {
-    minHeight: 40,
+    color: kitColors.text.primary,
   },
 });
