@@ -1,5 +1,93 @@
+import React from 'react';
+import { StyleSheet, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import React from 'react'; import { View,StyleSheet } from 'react-native'; import { useSafeAreaInsets } from 'react-native-safe-area-context'; import { BlazeButton } from '../ui/BlazeButton'; import { colors,spacing } from '../../theme/uiKit';
-type Action={label:string;onPress:()=>void;variant?:'primary'|'secondary'|'danger'|'ghost'};
-export function BottomActionBar({primaryAction,secondaryAction,safeAreaEnabled=true,sticky=false}:{primaryAction:Action;secondaryAction?:Action;safeAreaEnabled?:boolean;sticky?:boolean}){const i=useSafeAreaInsets();return <View style={[styles.bar,sticky&&styles.sticky,{paddingBottom:safeAreaEnabled?Math.max(i.bottom,spacing.md):spacing.md}]}>{secondaryAction&&<BlazeButton {...secondaryAction}/>}<BlazeButton {...primaryAction}/></View>}
-const styles=StyleSheet.create({bar:{gap:spacing.sm,padding:spacing.md,backgroundColor:colors.background.primary},sticky:{position:'absolute',left:0,right:0,bottom:0}});
+import { colors, spacing } from '../../theme/uiKit';
+import { BlazeButton } from '../ui/BlazeButton';
+
+type Action = {
+  label: string;
+  onPress: () => void;
+  variant?: 'primary' | 'secondary' | 'danger' | 'ghost';
+  disabled?: boolean;
+  accessibilityLabel?: string;
+};
+
+type Props = {
+  primaryAction: Action;
+  secondaryAction?: Action;
+  safeAreaEnabled?: boolean;
+  sticky?: boolean;
+  /** Side-by-side actions (preferred for gameplay height). */
+  layout?: 'stack' | 'row';
+};
+
+export function BottomActionBar({
+  primaryAction,
+  secondaryAction,
+  safeAreaEnabled = true,
+  sticky = false,
+  layout = 'stack',
+}: Props) {
+  const insets = useSafeAreaInsets();
+  const isRow = layout === 'row' && Boolean(secondaryAction);
+
+  return (
+    <View
+      style={[
+        styles.bar,
+        isRow && styles.row,
+        sticky && styles.sticky,
+        {
+          paddingBottom: safeAreaEnabled
+            ? Math.max(insets.bottom, spacing.md)
+            : spacing.sm,
+        },
+      ]}
+    >
+      {secondaryAction ? (
+        <View style={isRow ? styles.flex : undefined}>
+          <BlazeButton
+            label={secondaryAction.label}
+            onPress={secondaryAction.onPress}
+            variant={secondaryAction.variant ?? 'secondary'}
+            disabled={secondaryAction.disabled}
+            accessibilityLabel={secondaryAction.accessibilityLabel}
+          />
+        </View>
+      ) : null}
+      <View style={isRow ? styles.flex : undefined}>
+        <BlazeButton
+          label={primaryAction.label}
+          onPress={primaryAction.onPress}
+          variant={primaryAction.variant ?? 'primary'}
+          disabled={primaryAction.disabled}
+          accessibilityLabel={primaryAction.accessibilityLabel}
+        />
+      </View>
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  bar: {
+    gap: spacing.sm,
+    paddingHorizontal: spacing.md,
+    paddingTop: spacing.sm,
+    backgroundColor: 'transparent',
+  },
+  row: {
+    flexDirection: 'row',
+    alignItems: 'stretch',
+  },
+  flex: {
+    flex: 1,
+  },
+  sticky: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: colors.background.primary,
+  },
+});
