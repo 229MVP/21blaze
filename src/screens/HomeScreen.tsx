@@ -433,7 +433,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(5,7,9,0.35)',
   },
   bottomGlow: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     pointerEvents: 'none',
   },
   scroll: {
