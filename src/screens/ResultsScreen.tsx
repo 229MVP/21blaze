@@ -1,14 +1,24 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import {
+  ActivityIndicator,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+  useWindowDimensions,
+} from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 
-import { FlameIcon } from '../components/branding/FlameIcon';
-import { BlazeButton } from '../components/buttons/BlazeButton';
 import { LevelUpOverlay } from '../components/Progression/LevelUpOverlay';
 import { XpProgressBar } from '../components/Progression/XpProgressBar';
-import { ResultsPanel } from '../components/Results/ResultsPanel';
-import { ScreenContainer } from '../components/ScreenContainer';
+import { BlazeScreenBackground } from '../components/layout/BlazeScreenBackground';
+import { ResultHero } from '../components/results/ResultHero';
+import { ResultsTable } from '../components/results/ResultsTable';
+import { BlazeButton } from '../components/ui/BlazeButton';
+import { BlazePanel } from '../components/ui/BlazePanel';
 import {
+  isDailyMissionsEnabled,
   isMonetizationBetaEnabled,
   isProgressionBetaEnabled,
   isRewardedCurrencyEnabled,
@@ -17,49 +27,59 @@ import { PROGRESSION_CONFIG } from '../config/progressionConfig';
 import { MAX_BUSTS } from '../game/constants';
 import { formatTimerSeconds } from '../game/timerEngine';
 import type { GameOverReason } from '../game/types';
+import { useReducedMotionSetting } from '../hooks/useReducedMotionSetting';
 import { trackEvent } from '../monetization/analytics';
 import { showRewardedAd } from '../monetization/rewardedAdService';
 import type { ResultsScreenProps } from '../navigation/navigationTypes';
-import { findLocalRank, useScoreHistoryStore } from '../store/useScoreHistoryStore';
+import {
+  findLocalRank,
+  useScoreHistoryStore,
+} from '../store/useScoreHistoryStore';
 import { useGameStore } from '../store/useGameStore';
 import { useProgressionStore } from '../store/useProgressionStore';
 import { useWalletStore } from '../store/useWalletStore';
-import { colors } from '../theme/colors';
-import { radius } from '../theme/radius';
-import { spacing } from '../theme/spacing';
-import { fontFamilies, typography } from '../theme/typography';
+import {
+  colors as kitColors,
+  spacing as kitSpacing,
+  typography as kitTypography,
+} from '../theme/uiKit';
+
+const CONTENT_MAX = 410;
 
 function resolveParam(value: number | undefined, fallback = 0): number {
   if (typeof value !== 'number' || !Number.isFinite(value)) {
     return fallback;
   }
-
   return value;
 }
 
-function getResultTitle(
+function getResultCopy(
   reason: GameOverReason | undefined,
   isNewHighScore: boolean,
-): string {
+): { title: string; subtitle: string } {
   if (isNewHighScore) {
-    return 'BLAZING!';
+    return { title: 'BLAZING!', subtitle: 'NEW HIGH SCORE!' };
   }
 
   switch (reason) {
     case 'timeExpired':
-      return 'TIME’S UP!';
+      return { title: 'TIME’S UP!', subtitle: 'FINAL SCORE' };
     case 'busts':
-      return 'TOO HOT!';
+      return { title: 'TOO HOT!', subtitle: 'MATCH ENDED' };
     case 'deckEmpty':
-      return 'DECK CLEARED!';
+      return { title: 'DECK CLEARED!', subtitle: 'FINAL SCORE' };
     case 'quit':
-      return 'GAME ENDED';
+      return { title: 'GAME ENDED', subtitle: 'FINAL SCORE' };
     default:
-      return 'GOOD RUN';
+      return { title: 'GREAT RUN!', subtitle: 'FINAL SCORE' };
   }
 }
 
 export function ResultsScreen({ navigation, route }: ResultsScreenProps) {
+  const { width } = useWindowDimensions();
+  const reduceMotion = useReducedMotionSetting();
+  const columnWidth = Math.min(CONTENT_MAX, width - 24);
+
   const restartGame = useGameStore((state) => state.restartGame);
   const eligibility = useGameStore((state) => state.eligibility);
   const submissionStatus = useGameStore((state) => state.submissionStatus);
@@ -73,8 +93,11 @@ export function ResultsScreen({ navigation, route }: ResultsScreenProps) {
   const routeClearedLanes = resolveParam(route.params?.clearedLanes);
   const routeBusts = resolveParam(route.params?.busts);
   const routeCardsPlayed = resolveParam(route.params?.cardsPlayed);
-  const routeTimeRemainingSeconds = resolveParam(route.params?.timeRemainingSeconds);
-  const gameOverReason = officialResult?.gameOverReason ?? route.params?.gameOverReason;
+  const routeTimeRemainingSeconds = resolveParam(
+    route.params?.timeRemainingSeconds,
+  );
+  const gameOverReason =
+    officialResult?.gameOverReason ?? route.params?.gameOverReason;
   const matchId = route.params?.matchId;
 
   const score = officialResult?.score ?? routeScore;
@@ -86,9 +109,15 @@ export function ResultsScreen({ navigation, route }: ResultsScreenProps) {
 
   const entries = useScoreHistoryStore((state) => state.entries);
   const isHydrated = useScoreHistoryStore((state) => state.isHydrated);
-  const hydrateScoreHistory = useScoreHistoryStore((state) => state.hydrateScoreHistory);
-  const claimSoloMatchReward = useWalletStore((state) => state.claimSoloMatchReward);
-  const claimRewardedDouble = useWalletStore((state) => state.claimRewardedDouble);
+  const hydrateScoreHistory = useScoreHistoryStore(
+    (state) => state.hydrateScoreHistory,
+  );
+  const claimSoloMatchReward = useWalletStore(
+    (state) => state.claimSoloMatchReward,
+  );
+  const claimRewardedDouble = useWalletStore(
+    (state) => state.claimRewardedDouble,
+  );
   const lastSoloGrant = useWalletStore((state) => state.lastSoloGrant);
   const doubledMatchIds = useWalletStore((state) => state.doubledMatchIds);
   const [doubleBusy, setDoubleBusy] = useState(false);
@@ -96,9 +125,14 @@ export function ResultsScreen({ navigation, route }: ResultsScreenProps) {
 
   const progressionEnabled = isProgressionBetaEnabled();
   const progression = useProgressionStore((state) => state.progression);
+  const dailyMissions = useProgressionStore((state) => state.dailyMissions);
   const pendingLevelUp = useProgressionStore((state) => state.pendingLevelUp);
-  const refreshProgression = useProgressionStore((state) => state.refreshProgression);
-  const acknowledgeLevelUp = useProgressionStore((state) => state.acknowledgeLevelUp);
+  const refreshProgression = useProgressionStore(
+    (state) => state.refreshProgression,
+  );
+  const acknowledgeLevelUp = useProgressionStore(
+    (state) => state.acknowledgeLevelUp,
+  );
   const levelBeforeRef = useRef<number | null>(null);
   const totalXpBeforeRef = useRef<number | null>(null);
   const [xpSnapshotReady, setXpSnapshotReady] = useState(false);
@@ -157,43 +191,61 @@ export function ResultsScreen({ navigation, route }: ResultsScreenProps) {
   }, [progression, progressionEnabled]);
 
   const isNewHighScore = score > 0 && score >= highScore;
-  const title = getResultTitle(gameOverReason, isNewHighScore);
+  const { title, subtitle } = getResultCopy(gameOverReason, isNewHighScore);
+  const showStopwatch =
+    gameOverReason === 'timeExpired' && !isNewHighScore;
   const localRank =
     isHydrated && matchId ? findLocalRank(entries, matchId) : null;
+  const rankLine =
+    localRank == null
+      ? null
+      : localRank <= 10
+        ? localRank === 1
+          ? 'NEW LOCAL RANK #1'
+          : `LOCAL TOP 10 — #${localRank}`
+        : `LOCAL RANK #${localRank}`;
 
-  const verificationLabel = useMemo(() => {
+  const verification = useMemo(() => {
     if (eligibility === 'localOnly') {
-      return 'LOCAL SCORE';
+      return {
+        label: 'LOCAL SCORE',
+        detail: 'Saved locally. Online rewards were not granted.',
+        tone: 'local' as const,
+      };
     }
     if (submissionStatus === 'verified') {
-      return 'VERIFIED ONLINE';
+      return {
+        label: 'VERIFIED ONLINE',
+        detail: 'Verified — may appear on the global leaderboard.',
+        tone: 'ok' as const,
+      };
     }
     if (submissionStatus === 'submitting' || submissionStatus === 'idle') {
-      return 'VERIFYING SCORE…';
+      return {
+        label: 'VERIFYING SCORE…',
+        detail: 'Checking your run with the server…',
+        tone: 'pending' as const,
+      };
     }
     if (submissionStatus === 'failed') {
-      return 'VERIFICATION FAILED';
+      return {
+        label: 'VERIFICATION FAILED',
+        detail: 'Online verification failed. Your local result is safe.',
+        tone: 'warn' as const,
+      };
     }
     if (submissionStatus === 'rejected') {
-      return 'SCORE NOT VERIFIED';
+      return {
+        label: 'SCORE NOT VERIFIED',
+        detail: 'Online verification failed. Your local result is safe.',
+        tone: 'warn' as const,
+      };
     }
-    return 'LOCAL SCORE';
-  }, [eligibility, submissionStatus]);
-
-  const verificationDetail = useMemo(() => {
-    if (eligibility === 'localOnly') {
-      return 'This match was saved locally and was not submitted globally.';
-    }
-    if (submissionStatus === 'verified') {
-      return 'Official result accepted on the global leaderboard.';
-    }
-    if (submissionStatus === 'submitting' || submissionStatus === 'idle') {
-      return 'Checking your run with the server…';
-    }
-    if (submissionStatus === 'failed') {
-      return 'Your local score is still saved.';
-    }
-    return 'Your local score is still saved.';
+    return {
+      label: 'LOCAL SCORE',
+      detail: 'Saved locally. Online rewards were not granted.',
+      tone: 'local' as const,
+    };
   }, [eligibility, submissionStatus]);
 
   const xpSummary = useMemo(() => {
@@ -203,7 +255,6 @@ export function ResultsScreen({ navigation, route }: ResultsScreenProps) {
     if (eligibility === 'localOnly' || gameOverReason === 'quit') {
       return {
         state: 'local' as const,
-        label: 'LOCAL MATCH — NO ONLINE REWARDS',
         xpEarned: 0,
         levelBefore: progression?.level ?? 1,
         levelAfter: progression?.level ?? 1,
@@ -216,7 +267,6 @@ export function ResultsScreen({ navigation, route }: ResultsScreenProps) {
     ) {
       return {
         state: 'syncing' as const,
-        label: 'SYNCING REWARDS…',
         xpEarned: 0,
         levelBefore: levelBeforeRef.current ?? progression?.level ?? 1,
         levelAfter: progression?.level ?? 1,
@@ -226,10 +276,11 @@ export function ResultsScreen({ navigation, route }: ResultsScreenProps) {
       const beforeXp = totalXpBeforeRef.current;
       const afterXp = progression?.totalXp ?? beforeXp ?? 0;
       const earned =
-        beforeXp != null ? Math.max(0, afterXp - beforeXp) : PROGRESSION_CONFIG.matchXp.solo;
+        beforeXp != null
+          ? Math.max(0, afterXp - beforeXp)
+          : PROGRESSION_CONFIG.matchXp.solo;
       return {
         state: 'verified' as const,
-        label: 'REWARDS VERIFIED',
         xpEarned: earned,
         levelBefore: levelBeforeRef.current ?? progression?.level ?? 1,
         levelAfter: progression?.level ?? 1,
@@ -237,7 +288,6 @@ export function ResultsScreen({ navigation, route }: ResultsScreenProps) {
     }
     return {
       state: 'local' as const,
-      label: 'LOCAL MATCH — NO ONLINE REWARDS',
       xpEarned: 0,
       levelBefore: progression?.level ?? 1,
       levelAfter: progression?.level ?? 1,
@@ -251,6 +301,57 @@ export function ResultsScreen({ navigation, route }: ResultsScreenProps) {
     xpSnapshotReady,
   ]);
 
+  const showCoinsPanel =
+    isMonetizationBetaEnabled() &&
+    gameOverReason !== 'quit' &&
+    Boolean(matchId);
+
+  const coinsEarned = lastSoloGrant ?? 0;
+  const rewardsLocal =
+    eligibility === 'localOnly' ||
+    gameOverReason === 'quit' ||
+    (xpSummary?.state === 'local' && submissionStatus !== 'verified');
+
+  const missionsProgressed = useMemo(() => {
+    if (!isDailyMissionsEnabled() || !dailyMissions?.missions) {
+      return 0;
+    }
+    return dailyMissions.missions.filter(
+      (mission) => mission.isComplete || (mission.progress ?? 0) > 0,
+    ).length;
+  }, [dailyMissions]);
+
+  const statsRows = useMemo(
+    () => [
+      {
+        label: 'HIGH SCORE',
+        value: highScore.toLocaleString(),
+        gold: isNewHighScore,
+        badge: isNewHighScore ? 'NEW' : undefined,
+      },
+      { label: 'LANES CLEARED', value: clearedLanes.toLocaleString() },
+      { label: 'CARDS PLAYED', value: cardsPlayed.toLocaleString() },
+      {
+        label: 'BUSTS',
+        value: `${busts}/${MAX_BUSTS}`,
+        danger: busts >= MAX_BUSTS,
+      },
+      {
+        label: 'TIME REMAINING',
+        value: formatTimerSeconds(timeRemainingSeconds),
+        danger: timeRemainingSeconds === 0,
+      },
+    ],
+    [
+      busts,
+      cardsPlayed,
+      clearedLanes,
+      highScore,
+      isNewHighScore,
+      timeRemainingSeconds,
+    ],
+  );
+
   const playAgain = () => {
     restartGame();
     navigation.replace('Game');
@@ -263,302 +364,396 @@ export function ResultsScreen({ navigation, route }: ResultsScreenProps) {
     });
   };
 
+  const animationKey = matchId ?? `${score}-${gameOverReason ?? 'result'}`;
+
   return (
-    <ScreenContainer style={styles.container} intensity="intense" padded={false}>
-      <ScrollView
-        contentContainerStyle={styles.scroll}
-        showsVerticalScrollIndicator={false}
-      >
-        <View style={styles.header}>
-          <FlameIcon width={36} height={48} />
-          <Text style={styles.title}>{title}</Text>
-          {isNewHighScore ? (
-            <Text style={styles.newHigh}>NEW HIGH SCORE!</Text>
-          ) : null}
-          {localRank ? (
-            <Text
-              style={styles.localRank}
-              accessibilityLabel={`New local rank number ${localRank}`}
-            >
-              NEW LOCAL RANK #{localRank}
-            </Text>
-          ) : null}
-        </View>
-
-        <View style={styles.verifyBanner}>
-          <Text style={styles.verifyLabel}>{verificationLabel}</Text>
-          <Text style={styles.verifyDetail}>{verificationDetail}</Text>
-        </View>
-
+    <BlazeScreenBackground
+      variant="dramatic"
+      embers={isNewHighScore && !reduceMotion}
+    >
+      <View style={styles.shell}>
         <LinearGradient
-          colors={[colors.backgroundCard, '#222222']}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={styles.scoreCard}
-        >
-          <Text style={styles.scoreLabel}>SCORE</Text>
-          <Text style={styles.scoreValue}>{score.toLocaleString()}</Text>
-        </LinearGradient>
-
-        <ResultsPanel
-          rows={[
-            {
-              label: 'High Score',
-              value: String(highScore),
-              highlight: isNewHighScore,
-              showNewBadge: isNewHighScore,
-            },
-            { label: 'Lanes Cleared', value: String(clearedLanes) },
-            { label: 'Cards Played', value: String(cardsPlayed) },
-            { label: 'Busts', value: `${busts}/${MAX_BUSTS}` },
-            {
-              label: 'Time Remaining',
-              value: formatTimerSeconds(timeRemainingSeconds),
-            },
-          ]}
+          pointerEvents="none"
+          colors={
+            isNewHighScore
+              ? ['rgba(255,101,0,0.22)', 'transparent', 'rgba(5,7,9,0.55)']
+              : showStopwatch
+                ? ['rgba(120,16,8,0.35)', 'transparent', 'rgba(5,7,9,0.6)']
+                : ['rgba(5,7,9,0.25)', 'transparent', 'rgba(5,7,9,0.5)']
+          }
+          locations={[0, 0.4, 1]}
+          style={styles.heroGlow}
         />
 
-        {isMonetizationBetaEnabled() &&
-        gameOverReason !== 'quit' &&
-        matchId ? (
-          <View style={styles.coinPanel}>
-            <Text style={styles.coinTitle}>COINS EARNED</Text>
-            <Text style={styles.coinValue}>
-              +{(lastSoloGrant ?? 0).toLocaleString()}
-            </Text>
-            {isRewardedCurrencyEnabled() &&
-            !doubleDone &&
-            !(matchId && doubledMatchIds[matchId]) ? (
-              <BlazeButton
-                title="DOUBLE REWARD"
-                variant="outline"
-                loading={doubleBusy}
-                onPress={() => {
-                  void (async () => {
-                    setDoubleBusy(true);
-                    trackEvent('rewarded_ad_requested', { type: 'double_solo' });
-                    const outcome = await showRewardedAd('double_solo_match_coins');
-                    if (outcome.status === 'earned') {
-                      trackEvent('rewarded_ad_completed');
-                      const granted = await claimRewardedDouble({
-                        matchId,
-                        clientRewardId: outcome.clientRewardId,
-                      });
-                      if (granted > 0) {
-                        setDoubleDone(true);
-                      }
-                    } else if (outcome.status === 'dismissed') {
-                      trackEvent('rewarded_ad_failed', { reason: 'dismissed' });
-                    } else {
-                      trackEvent('rewarded_ad_failed');
-                    }
-                    setDoubleBusy(false);
-                  })();
-                }}
-                fullWidth
-              />
-            ) : null}
-            {doubleDone || (matchId && doubledMatchIds[matchId]) ? (
-              <Text style={styles.doubled}>REWARD DOUBLED</Text>
-            ) : null}
-          </View>
-        ) : null}
+        <ScrollView
+          contentContainerStyle={[
+            styles.scroll,
+            { width: columnWidth, maxWidth: CONTENT_MAX },
+          ]}
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+        >
+          <ResultHero
+            title={title}
+            subtitle={subtitle}
+            score={score}
+            isHighScore={isNewHighScore}
+            crownVisible={isNewHighScore}
+            stopwatchVisible={showStopwatch}
+            rankLine={rankLine}
+            reduceMotion={reduceMotion}
+            animationKey={animationKey}
+          />
 
-        {xpSummary ? (
-          <View style={styles.xpPanel}>
-            <Text style={styles.xpState}>{xpSummary.label}</Text>
-            {xpSummary.state === 'verified' ? (
-              <>
-                <Text style={styles.xpEarned}>+{xpSummary.xpEarned} XP</Text>
-                <Text style={styles.xpLevels}>
-                  Level {xpSummary.levelBefore} → {xpSummary.levelAfter}
+          <View
+            style={[
+              styles.statusPill,
+              verification.tone === 'ok' && styles.statusOk,
+              verification.tone === 'warn' && styles.statusWarn,
+              verification.tone === 'pending' && styles.statusPending,
+            ]}
+            accessibilityRole="text"
+            accessibilityLabel={`${verification.label}. ${verification.detail}`}
+          >
+            {verification.tone === 'pending' ? (
+              <ActivityIndicator size="small" color={kitColors.fire.gold} />
+            ) : (
+              <View
+                style={[
+                  styles.statusDot,
+                  verification.tone === 'ok' && styles.dotOk,
+                  verification.tone === 'warn' && styles.dotWarn,
+                  verification.tone === 'local' && styles.dotLocal,
+                ]}
+              />
+            )}
+            <View style={styles.statusCopy}>
+              <Text style={styles.statusLabel}>{verification.label}</Text>
+              <Text style={styles.statusDetail} numberOfLines={2}>
+                {verification.detail}
+              </Text>
+            </View>
+          </View>
+
+          <ResultsTable
+            rows={statsRows}
+            highlightedRow={isNewHighScore ? 'HIGH SCORE' : undefined}
+            compact
+          />
+
+          {(showCoinsPanel || xpSummary) && (
+            <BlazePanel style={styles.rewardsPanel}>
+              {xpSummary?.state === 'syncing' ? (
+                <Text style={styles.syncLabel}>SYNCING REWARDS…</Text>
+              ) : null}
+              <View style={styles.rewardsRow}>
+                {showCoinsPanel ? (
+                  <View style={styles.rewardCell}>
+                    <Text style={styles.rewardLabel}>COINS</Text>
+                    <Text style={styles.rewardValue}>
+                      +{coinsEarned.toLocaleString()}
+                    </Text>
+                  </View>
+                ) : null}
+                {xpSummary ? (
+                  <View style={styles.rewardCell}>
+                    <Text style={styles.rewardLabel}>XP</Text>
+                    <Text style={styles.rewardValue}>
+                      +
+                      {xpSummary.state === 'verified'
+                        ? xpSummary.xpEarned.toLocaleString()
+                        : '0'}
+                    </Text>
+                  </View>
+                ) : null}
+              </View>
+              {rewardsLocal ? (
+                <Text style={styles.rewardsNote}>
+                  Connect online to earn verified rewards.
                 </Text>
-              </>
-            ) : null}
-            {progression ? (
+              ) : null}
+
+              {showCoinsPanel &&
+              isRewardedCurrencyEnabled() &&
+              !doubleDone &&
+              !(matchId && doubledMatchIds[matchId]) ? (
+                <BlazeButton
+                  label="DOUBLE REWARD"
+                  variant="ghost"
+                  size="sm"
+                  loading={doubleBusy}
+                  onPress={() => {
+                    void (async () => {
+                      setDoubleBusy(true);
+                      trackEvent('rewarded_ad_requested', {
+                        type: 'double_solo',
+                      });
+                      const outcome = await showRewardedAd(
+                        'double_solo_match_coins',
+                      );
+                      if (outcome.status === 'earned') {
+                        trackEvent('rewarded_ad_completed');
+                        const granted = await claimRewardedDouble({
+                          matchId: matchId!,
+                          clientRewardId: outcome.clientRewardId,
+                        });
+                        if (granted > 0) {
+                          setDoubleDone(true);
+                        }
+                      } else if (outcome.status === 'dismissed') {
+                        trackEvent('rewarded_ad_failed', {
+                          reason: 'dismissed',
+                        });
+                      } else {
+                        trackEvent('rewarded_ad_failed');
+                      }
+                      setDoubleBusy(false);
+                    })();
+                  }}
+                />
+              ) : null}
+              {doubleDone || (matchId && doubledMatchIds[matchId]) ? (
+                <Text style={styles.doubled}>REWARD DOUBLED</Text>
+              ) : null}
+            </BlazePanel>
+          )}
+
+          {xpSummary &&
+          progression &&
+          xpSummary.state === 'verified' &&
+          (xpSummary.xpEarned > 0 ||
+            xpSummary.levelAfter > xpSummary.levelBefore) ? (
+            <BlazePanel style={styles.levelPanel}>
+              <Text style={styles.levelTitle}>
+                Level {xpSummary.levelBefore} → {xpSummary.levelAfter}
+                {xpSummary.levelAfter > xpSummary.levelBefore
+                  ? '  ·  LEVEL UP'
+                  : ''}
+              </Text>
+              <Text style={styles.levelXp}>+{xpSummary.xpEarned} XP</Text>
               <XpProgressBar
                 compact
                 level={progression.level}
                 currentLevelXp={progression.currentLevelXp}
                 xpRequiredForNextLevel={progression.xpRequiredForNextLevel}
               />
-            ) : null}
+            </BlazePanel>
+          ) : null}
+
+          {missionsProgressed > 0 ? (
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={`${missionsProgressed} missions progressed. Open daily missions.`}
+              onPress={() => navigation.navigate('DailyMissions')}
+              style={({ pressed }) => [
+                styles.missionChip,
+                pressed && styles.pressed,
+              ]}
+            >
+              <Text style={styles.missionText}>
+                {missionsProgressed} mission
+                {missionsProgressed === 1 ? '' : 's'} progressed
+              </Text>
+              <Text style={styles.missionAction}>VIEW</Text>
+            </Pressable>
+          ) : null}
+
+          <View style={styles.actions}>
+            <BlazeButton
+              label="PLAY AGAIN"
+              onPress={playAgain}
+              accessibilityLabel="Play again"
+            />
+            <BlazeButton
+              label={
+                submissionStatus === 'verified'
+                  ? 'VIEW GLOBAL RANKING'
+                  : 'VIEW HIGH SCORES'
+              }
+              variant="secondary"
+              onPress={() => navigation.navigate('HighScores')}
+              accessibilityLabel={
+                submissionStatus === 'verified'
+                  ? 'View global ranking'
+                  : 'View high scores'
+              }
+            />
+            <BlazeButton
+              label="RETURN HOME"
+              variant="ghost"
+              onPress={returnHome}
+              accessibilityLabel="Return home"
+            />
           </View>
-        ) : null}
+        </ScrollView>
 
-        <View style={styles.actions}>
-          <BlazeButton title="PLAY AGAIN" onPress={playAgain} fullWidth />
-          {submissionStatus === 'verified' ? (
-            <BlazeButton
-              title="VIEW GLOBAL RANKING"
-              variant="outline"
-              onPress={() => navigation.navigate('HighScores')}
-              fullWidth
-            />
-          ) : (
-            <BlazeButton
-              title="VIEW HIGH SCORES"
-              variant="outline"
-              onPress={() => navigation.navigate('HighScores')}
-              fullWidth
-            />
-          )}
-          <BlazeButton
-            title="RETURN HOME"
-            variant="secondary"
-            onPress={returnHome}
-            fullWidth
+        {progressionEnabled ? (
+          <LevelUpOverlay
+            pending={pendingLevelUp}
+            onContinue={acknowledgeLevelUp}
           />
-        </View>
-      </ScrollView>
-
-      {progressionEnabled ? (
-        <LevelUpOverlay
-          pending={pendingLevelUp}
-          onContinue={acknowledgeLevelUp}
-        />
-      ) : null}
-    </ScreenContainer>
+        ) : null}
+      </View>
+    </BlazeScreenBackground>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
+  shell: {
     flex: 1,
+    backgroundColor: 'rgba(5,7,9,0.28)',
+  },
+  heroGlow: {
+    ...StyleSheet.absoluteFill,
+    pointerEvents: 'none',
   },
   scroll: {
     flexGrow: 1,
-    paddingHorizontal: spacing.md,
-    paddingTop: spacing.xl,
-    paddingBottom: spacing.lg,
-    alignItems: 'center',
-    gap: spacing.md,
-    maxWidth: 480,
-    width: '100%',
     alignSelf: 'center',
+    paddingHorizontal: kitSpacing.md,
+    paddingTop: kitSpacing.lg,
+    paddingBottom: kitSpacing.xl,
+    gap: kitSpacing.sm,
   },
-  header: {
+  statusPill: {
+    width: '100%',
+    flexDirection: 'row',
     alignItems: 'center',
-    gap: spacing.sm,
+    gap: 10,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: 'rgba(255,138,0,0.28)',
+    backgroundColor: 'rgba(0,0,0,0.45)',
   },
-  title: {
-    fontFamily: fontFamilies.display,
-    fontSize: 48,
-    lineHeight: 52,
-    color: colors.primary,
-    textAlign: 'center',
-    textShadowColor: colors.gold,
-    textShadowOffset: { width: 0, height: 0 },
-    textShadowRadius: 14,
+  statusOk: {
+    borderColor: 'rgba(66,199,106,0.45)',
   },
-  newHigh: {
-    ...typography.subtitle,
-    color: colors.gold,
-    fontSize: 14,
+  statusWarn: {
+    borderColor: 'rgba(255,52,38,0.4)',
   },
-  localRank: {
-    fontFamily: fontFamilies.bodyBold,
-    fontSize: 13,
+  statusPending: {
+    borderColor: 'rgba(255,182,41,0.4)',
+  },
+  statusDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: kitColors.fire.brightOrange,
+  },
+  dotOk: { backgroundColor: kitColors.status.success },
+  dotWarn: { backgroundColor: kitColors.status.danger },
+  dotLocal: { backgroundColor: kitColors.fire.gold },
+  statusCopy: {
+    flex: 1,
+    minWidth: 0,
+  },
+  statusLabel: {
+    color: kitColors.text.primary,
+    fontFamily: kitTypography.families.condensed,
+    fontWeight: '700',
+    fontSize: 11,
     letterSpacing: 1,
-    color: colors.brightOrange,
   },
-  verifyBanner: {
+  statusDetail: {
+    color: kitColors.text.secondary,
+    fontFamily: kitTypography.families.body,
+    fontSize: 11,
+  },
+  rewardsPanel: {
     width: '100%',
-    borderRadius: radius.md,
-    borderWidth: 1,
-    borderColor: colors.blazeSubtle,
-    backgroundColor: 'rgba(0,0,0,0.28)',
-    paddingVertical: spacing.sm,
-    paddingHorizontal: spacing.md,
-    gap: 4,
+    gap: kitSpacing.sm,
   },
-  verifyLabel: {
-    fontFamily: fontFamilies.bodyBold,
-    fontSize: 13,
-    letterSpacing: 1.2,
-    color: colors.gold,
+  syncLabel: {
+    color: kitColors.fire.gold,
+    fontFamily: kitTypography.families.condensed,
+    fontWeight: '700',
+    fontSize: 11,
+    letterSpacing: 1,
     textAlign: 'center',
   },
-  verifyDetail: {
-    ...typography.body,
-    fontSize: 13,
-    color: colors.textSecondary,
-    textAlign: 'center',
+  rewardsRow: {
+    flexDirection: 'row',
+    gap: kitSpacing.md,
   },
-  coinPanel: {
-    width: '100%',
-    borderRadius: radius.lg,
-    borderWidth: 1,
-    borderColor: colors.blazeSubtle,
-    backgroundColor: colors.backgroundCard,
-    padding: spacing.md,
+  rewardCell: {
+    flex: 1,
     alignItems: 'center',
-    gap: spacing.sm,
+    gap: 2,
   },
-  xpPanel: {
-    width: '100%',
-    borderRadius: radius.lg,
-    borderWidth: 1,
-    borderColor: colors.blazeSubtle,
-    backgroundColor: 'rgba(0,0,0,0.28)',
-    padding: spacing.md,
-    alignItems: 'center',
-    gap: spacing.sm,
+  rewardLabel: {
+    color: kitColors.text.secondary,
+    fontFamily: kitTypography.families.condensed,
+    fontSize: 11,
+    letterSpacing: 1,
   },
-  xpState: {
-    fontFamily: fontFamilies.bodyBold,
-    letterSpacing: 1.1,
-    color: colors.gold,
-    textAlign: 'center',
-  },
-  xpEarned: {
-    fontFamily: fontFamilies.display,
+  rewardValue: {
+    color: kitColors.fire.gold,
+    fontFamily: kitTypography.families.display,
     fontSize: 28,
-    color: colors.primary,
   },
-  xpLevels: {
-    ...typography.body,
-    color: colors.textSecondary,
-  },
-  coinTitle: {
-    fontFamily: fontFamilies.bodyBold,
-    letterSpacing: 1.2,
-    color: colors.gold,
-  },
-  coinValue: {
-    fontFamily: fontFamilies.display,
-    fontSize: 32,
-    color: colors.primary,
+  rewardsNote: {
+    color: kitColors.text.secondary,
+    fontFamily: kitTypography.families.body,
+    fontSize: 12,
+    textAlign: 'center',
   },
   doubled: {
-    fontFamily: fontFamilies.bodyBold,
-    color: colors.success,
+    color: kitColors.status.success,
+    fontFamily: kitTypography.families.condensed,
+    fontWeight: '700',
+    textAlign: 'center',
+    fontSize: 12,
+    letterSpacing: 0.8,
   },
-  scoreCard: {
+  levelPanel: {
     width: '100%',
-    borderRadius: radius.lg,
-    borderWidth: 1.5,
-    borderColor: colors.blazeSubtle,
-    paddingVertical: spacing.md,
-    paddingHorizontal: spacing.lg,
+    gap: 6,
     alignItems: 'center',
   },
-  scoreLabel: {
-    ...typography.label,
-    letterSpacing: 1,
+  levelTitle: {
+    color: kitColors.text.primary,
+    fontFamily: kitTypography.families.condensed,
+    fontWeight: '700',
+    fontSize: 13,
+    letterSpacing: 0.6,
   },
-  scoreValue: {
-    fontFamily: fontFamilies.display,
-    fontSize: 52,
-    lineHeight: 56,
-    color: colors.brightOrange,
-    textShadowColor: colors.gold,
-    textShadowOffset: { width: 0, height: 0 },
-    textShadowRadius: 12,
+  levelXp: {
+    color: kitColors.fire.orange,
+    fontFamily: kitTypography.families.display,
+    fontSize: 20,
+  },
+  missionChip: {
+    width: '100%',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(255,138,0,0.28)',
+    backgroundColor: 'rgba(0,0,0,0.35)',
+  },
+  missionText: {
+    color: kitColors.text.secondary,
+    fontFamily: kitTypography.families.condensed,
+    fontSize: 12,
+  },
+  missionAction: {
+    color: kitColors.fire.gold,
+    fontFamily: kitTypography.families.condensed,
+    fontWeight: '700',
+    fontSize: 12,
+    letterSpacing: 0.8,
   },
   actions: {
     width: '100%',
     gap: 10,
-    marginTop: spacing.xs,
+    marginTop: 4,
+  },
+  pressed: {
+    opacity: 0.88,
   },
 });
