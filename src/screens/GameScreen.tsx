@@ -612,13 +612,15 @@ const styles = StyleSheet.create({
   activeCardWrap: {
     alignItems: 'center',
     justifyContent: 'center',
+    zIndex: 1,
   },
   cardGlow: {
     position: 'absolute',
-    width: 150,
-    height: 150,
-    borderRadius: 75,
-    backgroundColor: 'rgba(255,101,0,0.22)',
+    width: 128,
+    height: 128,
+    borderRadius: 64,
+    backgroundColor: 'rgba(255,101,0,0.14)',
+    zIndex: 0,
   },
   chooseLabel: {
     fontFamily: kitTypography.families.condensed,
@@ -627,8 +629,8 @@ const styles = StyleSheet.create({
     color: kitColors.text.secondary,
   },
   activePlaceholder: {
-    width: 108,
-    height: 154,
+    width: 118,
+    height: 166,
     borderRadius: 8,
     borderWidth: 1,
     borderColor: kitColors.border.orange,
@@ -637,8 +639,8 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   activePlaceholderCompact: {
-    width: 72,
-    height: 104,
+    width: 80,
+    height: 114,
   },
   placeholderText: {
     fontFamily: kitTypography.families.condensed,
