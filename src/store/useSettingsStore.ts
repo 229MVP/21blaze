@@ -105,3 +105,11 @@ export function selectCardStyle(state: SettingsStore): CardStyle {
 export function selectReducedMotionEnabled(state: SettingsStore): boolean {
   return state.settings.reducedMotionEnabled;
 }
+
+export function selectSoundEffectsEnabled(state: SettingsStore): boolean {
+  return state.settings.soundEffectsEnabled;
+}
+
+export function selectHapticsEnabled(state: SettingsStore): boolean {
+  return state.settings.hapticsEnabled;
+}

@@ -41,3 +41,7 @@ yarn-error.*
 # generated native folders
 /ios
 /android
+
+# UI-kit extraction leftovers (integrated assets live under assets/ and src/)
+_ui-kit-source/
+21-blaze-ui-kit.zip

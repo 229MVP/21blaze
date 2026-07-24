@@ -77,19 +77,11 @@ Generated automatically during packaging. See the table below.
 | `assets/audio/new-high-score.wav` | Original synthesized sound effect | n/a | WAV | n/a | No | Optimized for mobile; use component-specific display size. |
 | `assets/backgrounds/gameplay-embers-subtle.webp` | Screen background | 1080×2400 | WEBP | Yes | No | Optimized for mobile; use component-specific display size. |
 | `assets/backgrounds/gameplay-embers.webp` | Screen background | 1080×2400 | WEBP | Yes | No | Optimized for mobile; use component-specific display size. |
-| `assets/backgrounds/home-lava-portrait.webp` | Screen background | 720×1600 | WEBP | Yes | No | Optimized for mobile; use component-specific display size. |
-| `assets/backgrounds/home-lava-portrait@2x.webp` | Screen background | 1440×3200 | WEBP | Yes | No | Optimized for mobile; use component-specific display size. |
-| `assets/backgrounds/home-lava-preview.jpg` | Screen background | 450×1000 | JPG | No | No | Optimized for mobile; use component-specific display size. |
-| `assets/branding/21-blaze-logo-1024.png` | Branding artwork | 1024×1024 | PNG | Yes | No | Optimized for mobile; use component-specific display size. |
-| `assets/branding/21-blaze-logo-2048.png` | Branding artwork | 2048×2048 | PNG | Yes | No | Optimized for mobile; use component-specific display size. |
-| `assets/branding/21-blaze-logo-512.png` | Branding artwork | 512×512 | PNG | Yes | No | Optimized for mobile; use component-specific display size. |
-| `assets/branding/21-blaze-logo.webp` | Branding artwork | 1024×1024 | WEBP | Yes | No | Optimized for mobile; use component-specific display size. |
-| `assets/branding/flaming-crown-256.webp` | Branding artwork | 256×256 | WEBP | Yes | No | Optimized for mobile; use component-specific display size. |
-| `assets/branding/flaming-crown-512.png` | Branding artwork | 512×512 | PNG | Yes | No | Optimized for mobile; use component-specific display size. |
-| `assets/effects/embers-overlay.png` | Visual effect or motion fallback | 1024×2048 | PNG | Yes | No | Optimized for mobile; use component-specific display size. |
-| `assets/effects/embers-overlay.webp` | Visual effect or motion fallback | 1024×2048 | WEBP | Yes | No | Optimized for mobile; use component-specific display size. |
-| `assets/effects/fire-stopwatch-1024.png` | Visual effect or motion fallback | 1024×1024 | PNG | Yes | No | Optimized for mobile; use component-specific display size. |
-| `assets/effects/fire-stopwatch-512.webp` | Visual effect or motion fallback | 512×512 | WEBP | Yes | No | Optimized for mobile; use component-specific display size. |
+| `assets/backgrounds/home-lava-portrait.webp` | Screen background | 720×1600 | WEBP | Yes | No | Active Home background via `blazeAssets.lavaBackground`. |
+| `assets/branding/21-blaze-logo-512.png` | Branding artwork | 512×512 | PNG | Yes | No | Active logo via `blazeAssets.logoMain` (oversized 1024/2048 duplicates removed in Phase G). |
+| `assets/branding/flaming-crown-256.webp` | Branding artwork | 256×256 | WEBP | Yes | No | Active Results crown. |
+| `assets/effects/embers-overlay.webp` | Visual effect or motion fallback | 1024×2048 | WEBP | Yes | No | Active ember overlay (PNG duplicate removed). |
+| `assets/effects/fire-stopwatch-512.webp` | Visual effect or motion fallback | 512×512 | WEBP | Yes | No | Active Results stopwatch (1024 PNG duplicate removed). |
 | `assets/icons/back.svg` | Editable icon/source asset | n/a | SVG | n/a | No | Optimized for mobile; use component-specific display size. |
 | `assets/icons/bust-broken-heart.svg` | Editable icon/source asset | n/a | SVG | n/a | No | Optimized for mobile; use component-specific display size. |
 | `assets/icons/chevron-right.svg` | Editable icon/source asset | n/a | SVG | n/a | No | Optimized for mobile; use component-specific display size. |

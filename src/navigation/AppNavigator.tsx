@@ -1,6 +1,7 @@
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createNavigationContainerRef } from '@react-navigation/native';
 
+import { isPurchaseDiagnosticsEnabled } from '../config/featureFlags';
 import { BlazeStoreScreen } from '../screens/BlazeStoreScreen';
 import { CreateLiveRoomScreen } from '../screens/CreateLiveRoomScreen';
 import { DailyMissionsScreen } from '../screens/DailyMissionsScreen';
@@ -70,11 +71,12 @@ export function AppNavigator() {
       <Stack.Screen name="PlayerProgression" component={PlayerProgressionScreen} />
       <Stack.Screen name="DailyReward" component={DailyRewardScreen} />
       <Stack.Screen name="DailyMissions" component={DailyMissionsScreen} />
-      {/* Entry points are production-gated; screen itself refuses production env. */}
-      <Stack.Screen
-        name="PurchaseDiagnostics"
-        component={PurchaseDiagnosticsScreen}
-      />
+      {isPurchaseDiagnosticsEnabled() ? (
+        <Stack.Screen
+          name="PurchaseDiagnostics"
+          component={PurchaseDiagnosticsScreen}
+        />
+      ) : null}
       {__DEV__ ? (
         <Stack.Screen
           name="BlazeUIKitPreview"

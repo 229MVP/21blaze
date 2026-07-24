@@ -1,7 +1,7 @@
 import 'react-native-gesture-handler';
 
 import { useEffect, useState } from 'react';
-import { View } from 'react-native';
+import { AppState, View } from 'react-native';
 import { DarkTheme, NavigationContainer } from '@react-navigation/native';
 import { Anton_400Regular, useFonts } from '@expo-google-fonts/anton';
 import {
@@ -15,6 +15,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { ErrorBoundary } from './src/components/ErrorBoundary';
 import { AppNavigator, navigationRef } from './src/navigation/AppNavigator';
+import { blazeAudio } from './src/services/audio/blazeAudio';
 import { useAuthStore } from './src/store/useAuthStore';
 import { useScoreHistoryStore } from './src/store/useScoreHistoryStore';
 import { useSettingsStore } from './src/store/useSettingsStore';
@@ -68,6 +69,42 @@ export default function App() {
     void useSettingsStore.getState().hydrateSettings();
     void useScoreHistoryStore.getState().hydrateScoreHistory();
     void useAuthStore.getState().initializeAuth();
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    void (async () => {
+      await useSettingsStore.getState().hydrateSettings();
+      if (cancelled) {
+        return;
+      }
+      blazeAudio.setEnabled(
+        useSettingsStore.getState().settings.soundEffectsEnabled,
+      );
+      void blazeAudio.initialize();
+    })();
+
+    const appStateSub = AppState.addEventListener('change', (next) => {
+      blazeAudio.handleAppStateChange(next);
+    });
+
+    let previousSoundEnabled =
+      useSettingsStore.getState().settings.soundEffectsEnabled;
+    const unsubscribeSettings = useSettingsStore.subscribe((state) => {
+      const enabled = state.settings.soundEffectsEnabled;
+      if (enabled !== previousSoundEnabled) {
+        previousSoundEnabled = enabled;
+        blazeAudio.setEnabled(enabled);
+      }
+    });
+
+    return () => {
+      cancelled = true;
+      appStateSub.remove();
+      unsubscribeSettings();
+      blazeAudio.dispose();
+    };
   }, []);
 
   // Proceed with system-font fallbacks if custom fonts fail or stall.

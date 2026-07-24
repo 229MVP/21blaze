@@ -11,6 +11,8 @@ import {
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 
+import { blazeAudio } from '../../services/audio/blazeAudio';
+import { blazeHaptics } from '../../services/haptics/blazeHaptics';
 import { colors } from '../../theme/colors';
 import { radius } from '../../theme/radius';
 import { shadows } from '../../theme/shadows';
@@ -65,7 +67,11 @@ export function BlazeButton({
       accessibilityLabel={accessibilityLabel ?? title}
       accessibilityState={{ disabled: isDisabled, busy: loading }}
       disabled={isDisabled}
-      onPress={onPress}
+      onPress={() => {
+        blazeAudio.play('buttonTap');
+        blazeHaptics.buttonPressed();
+        onPress();
+      }}
       testID={testID}
       style={({ pressed }) => [
         styles.base,

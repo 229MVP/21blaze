@@ -5,7 +5,6 @@
   },
   "exclude": [
     "supabase/functions",
-    "node_modules",
-    "_ui-kit-source"
+    "node_modules"
   ]
 }

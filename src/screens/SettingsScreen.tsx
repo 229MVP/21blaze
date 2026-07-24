@@ -92,7 +92,6 @@ export function SettingsScreen({ navigation }: SettingsScreenProps) {
   const setSoundEffectsEnabled = useSettingsStore(
     (s) => s.setSoundEffectsEnabled,
   );
-  const setMusicEnabled = useSettingsStore((s) => s.setMusicEnabled);
   const setHapticsEnabled = useSettingsStore((s) => s.setHapticsEnabled);
   const setTutorialHintsEnabled = useSettingsStore(
     (s) => s.setTutorialHintsEnabled,
@@ -176,19 +175,20 @@ export function SettingsScreen({ navigation }: SettingsScreenProps) {
               <BlazePanel padding={0} style={styles.panel}>
                 <SettingsToggleRow
                   label="SOUND EFFECTS"
-                  description="Preference only — audio not wired yet."
+                  description="Short gameplay and UI cues."
                   value={settings.soundEffectsEnabled}
                   onValueChange={setSoundEffectsEnabled}
                 />
                 <SettingsToggleRow
                   label="MUSIC"
-                  description="Preference only — music not wired yet."
-                  value={settings.musicEnabled}
-                  onValueChange={setMusicEnabled}
+                  description="Coming later — no soundtrack in this build."
+                  value={false}
+                  disabled
+                  onValueChange={() => undefined}
                 />
                 <SettingsToggleRow
                   label="HAPTICS"
-                  description="Preference only — vibration not wired yet."
+                  description="Light vibration on gameplay events (native)."
                   value={settings.hapticsEnabled}
                   onValueChange={setHapticsEnabled}
                 />

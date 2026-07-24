@@ -38,7 +38,9 @@ import {
   MAX_MULTIPLIER,
 } from '../game/constants';
 import type { Card, LaneId } from '../game/types';
+import { useSoloGameFeedback } from '../hooks/useSoloGameFeedback';
 import type { GameScreenProps } from '../navigation/navigationTypes';
+import { blazeHaptics } from '../services/haptics/blazeHaptics';
 import { useGameStore } from '../store/useGameStore';
 import {
   colors as kitColors,
@@ -53,6 +55,7 @@ export function GameScreen({ navigation }: GameScreenProps) {
   const isCompactWidth = width < 380;
   const isCompactHeight = height < 780;
   const cardStyle = useActiveCardTheme();
+  useSoloGameFeedback();
 
   const status = useGameStore((state) => state.status);
   const score = useGameStore((state) => state.score);
@@ -432,7 +435,10 @@ export function GameScreen({ navigation }: GameScreenProps) {
                       feedbackEventId={
                         isEventLane ? lastMoveEvent?.id ?? null : null
                       }
-                      onPress={() => playCardToLane(laneId)}
+                      onPress={() => {
+                        blazeHaptics.laneSelected(`lane:${laneId}`);
+                        playCardToLane(laneId);
+                      }}
                     />
                   </View>
                 );
