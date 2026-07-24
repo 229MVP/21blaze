@@ -1,0 +1,1 @@
+import React from'react';import{CountdownOverlay}from'../../components/game/CountdownOverlay';import{BlazeScreenBackground}from'../../components/layout/BlazeScreenBackground';export function CountdownMockupScreen(){return <BlazeScreenBackground variant="dramatic"><CountdownOverlay value="2" visible/></BlazeScreenBackground>}

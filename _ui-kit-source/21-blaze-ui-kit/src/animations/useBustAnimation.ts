@@ -1,0 +1,2 @@
+
+import { useEffect } from 'react'; import { useAnimatedStyle,useSharedValue,withSequence,withTiming } from 'react-native-reanimated'; export function useBustAnimation(trigger:unknown,reduced=false){const x=useSharedValue(0);useEffect(()=>{if(trigger==null||reduced)return;x.value=withSequence(withTiming(-8,{duration:55}),withTiming(8,{duration:55}),withTiming(-5,{duration:55}),withTiming(0,{duration:70}))},[trigger,reduced,x]);return useAnimatedStyle(()=>({transform:[{translateX:x.value}]}))}

@@ -1,15 +1,24 @@
-import { useEffect } from 'react';
-import { Pressable, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
+import { useEffect, useState } from 'react';
+import {
+  Image,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+  useWindowDimensions,
+} from 'react-native';
 import { Path } from 'react-native-svg';
+import { LinearGradient } from 'expo-linear-gradient';
 
-import { BlazeLogo } from '../components/branding/BlazeLogo';
-import { SvgRoot as Svg } from '../components/svg/SvgRoot';
+import { blazeAssets } from '../assets/blazeAssets';
 import { FlameIcon } from '../components/branding/FlameIcon';
-import { BlazeButton } from '../components/buttons/BlazeButton';
-import { XpProgressBar } from '../components/Progression/XpProgressBar';
+import { BlazeScreenBackground } from '../components/layout/BlazeScreenBackground';
+import { EditDisplayNameModal } from '../components/Profile/EditDisplayNameModal';
 import { LevelUpOverlay } from '../components/Progression/LevelUpOverlay';
-import { PlayerProfileButton } from '../components/Profile/PlayerProfileButton';
-import { ScreenContainer } from '../components/ScreenContainer';
+import { XpProgressBar } from '../components/Progression/XpProgressBar';
+import { SvgRoot as Svg } from '../components/svg/SvgRoot';
+import { BlazeButton } from '../components/ui/BlazeButton';
 import {
   isDailyMissionsEnabled,
   isDailyRewardsEnabled,
@@ -21,25 +30,27 @@ import {
 import { getCosmetic } from '../cosmetics/catalog';
 import { APP_VERSION } from '../game/constants';
 import type { HomeScreenProps } from '../navigation/navigationTypes';
-import { loadHighScore } from '../storage/highScoreStorage';
-import { useAuthStore } from '../store/useAuthStore';
-import { useCosmeticStore } from '../store/useCosmeticStore';
-import { useGameStore } from '../store/useGameStore';
-import { useHasRemoveAdsEntitlement, usePurchaseStore } from '../store/usePurchaseStore';
-import { useProgressionStore } from '../store/useProgressionStore';
-import { useScoreHistoryStore } from '../store/useScoreHistoryStore';
-import { useSettingsStore } from '../store/useSettingsStore';
-import { useWalletStore } from '../store/useWalletStore';
 import {
   maybeShowInterstitialAfterSoloHome,
   recordSoloMatchCompletedForInterstitial,
 } from '../monetization/interstitialAdService';
-import { colors } from '../theme/colors';
-import { radius } from '../theme/radius';
-import { spacing } from '../theme/spacing';
-import { fontFamilies, typography } from '../theme/typography';
+import { loadHighScore } from '../storage/highScoreStorage';
+import { useAuthStore } from '../store/useAuthStore';
+import { useCosmeticStore } from '../store/useCosmeticStore';
+import { useGameStore } from '../store/useGameStore';
+import {
+  useHasRemoveAdsEntitlement,
+  usePurchaseStore,
+} from '../store/usePurchaseStore';
+import { useProgressionStore } from '../store/useProgressionStore';
+import { useScoreHistoryStore } from '../store/useScoreHistoryStore';
+import { useSettingsStore } from '../store/useSettingsStore';
+import { useWalletStore } from '../store/useWalletStore';
+import { colors as kitColors, spacing as kitSpacing } from '../theme/uiKit';
 
-function TrophyIcon({ size = 14 }: { size?: number }) {
+const CONTENT_MAX_WIDTH = 410;
+
+function TrophyIcon({ size = 16 }: { size?: number }) {
   return (
     <View
       accessibilityElementsHidden
@@ -49,7 +60,7 @@ function TrophyIcon({ size = 14 }: { size?: number }) {
       <Svg width={size} height={size} viewBox="0 0 24 24">
         <Path
           d="M7 4h10v2h3v2c0 2.2-1.5 4-3.5 4.6A4.5 4.5 0 0 1 14 15.9V18h2v2H8v-2h2v-2.1A4.5 4.5 0 0 1 7.5 12.6C5.5 12 4 10.2 4 8V6h3V4zm2 2v1.5H6.1c.2 1 .9 1.8 1.9 2.1V6zm8.9 0H15v3.6c1-.3 1.7-1.1 1.9-2.1H17.9z"
-          fill={colors.gold}
+          fill={kitColors.fire.gold}
         />
       </Svg>
     </View>
@@ -68,21 +79,25 @@ function statusLabel(authStatus: 'connecting' | 'online' | 'local'): string {
 
 function statusDetail(authStatus: 'connecting' | 'online' | 'local'): string {
   if (authStatus === 'online') {
-    return 'Verified matches available';
+    return 'Verified scores enabled';
   }
   if (authStatus === 'connecting') {
-    return 'Authentication is initializing';
+    return 'Connecting…';
   }
   return 'Scores stay on this device';
 }
 
 export function HomeScreen({ navigation, route }: HomeScreenProps) {
-  const { width } = useWindowDimensions();
-  const logoSize = width < 360 ? 'md' : 'lg';
+  const { width, height } = useWindowDimensions();
+  const compactHeight = height < 780;
+  const logoSize = width < 360 ? 132 : compactHeight ? 152 : 176;
+
   const highScore = useGameStore((state) => state.highScore);
   const setHighScore = useGameStore((state) => state.setHighScore);
   const hydrateSettings = useSettingsStore((state) => state.hydrateSettings);
-  const hydrateScoreHistory = useScoreHistoryStore((state) => state.hydrateScoreHistory);
+  const hydrateScoreHistory = useScoreHistoryStore(
+    (state) => state.hydrateScoreHistory,
+  );
   const authStatus = useAuthStore((state) => state.authStatus);
   const authError = useAuthStore((state) => state.authError);
   const retryOnlineAuth = useAuthStore((state) => state.retryOnlineAuth);
@@ -91,17 +106,34 @@ export function HomeScreen({ navigation, route }: HomeScreenProps) {
   const hydrateWallet = useWalletStore((state) => state.hydrateWallet);
   const hydrateCosmetics = useCosmeticStore((state) => state.hydrateCosmetics);
   const equipped = useCosmeticStore((state) => state.equippedCosmetics);
-  const initializePurchases = usePurchaseStore((state) => state.initializePurchases);
+  const initializePurchases = usePurchaseStore(
+    (state) => state.initializePurchases,
+  );
   const hasRemoveAds = useHasRemoveAdsEntitlement();
   const storeEnabled = isMonetizationBetaEnabled();
   const progressionEnabled = isProgressionBetaEnabled();
   const profile = useAuthStore((state) => state.profile);
   const progression = useProgressionStore((state) => state.progression);
-  const dailyRewardStatus = useProgressionStore((state) => state.dailyRewardStatus);
+  const dailyRewardStatus = useProgressionStore(
+    (state) => state.dailyRewardStatus,
+  );
   const dailyMissions = useProgressionStore((state) => state.dailyMissions);
   const pendingLevelUp = useProgressionStore((state) => state.pendingLevelUp);
-  const hydrateProgression = useProgressionStore((state) => state.hydrateProgression);
-  const acknowledgeLevelUp = useProgressionStore((state) => state.acknowledgeLevelUp);
+  const hydrateProgression = useProgressionStore(
+    (state) => state.hydrateProgression,
+  );
+  const acknowledgeLevelUp = useProgressionStore(
+    (state) => state.acknowledgeLevelUp,
+  );
+
+  const [nameEditorOpen, setNameEditorOpen] = useState(false);
+
+  const dailyReady =
+    Boolean(dailyRewardStatus?.isAvailable) ||
+    Boolean(progression?.isDailyRewardAvailable);
+  const missionClaimable = dailyMissions?.claimableCount ?? 0;
+  const showDailyLink = isDailyRewardsEnabled() && dailyReady;
+  const showMissionsLink = isDailyMissionsEnabled() && missionClaimable > 0;
 
   useEffect(() => {
     let isMounted = true;
@@ -113,11 +145,9 @@ export function HomeScreen({ navigation, route }: HomeScreenProps) {
       await hydrateWallet();
       await hydrateCosmetics();
       await initializePurchases();
-      // Progression must not block PLAY — fire and forget.
       if (progressionEnabled) {
         void hydrateProgression();
       }
-
       if (isMounted) {
         setHighScore(savedScore);
       }
@@ -149,202 +179,243 @@ export function HomeScreen({ navigation, route }: HomeScreenProps) {
     navigation.setParams({ fromSoloComplete: undefined });
   }, [hasRemoveAds, navigation, route.params?.fromSoloComplete]);
 
+  const showRetry = authStatus === 'local' && Boolean(authError);
+
   return (
-    <ScreenContainer style={styles.container} intensity="intense">
-      <View style={styles.content}>
-        <BlazeLogo size={logoSize} showTagline />
+    <BlazeScreenBackground variant="home" embers>
+      <View style={styles.shell} pointerEvents="box-none">
+        <LinearGradient
+          pointerEvents="none"
+          colors={['transparent', 'rgba(255,101,0,0.18)', 'rgba(5,7,9,0.55)']}
+          locations={[0.45, 0.78, 1]}
+          style={styles.bottomGlow}
+        />
 
-        <View style={styles.statusChip} accessibilityRole="text">
-          <View
-            style={[
-              styles.statusDot,
-              authStatus === 'online' && styles.statusDotOnline,
-              authStatus === 'connecting' && styles.statusDotConnecting,
-              authStatus === 'local' && styles.statusDotLocal,
-            ]}
+        <ScrollView
+          style={styles.scroll}
+          contentContainerStyle={[
+            styles.column,
+            compactHeight && styles.columnCompact,
+            { maxWidth: Math.min(CONTENT_MAX_WIDTH, width - 24) },
+          ]}
+          showsVerticalScrollIndicator={false}
+          bounces={false}
+          keyboardShouldPersistTaps="handled"
+        >
+          <Image
+            source={blazeAssets.logoMain}
+            style={[styles.logo, { width: logoSize, height: logoSize }]}
+            resizeMode="contain"
+            accessibilityLabel="21 Blaze"
+            accessibilityRole="image"
           />
-          <View style={styles.statusCopy}>
-            <Text style={styles.statusLabel}>{statusLabel(authStatus)}</Text>
-            <Text style={styles.statusDetail}>{statusDetail(authStatus)}</Text>
-          </View>
-        </View>
-        {authStatus === 'local' && authError ? (
-          <View style={styles.authRecovery}>
-            <Text style={styles.authRecoveryText}>
-              Online features unavailable. Solo Play still works offline.
-            </Text>
-            <BlazeButton
-              title={isInitializingAuth ? 'RETRYING…' : 'RETRY ONLINE'}
-              variant="outline"
-              loading={isInitializingAuth}
-              onPress={() => {
-                void retryOnlineAuth();
-              }}
-              accessibilityLabel="Retry online authentication"
-              fullWidth
-            />
-          </View>
-        ) : null}
 
-        <PlayerProfileButton />
+          <Text style={styles.tagline}>BUILD YOUR STREAK. BEAT 21.</Text>
 
-        {progressionEnabled ? (
-          <View style={styles.progressionPanel}>
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel={`Level ${progression?.level ?? 1}. Open progression.`}
-              onPress={() => navigation.navigate('PlayerProgression')}
-              style={({ pressed }) => [
-                styles.levelBadge,
-                pressed && styles.pressed,
+          <View style={styles.statusPill} accessibilityRole="text">
+            <View
+              style={[
+                styles.statusDot,
+                authStatus === 'online' && styles.statusDotOnline,
+                authStatus === 'connecting' && styles.statusDotConnecting,
+                authStatus === 'local' && styles.statusDotLocal,
               ]}
-            >
-              <Text style={styles.levelBadgeText}>
-                LVL {progression?.level ?? 1}
+            />
+            <View style={styles.statusCopy}>
+              <Text style={styles.statusLabel}>{statusLabel(authStatus)}</Text>
+              <Text style={styles.statusDetail} numberOfLines={1}>
+                {statusDetail(authStatus)}
               </Text>
-            </Pressable>
-            <View style={styles.progressionCopy}>
-              <Text style={styles.progressionName} numberOfLines={1}>
-                {profile?.display_name ?? 'Player'}
-              </Text>
-              {equipped.playerTitle ? (
-                <Text style={styles.progressionTitle} numberOfLines={1}>
-                  {getCosmetic(equipped.playerTitle)?.displayName ??
-                    equipped.playerTitle}
+            </View>
+            {showRetry ? (
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel="Retry online authentication"
+                disabled={isInitializingAuth}
+                onPress={() => {
+                  void retryOnlineAuth();
+                }}
+                style={({ pressed }) => [
+                  styles.retryChip,
+                  pressed && styles.pressed,
+                ]}
+              >
+                <Text style={styles.retryChipText}>
+                  {isInitializingAuth ? '…' : 'RETRY'}
                 </Text>
+              </Pressable>
+            ) : null}
+          </View>
+
+          {progressionEnabled ? (
+            <View style={styles.profileRow}>
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel={`Level ${progression?.level ?? 1}. Open progression.`}
+                onPress={() => navigation.navigate('PlayerProgression')}
+                style={({ pressed }) => [
+                  styles.levelBadge,
+                  pressed && styles.pressed,
+                ]}
+              >
+                <Text style={styles.levelBadgeText}>
+                  LVL {progression?.level ?? 1}
+                </Text>
+              </Pressable>
+
+              <View style={styles.profileCopy}>
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel={
+                    profile?.display_name
+                      ? `Player ${profile.display_name}. Edit display name.`
+                      : 'Player'
+                  }
+                  disabled={authStatus !== 'online' || !profile?.display_name}
+                  onPress={() => setNameEditorOpen(true)}
+                  style={({ pressed }) => pressed && styles.pressed}
+                >
+                  <Text style={styles.profileName} numberOfLines={1}>
+                    {profile?.display_name ?? 'Player'}
+                  </Text>
+                </Pressable>
+                {equipped.playerTitle ? (
+                  <Text style={styles.profileTitle} numberOfLines={1}>
+                    {getCosmetic(equipped.playerTitle)?.displayName ??
+                      equipped.playerTitle}
+                  </Text>
+                ) : null}
+                <XpProgressBar
+                  compact
+                  level={progression?.level ?? 1}
+                  currentLevelXp={progression?.currentLevelXp ?? 0}
+                  xpRequiredForNextLevel={
+                    progression?.xpRequiredForNextLevel ?? 100
+                  }
+                />
+                {showDailyLink || showMissionsLink ? (
+                  <View style={styles.claimRow}>
+                    {showDailyLink ? (
+                      <Pressable
+                        accessibilityRole="button"
+                        accessibilityLabel="Open daily rewards"
+                        onPress={() => navigation.navigate('DailyReward')}
+                        style={({ pressed }) => pressed && styles.pressed}
+                      >
+                        <Text style={styles.claimLink}>DAILY READY</Text>
+                      </Pressable>
+                    ) : null}
+                    {showMissionsLink ? (
+                      <Pressable
+                        accessibilityRole="button"
+                        accessibilityLabel="Open daily missions"
+                        onPress={() => navigation.navigate('DailyMissions')}
+                        style={({ pressed }) => pressed && styles.pressed}
+                      >
+                        <Text style={styles.claimLink}>
+                          MISSIONS · {missionClaimable}
+                        </Text>
+                      </Pressable>
+                    ) : null}
+                  </View>
+                ) : null}
+              </View>
+
+              {storeEnabled ? (
+                <View style={styles.coinChip} accessibilityRole="text">
+                  <Text style={styles.coinValue}>{balance.toLocaleString()}</Text>
+                  <Text style={styles.coinLabel}>COINS</Text>
+                  {hasRemoveAds ? (
+                    <Text style={styles.adFree}>AD-FREE</Text>
+                  ) : null}
+                </View>
               ) : null}
-              <XpProgressBar
-                compact
-                level={progression?.level ?? 1}
-                currentLevelXp={progression?.currentLevelXp ?? 0}
-                xpRequiredForNextLevel={
-                  progression?.xpRequiredForNextLevel ?? 100
-                }
+            </View>
+          ) : storeEnabled ? (
+            <View style={styles.coinOnlyRow}>
+              <Text style={styles.coinValue}>{balance.toLocaleString()} COINS</Text>
+              {hasRemoveAds ? <Text style={styles.adFree}>AD-FREE</Text> : null}
+            </View>
+          ) : null}
+
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={`High score ${highScore}. Open high scores.`}
+            onPress={() => navigation.navigate('HighScores')}
+            style={({ pressed }) => [
+              styles.highScorePanel,
+              pressed && styles.pressed,
+            ]}
+          >
+            <View style={styles.highScoreLabelRow}>
+              <TrophyIcon />
+              <Text style={styles.highScoreLabel}>HIGH SCORE</Text>
+            </View>
+            <Text style={styles.highScoreValue}>
+              {highScore.toLocaleString()}
+            </Text>
+          </Pressable>
+
+          <View style={styles.actions}>
+            <BlazeButton
+              label="SOLO PLAY"
+              size="lg"
+              onPress={() => navigation.navigate('Game')}
+              accessibilityLabel="Solo play 21 Blaze"
+            />
+            {isLiveDuelEnabled() ? (
+              <BlazeButton
+                label="LIVE DUEL"
+                variant="secondary"
+                onPress={() => navigation.navigate('LiveDuelHome')}
+                accessibilityLabel="Live Duel friend matches"
               />
-              <View style={styles.progressionLinks}>
-                {isDailyRewardsEnabled() ? (
-                  <Pressable
-                    accessibilityRole="button"
-                    accessibilityLabel="Open daily rewards"
-                    onPress={() => navigation.navigate('DailyReward')}
-                    style={({ pressed }) => pressed && styles.pressed}
-                  >
-                    <Text
-                      style={[
-                        styles.progLink,
-                        (dailyRewardStatus?.isAvailable ||
-                          progression?.isDailyRewardAvailable) &&
-                          styles.progLinkReady,
-                      ]}
-                    >
-                      {dailyRewardStatus?.isAvailable ||
-                      progression?.isDailyRewardAvailable
-                        ? 'DAILY READY'
-                        : 'DAILY'}
-                    </Text>
-                  </Pressable>
-                ) : null}
-                {isDailyMissionsEnabled() ? (
-                  <Pressable
-                    accessibilityRole="button"
-                    accessibilityLabel="Open daily missions"
-                    onPress={() => navigation.navigate('DailyMissions')}
-                    style={({ pressed }) => pressed && styles.pressed}
-                  >
-                    <Text
-                      style={[
-                        styles.progLink,
-                        (dailyMissions?.claimableCount ?? 0) > 0 &&
-                          styles.progLinkReady,
-                      ]}
-                    >
-                      MISSIONS
-                      {(dailyMissions?.claimableCount ?? 0) > 0
-                        ? ` · ${dailyMissions?.claimableCount}`
-                        : ''}
-                    </Text>
-                  </Pressable>
-                ) : null}
+            ) : null}
+            {isRankedBetaEnabled() ? (
+              <BlazeButton
+                label="RANKED"
+                variant="ghost"
+                onPress={() => navigation.navigate('RankedHome')}
+                accessibilityLabel="Ranked competitive matches"
+              />
+            ) : null}
+            {storeEnabled ? (
+              <BlazeButton
+                label="BLAZE STORE"
+                variant="secondary"
+                onPress={() => navigation.navigate('BlazeStore')}
+                accessibilityLabel="Open Blaze Store"
+              />
+            ) : null}
+            <View style={styles.secondaryRow}>
+              <View style={styles.halfButton}>
+                <BlazeButton
+                  label="HOW TO PLAY"
+                  variant="secondary"
+                  onPress={() => navigation.navigate('HowToPlay')}
+                />
+              </View>
+              <View style={styles.halfButton}>
+                <BlazeButton
+                  label="SETTINGS"
+                  variant="secondary"
+                  onPress={() => navigation.navigate('Settings')}
+                />
               </View>
             </View>
           </View>
-        ) : null}
 
-        {storeEnabled ? (
-          <View style={styles.economyRow}>
-            <Text style={styles.coinBalance}>{balance.toLocaleString()} COINS</Text>
-            {hasRemoveAds ? <Text style={styles.adFreeBadge}>AD-FREE</Text> : null}
+          <View style={styles.footer}>
+            <FlameIcon width={10} height={14} />
+            <Text style={styles.version}>v{APP_VERSION}</Text>
           </View>
-        ) : null}
-
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel={`High score ${highScore}. Open high scores.`}
-          onPress={() => navigation.navigate('HighScores')}
-          style={({ pressed }) => [styles.highScoreBox, pressed && styles.pressed]}
-        >
-          <View style={styles.highScoreLabelRow}>
-            <TrophyIcon />
-            <Text style={styles.highScoreLabel}>HIGH SCORE</Text>
-          </View>
-          <Text style={styles.highScoreValue}>{highScore.toLocaleString()}</Text>
-        </Pressable>
-
-        <View style={styles.actions}>
-          <BlazeButton
-            title="SOLO PLAY"
-            onPress={() => navigation.navigate('Game')}
-            accessibilityLabel="Solo play 21 Blaze"
-            fullWidth
-          />
-          {isLiveDuelEnabled() ? (
-            <BlazeButton
-              title="LIVE DUEL"
-              variant="secondary"
-              onPress={() => navigation.navigate('LiveDuelHome')}
-              accessibilityLabel="Live Duel friend matches"
-              fullWidth
-            />
-          ) : null}
-          {isRankedBetaEnabled() ? (
-            <BlazeButton
-              title="RANKED"
-              variant="secondary"
-              onPress={() => navigation.navigate('RankedHome')}
-              accessibilityLabel="Ranked competitive matches"
-              fullWidth
-            />
-          ) : null}
-          {storeEnabled ? (
-            <BlazeButton
-              title="BLAZE STORE"
-              variant="outline"
-              onPress={() => navigation.navigate('BlazeStore')}
-              accessibilityLabel="Open Blaze Store"
-              fullWidth
-            />
-          ) : null}
-          <View style={styles.secondaryRow}>
-            <BlazeButton
-              title="HOW TO PLAY"
-              variant="outline"
-              onPress={() => navigation.navigate('HowToPlay')}
-              style={styles.halfButton}
-            />
-            <BlazeButton
-              title="SETTINGS"
-              variant="outline"
-              onPress={() => navigation.navigate('Settings')}
-              style={styles.halfButton}
-            />
-          </View>
-        </View>
+        </ScrollView>
       </View>
 
-      <View style={styles.footer}>
-        <FlameIcon width={10} height={14} />
-        <Text style={styles.version}>v{APP_VERSION}</Text>
-      </View>
+      <EditDisplayNameModal
+        visible={nameEditorOpen}
+        onClose={() => setNameEditorOpen(false)}
+      />
 
       {progressionEnabled ? (
         <LevelUpOverlay
@@ -352,197 +423,226 @@ export function HomeScreen({ navigation, route }: HomeScreenProps) {
           onContinue={acknowledgeLevelUp}
         />
       ) : null}
-    </ScreenContainer>
+    </BlazeScreenBackground>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    justifyContent: 'space-between',
-  },
-  content: {
+  shell: {
     flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    width: '100%',
-    maxWidth: 420,
-    alignSelf: 'center',
-    gap: spacing.md,
+    backgroundColor: 'rgba(5,7,9,0.35)',
   },
-  statusChip: {
+  bottomGlow: {
+    ...StyleSheet.absoluteFill,
+    pointerEvents: 'none',
+  },
+  scroll: {
+    flex: 1,
+    width: '100%',
+  },
+  column: {
+    flexGrow: 1,
+    width: '100%',
+    alignSelf: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: kitSpacing.lg,
+    paddingVertical: kitSpacing.md,
+    gap: kitSpacing.sm,
+  },
+  columnCompact: {
+    gap: 6,
+    paddingVertical: kitSpacing.sm,
+  },
+  logo: {
+    alignSelf: 'center',
+  },
+  tagline: {
+    color: kitColors.fire.gold,
+    textAlign: 'center',
+    fontFamily: 'RobotoCondensed_700Bold',
+    fontWeight: '700',
+    fontSize: 13,
+    letterSpacing: 1.4,
+  },
+  statusPill: {
+    alignSelf: 'center',
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
-    paddingVertical: 8,
-    paddingHorizontal: spacing.md,
-    borderRadius: radius.md,
+    gap: 8,
+    maxWidth: '100%',
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    borderRadius: 999,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.08)',
-    backgroundColor: 'rgba(0,0,0,0.22)',
-    width: '100%',
+    borderColor: 'rgba(255,138,0,0.28)',
+    backgroundColor: 'rgba(0,0,0,0.45)',
   },
   statusDot: {
-    width: 8,
-    height: 8,
+    width: 7,
+    height: 7,
     borderRadius: 4,
-    backgroundColor: colors.textMuted,
+    backgroundColor: kitColors.text.muted,
   },
-  statusDotOnline: {
-    backgroundColor: '#3DDC84',
-  },
-  statusDotConnecting: {
-    backgroundColor: colors.gold,
-  },
-  statusDotLocal: {
-    backgroundColor: colors.brightOrange,
-  },
+  statusDotOnline: { backgroundColor: '#3DDC84' },
+  statusDotConnecting: { backgroundColor: kitColors.fire.gold },
+  statusDotLocal: { backgroundColor: kitColors.fire.brightOrange },
   statusCopy: {
-    flex: 1,
+    flexShrink: 1,
     minWidth: 0,
-    gap: 1,
   },
   statusLabel: {
-    fontFamily: fontFamilies.bodyBold,
-    fontSize: 12,
-    letterSpacing: 1.2,
-    color: colors.textPrimary,
+    color: kitColors.text.primary,
+    fontFamily: 'RobotoCondensed_700Bold',
+    fontSize: 11,
+    letterSpacing: 1.1,
   },
   statusDetail: {
-    ...typography.label,
+    color: kitColors.text.secondary,
+    fontFamily: 'RobotoCondensed_400Regular',
     fontSize: 11,
-    textTransform: 'none',
-    color: colors.textSecondary,
   },
-  authRecovery: {
-    width: '100%',
-    gap: spacing.sm,
-    padding: spacing.md,
-    borderRadius: radius.md,
+  retryChip: {
+    minHeight: 28,
+    minWidth: 52,
+    paddingHorizontal: 10,
+    borderRadius: 999,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.08)',
-    backgroundColor: 'rgba(0,0,0,0.2)',
-  },
-  authRecoveryText: {
-    fontFamily: fontFamilies.body,
-    fontSize: 13,
-    color: colors.textSecondary,
-    textAlign: 'center',
-  },
-  highScoreBox: {
-    width: '100%',
-    backgroundColor: colors.backgroundCard,
-    borderColor: colors.blazeSubtle,
-    borderWidth: 1,
-    borderRadius: radius.lg,
-    paddingVertical: spacing.md,
-    paddingHorizontal: spacing.lg,
+    borderColor: kitColors.border.orange,
     alignItems: 'center',
-    minHeight: 88,
     justifyContent: 'center',
   },
-  economyRow: {
-    width: '100%',
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
-    gap: 12,
+  retryChipText: {
+    color: kitColors.fire.gold,
+    fontFamily: 'RobotoCondensed_700Bold',
+    fontSize: 11,
+    letterSpacing: 0.8,
   },
-  progressionPanel: {
+  profileRow: {
     width: '100%',
     flexDirection: 'row',
     alignItems: 'center',
-    gap: spacing.sm,
-    borderRadius: radius.md,
+    gap: kitSpacing.sm,
+    borderRadius: 12,
     borderWidth: 1,
-    borderColor: colors.blazeSubtle,
-    backgroundColor: 'rgba(0,0,0,0.28)',
-    paddingVertical: spacing.sm,
-    paddingHorizontal: spacing.sm,
+    borderColor: 'rgba(255,138,0,0.28)',
+    backgroundColor: 'rgba(0,0,0,0.42)',
+    paddingVertical: 8,
+    paddingHorizontal: 8,
   },
   levelBadge: {
-    minWidth: 64,
-    paddingVertical: 10,
-    paddingHorizontal: 10,
-    borderRadius: radius.md,
+    minWidth: 54,
+    minHeight: 44,
+    paddingHorizontal: 8,
+    borderRadius: 10,
     borderWidth: 1,
-    borderColor: colors.blazeStrong,
+    borderColor: 'rgba(255,138,0,0.55)',
     backgroundColor: 'rgba(255,101,0,0.16)',
     alignItems: 'center',
     justifyContent: 'center',
   },
   levelBadgeText: {
-    fontFamily: fontFamilies.display,
-    fontSize: 16,
-    color: colors.primary,
+    color: kitColors.fire.orange,
+    fontFamily: 'Anton_400Regular',
+    fontSize: 15,
   },
-  progressionCopy: {
+  profileCopy: {
     flex: 1,
     minWidth: 0,
-    gap: 4,
+    gap: 2,
   },
-  progressionName: {
-    fontFamily: fontFamilies.bodyBold,
+  profileName: {
+    color: kitColors.text.primary,
+    fontFamily: 'RobotoCondensed_700Bold',
     fontSize: 14,
-    color: colors.textPrimary,
   },
-  progressionTitle: {
-    fontFamily: fontFamilies.body,
+  profileTitle: {
+    color: kitColors.fire.gold,
+    fontFamily: 'RobotoCondensed_400Regular',
     fontSize: 11,
-    color: colors.gold,
   },
-  progressionLinks: {
+  claimRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 10,
+    gap: 8,
     marginTop: 2,
   },
-  progLink: {
-    fontFamily: fontFamilies.bodyBold,
+  claimLink: {
+    color: kitColors.fire.brightOrange,
+    fontFamily: 'RobotoCondensed_700Bold',
     fontSize: 11,
-    letterSpacing: 0.8,
-    color: colors.textSecondary,
+    letterSpacing: 0.7,
   },
-  progLinkReady: {
-    color: colors.brightOrange,
+  coinChip: {
+    alignItems: 'flex-end',
+    justifyContent: 'center',
+    paddingHorizontal: 4,
+    gap: 1,
   },
-  coinBalance: {
-    fontFamily: fontFamilies.bodyBold,
+  coinOnlyRow: {
+    alignSelf: 'center',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  coinValue: {
+    color: kitColors.fire.gold,
+    fontFamily: 'RobotoCondensed_700Bold',
     fontSize: 13,
-    color: colors.gold,
-    letterSpacing: 1,
+    letterSpacing: 0.6,
   },
-  adFreeBadge: {
-    fontFamily: fontFamilies.bodyBold,
-    fontSize: 11,
-    color: colors.success,
-    letterSpacing: 1,
+  coinLabel: {
+    color: kitColors.text.secondary,
+    fontFamily: 'RobotoCondensed_400Regular',
+    fontSize: 10,
+    letterSpacing: 0.8,
   },
-  pressed: {
-    opacity: 0.9,
+  adFree: {
+    color: kitColors.status.success,
+    fontFamily: 'RobotoCondensed_700Bold',
+    fontSize: 10,
+    letterSpacing: 0.7,
+  },
+  highScorePanel: {
+    width: '100%',
+    alignItems: 'center',
+    justifyContent: 'center',
+    minHeight: 72,
+    paddingVertical: 10,
+    paddingHorizontal: kitSpacing.md,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: 'rgba(255,138,0,0.45)',
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    shadowColor: '#FF6500',
+    shadowOpacity: 0.35,
+    shadowRadius: 14,
+    shadowOffset: { width: 0, height: 0 },
   },
   highScoreLabelRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    marginBottom: spacing.xs,
+    marginBottom: 2,
   },
   highScoreLabel: {
-    ...typography.label,
-    letterSpacing: 1,
+    color: kitColors.text.secondary,
+    fontFamily: 'RobotoCondensed_700Bold',
+    fontSize: 11,
+    letterSpacing: 1.2,
   },
   highScoreValue: {
-    fontFamily: fontFamilies.display,
-    fontSize: 36,
-    lineHeight: 40,
-    color: colors.primary,
-    textShadowColor: colors.gold,
+    color: kitColors.fire.orange,
+    fontFamily: 'Anton_400Regular',
+    fontSize: 34,
+    lineHeight: 38,
+    textShadowColor: 'rgba(255,182,41,0.55)',
     textShadowOffset: { width: 0, height: 0 },
-    textShadowRadius: 10,
+    textShadowRadius: 12,
   },
   actions: {
     width: '100%',
-    gap: spacing.sm,
-    marginTop: spacing.sm,
+    gap: kitSpacing.sm,
+    marginTop: 2,
   },
   secondaryRow: {
     flexDirection: 'row',
@@ -556,9 +656,14 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: 6,
-    paddingBottom: spacing.md,
+    marginTop: 4,
   },
   version: {
-    ...typography.version,
+    color: kitColors.text.muted,
+    fontFamily: 'RobotoCondensed_400Regular',
+    fontSize: 12,
+  },
+  pressed: {
+    opacity: 0.88,
   },
 });

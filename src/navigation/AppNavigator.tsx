@@ -5,6 +5,7 @@ import { BlazeStoreScreen } from '../screens/BlazeStoreScreen';
 import { CreateLiveRoomScreen } from '../screens/CreateLiveRoomScreen';
 import { DailyMissionsScreen } from '../screens/DailyMissionsScreen';
 import { DailyRewardScreen } from '../screens/DailyRewardScreen';
+import { BlazeUIKitPreviewScreen } from '../screens/dev/BlazeUIKitPreviewScreen';
 import { GameScreen } from '../screens/GameScreen';
 import { HighScoresScreen } from '../screens/HighScoresScreen';
 import { HomeScreen } from '../screens/HomeScreen';
@@ -74,6 +75,12 @@ export function AppNavigator() {
         name="PurchaseDiagnostics"
         component={PurchaseDiagnosticsScreen}
       />
+      {__DEV__ ? (
+        <Stack.Screen
+          name="BlazeUIKitPreview"
+          component={BlazeUIKitPreviewScreen}
+        />
+      ) : null}
     </Stack.Navigator>
   );
 }
