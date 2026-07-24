@@ -8,7 +8,7 @@ import Animated, {
 } from 'react-native-reanimated';
 
 import { colors, typography } from '../../theme/uiKit';
-import { FireRingAnimation } from './FireRingAnimation';
+import { CountdownFireRing } from './CountdownFireRing';
 
 type Props = {
   value: '3' | '2' | '1' | 'GO';
@@ -17,6 +17,10 @@ type Props = {
   reducedMotion?: boolean;
 };
 
+/**
+ * Mockup / preview countdown chrome.
+ * Production Solo uses GameStartCountdown driven by store timing.
+ */
 export function CountdownOverlay({
   value,
   visible,
@@ -55,7 +59,12 @@ export function CountdownOverlay({
     <View accessibilityViewIsModal style={styles.overlay}>
       <Text style={styles.title}>GET READY!</Text>
       <View style={styles.ring}>
-        <FireRingAnimation size={300} reducedMotion={reducedMotion} />
+        <CountdownFireRing
+          size={300}
+          visible={visible}
+          animated={!reducedMotion}
+          reducedMotion={reducedMotion}
+        />
         <Animated.Text style={[styles.value, animatedStyle]}>
           {value === 'GO' ? 'BLAZE!' : value}
         </Animated.Text>
