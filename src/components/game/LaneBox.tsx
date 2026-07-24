@@ -1,5 +1,12 @@
-import React, { memo, useEffect } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import React, { memo, useCallback, useEffect, useMemo, useState } from 'react';
+import {
+  Pressable,
+  StyleSheet,
+  Text,
+  View,
+  useWindowDimensions,
+  type LayoutChangeEvent,
+} from 'react-native';
 import Animated, {
   Easing,
   interpolateColor,
@@ -29,6 +36,44 @@ type Props = {
   feedbackEventId?: string | null;
 };
 
+const MIN_VISIBLE_PEEK = 16;
+const TWO_CARD_GAP = 4;
+
+function laneCardSize(viewportWidth: number): { width: number; height: number } {
+  if (viewportWidth < 360) {
+    return { width: 36, height: 52 };
+  }
+  if (viewportWidth < 430) {
+    return { width: 40, height: 58 };
+  }
+  return { width: 42, height: 60 };
+}
+
+/**
+ * Visible horizontal step for each card after the first.
+ * Positive step: cards sit side-by-side (or with gap).
+ * Step < cardWidth: controlled overlap.
+ */
+function visibleCardOffset(
+  cardCount: number,
+  cardWidth: number,
+  availableWidth: number,
+): number {
+  if (cardCount <= 1) {
+    return cardWidth;
+  }
+
+  const ideal =
+    cardCount === 2
+      ? cardWidth + TWO_CARD_GAP
+      : cardWidth * (cardCount <= 3 ? 0.72 : 0.55);
+
+  const fitted = (availableWidth - cardWidth) / (cardCount - 1);
+  const maxStep = cardCount === 2 ? cardWidth + TWO_CARD_GAP : cardWidth * 0.85;
+  const step = Math.min(ideal, fitted, maxStep);
+  return Math.max(MIN_VISIBLE_PEEK, step);
+}
+
 export const LaneBox = memo(function LaneBox({
   laneNumber,
   total,
@@ -43,9 +88,16 @@ export const LaneBox = memo(function LaneBox({
   feedbackType = null,
   feedbackEventId = null,
 }: Props) {
+  const { width: viewportWidth } = useWindowDimensions();
+  const [rowWidth, setRowWidth] = useState(0);
+  const cardSize = useMemo(
+    () => laneCardSize(viewportWidth),
+    [viewportWidth],
+  );
+
   const scale = useSharedValue(1);
   const shakeX = useSharedValue(0);
-  const flashTone = useSharedValue(0); // 0 base, 1 success, 2 danger
+  const flashTone = useSharedValue(0);
 
   useEffect(() => {
     if (!feedbackEventId || !feedbackType) {
@@ -116,8 +168,20 @@ export const LaneBox = memo(function LaneBox({
     };
   });
 
+  const onCardsLayout = useCallback((event: LayoutChangeEvent) => {
+    const next = Math.round(event.nativeEvent.layout.width);
+    setRowWidth((prev) => (prev === next ? prev : next));
+  }, []);
+
   const visibleCards = cards.slice(-maxCards);
-  const overlap = visibleCards.length >= 3 ? -11 : -6;
+  const availableWidth = rowWidth > 0 ? rowWidth : Math.max(120, viewportWidth * 0.42);
+  const step = visibleCardOffset(
+    visibleCards.length,
+    cardSize.width,
+    availableWidth,
+  );
+  const marginLeftStep = -(cardSize.width - step);
+
   const panelVariant = danger
     ? 'danger'
     : selected || cleared
@@ -153,22 +217,32 @@ export const LaneBox = memo(function LaneBox({
                 danger ? `Lane ${laneNumber} busted at ${total}` : undefined
               }
             >
-              {total === 0 ? '—' : total}
+              {total}
             </Text>
           </View>
-          <View style={styles.cards}>
+
+          <View
+            style={[styles.cards, { minHeight: cardSize.height + 4 }]}
+            onLayout={onCardsLayout}
+          >
             {visibleCards.length === 0 ? (
-              <Text style={styles.empty}>empty</Text>
+              <Text style={styles.empty}>EMPTY</Text>
             ) : (
               visibleCards.map((card, index) => (
                 <View
                   key={`${laneNumber}-${card.rank}-${card.suit}-${index}`}
-                  style={index > 0 ? { marginLeft: overlap } : undefined}
+                  style={[
+                    styles.cardSlot,
+                    index > 0 ? { marginLeft: marginLeftStep } : null,
+                    { zIndex: index + 1 },
+                  ]}
                 >
                   <PlayingCard
                     rank={card.rank}
                     suit={card.suit}
                     size="tiny"
+                    width={cardSize.width}
+                    height={cardSize.height}
                     disabled={disabled}
                   />
                 </View>
@@ -201,13 +275,14 @@ const styles = StyleSheet.create({
   },
   panelInner: {
     flex: 1,
-    minHeight: 112,
+    minHeight: 128,
     borderWidth: 0,
   },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+    marginBottom: 4,
   },
   label: {
     color: colors.text.secondary,
@@ -225,17 +300,20 @@ const styles = StyleSheet.create({
     color: colors.status.danger,
   },
   cards: {
+    flex: 1,
     flexDirection: 'row',
-    alignItems: 'flex-end',
-    justifyContent: 'center',
-    marginTop: spacing.sm,
-    minHeight: 48,
+    alignItems: 'center',
+    justifyContent: 'flex-start',
     overflow: 'hidden',
+    paddingRight: 2,
+  },
+  cardSlot: {
+    // Keep stacked cards from clipping under neighbors incorrectly.
   },
   empty: {
     color: colors.text.muted,
-    fontFamily: typography.families.body,
+    fontFamily: typography.families.condensed,
     fontSize: 11,
-    fontStyle: 'italic',
+    letterSpacing: 1,
   },
 });

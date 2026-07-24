@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
-  Alert,
   AppState,
   type AppStateStatus,
   StyleSheet,
@@ -29,6 +28,7 @@ import { GameStartCountdown } from '../components/GameTimer/GameStartCountdown';
 import { PauseOverlay } from '../components/GameTimer/PauseOverlay';
 import { TimerDisplay } from '../components/GameTimer/TimerDisplay';
 import { BlazeScreenBackground } from '../components/layout/BlazeScreenBackground';
+import { ConfirmationModal } from '../components/modals/ConfirmationModal';
 import { BottomActionBar } from '../components/navigation/BottomActionBar';
 import { useActiveCardTheme } from '../cosmetics/useActiveCardTheme';
 import {
@@ -245,36 +245,36 @@ export function GameScreen({ navigation }: GameScreenProps) {
     clearLastMoveEvent();
   }, [clearLastMoveEvent]);
 
-  const confirmRestart = useCallback(() => {
-    Alert.alert('Restart Game', 'Start a fresh timed run from 2:00?', [
-      { text: 'Cancel', style: 'cancel' },
-      {
-        text: 'Restart',
-        style: 'destructive',
-        onPress: () => {
-          hasNavigatedToResults.current = false;
-          countdownSessionId.current += 1;
-          restartGame();
-        },
-      },
-    ]);
+  const [confirmKind, setConfirmKind] = useState<'restart' | 'quit' | null>(
+    null,
+  );
+
+  const requestRestartConfirm = useCallback(() => {
+    setConfirmKind('restart');
+  }, []);
+
+  const requestQuitConfirm = useCallback(() => {
+    setConfirmKind('quit');
+  }, []);
+
+  const dismissConfirm = useCallback(() => {
+    setConfirmKind(null);
+  }, []);
+
+  const performRestart = useCallback(() => {
+    setConfirmKind(null);
+    hasNavigatedToResults.current = false;
+    countdownSessionId.current += 1;
+    restartGame();
   }, [restartGame]);
 
-  const confirmQuitToHome = useCallback(() => {
-    Alert.alert('Quit Match', 'Leave this timed run and return home?', [
-      { text: 'Cancel', style: 'cancel' },
-      {
-        text: 'Quit',
-        style: 'destructive',
-        onPress: () => {
-          quitGame();
-          navigation.reset({
-            index: 0,
-            routes: [{ name: 'Home' }],
-          });
-        },
-      },
-    ]);
+  const performQuitToHome = useCallback(() => {
+    setConfirmKind(null);
+    quitGame();
+    navigation.reset({
+      index: 0,
+      routes: [{ name: 'Home' }],
+    });
   }, [navigation, quitGame]);
 
   const handlePause = () => {
@@ -446,8 +446,8 @@ export function GameScreen({ navigation }: GameScreenProps) {
             <PauseOverlay
               visible={isPaused}
               onResume={handleResume}
-              onRestart={confirmRestart}
-              onQuit={confirmQuitToHome}
+              onRestart={requestRestartConfirm}
+              onQuit={requestQuitConfirm}
             />
           </View>
 
@@ -456,7 +456,7 @@ export function GameScreen({ navigation }: GameScreenProps) {
             safeAreaEnabled={false}
             primaryAction={{
               label: 'RESTART',
-              onPress: confirmRestart,
+              onPress: requestRestartConfirm,
               variant: 'danger',
               accessibilityLabel: 'Restart game',
             }}
@@ -469,6 +469,27 @@ export function GameScreen({ navigation }: GameScreenProps) {
             }}
           />
         </View>
+
+        <ConfirmationModal
+          visible={confirmKind === 'restart'}
+          title="Restart Game"
+          message="Start a fresh timed run from 2:00?"
+          confirmLabel="RESTART"
+          cancelLabel="CANCEL"
+          danger
+          onConfirm={performRestart}
+          onCancel={dismissConfirm}
+        />
+        <ConfirmationModal
+          visible={confirmKind === 'quit'}
+          title="Quit Match"
+          message="Leave this timed run and return home?"
+          confirmLabel="QUIT"
+          cancelLabel="CANCEL"
+          danger
+          onConfirm={performQuitToHome}
+          onCancel={dismissConfirm}
+        />
       </View>
     </BlazeScreenBackground>
   );
@@ -591,13 +612,15 @@ const styles = StyleSheet.create({
   activeCardWrap: {
     alignItems: 'center',
     justifyContent: 'center',
+    zIndex: 1,
   },
   cardGlow: {
     position: 'absolute',
-    width: 150,
-    height: 150,
-    borderRadius: 75,
-    backgroundColor: 'rgba(255,101,0,0.22)',
+    width: 128,
+    height: 128,
+    borderRadius: 64,
+    backgroundColor: 'rgba(255,101,0,0.14)',
+    zIndex: 0,
   },
   chooseLabel: {
     fontFamily: kitTypography.families.condensed,
@@ -606,8 +629,8 @@ const styles = StyleSheet.create({
     color: kitColors.text.secondary,
   },
   activePlaceholder: {
-    width: 108,
-    height: 154,
+    width: 118,
+    height: 166,
     borderRadius: 8,
     borderWidth: 1,
     borderColor: kitColors.border.orange,
@@ -616,8 +639,8 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   activePlaceholderCompact: {
-    width: 72,
-    height: 104,
+    width: 80,
+    height: 114,
   },
   placeholderText: {
     fontFamily: kitTypography.families.condensed,
