@@ -11,6 +11,7 @@
       "supportsTablet": true,
       "bundleIdentifier": "com.twentyoneblaze.app",
       "buildNumber": "901",
+      "deploymentTarget": "15.1",
       "infoPlist": {
         "GADApplicationIdentifier": "ca-app-pub-3940256099942544~1458002511",
         "NSUserTrackingUsageDescription": "This identifier is used to deliver personalized ads when you allow tracking. Declining does not block Solo Play.",
@@ -37,7 +38,18 @@
     },
     "plugins": [
       "expo-font",
-      "expo-splash-screen",
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/splash-icon.png",
+          "imageWidth": 200,
+          "resizeMode": "contain",
+          "backgroundColor": "#0B0B0C",
+          "dark": {
+            "backgroundColor": "#0B0B0C"
+          }
+        }
+      ],
       "expo-dev-client",
       [
         "react-native-google-mobile-ads",
