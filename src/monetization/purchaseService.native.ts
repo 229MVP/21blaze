@@ -8,7 +8,10 @@ import {
   catalogIdToStoreProductId,
   productIdToCatalogId,
 } from './productIds';
-import { packageIdentifierToCatalogId } from './productIds.pure';
+import {
+  packageIdentifierToCatalogId,
+  RC_OFFERING_ID,
+} from './productIds.pure';
 import { hasEntitlement, mapCustomerEntitlements } from './purchaseService.pure';
 import {
   configureRevenueCat,
@@ -59,7 +62,8 @@ export async function loadOfferings(
   try {
     const Purchases = (await import('react-native-purchases')).default;
     const offerings = await Purchases.getOfferings();
-    const current = offerings.current;
+    const current =
+      offerings.current ?? offerings.all[RC_OFFERING_ID] ?? null;
     if (!current) {
       return null;
     }
@@ -112,7 +116,9 @@ export async function purchaseProduct(
 
     const Purchases = (await import('react-native-purchases')).default;
     const offerings = await Purchases.getOfferings();
-    const pkg = offerings.current?.availablePackages.find(
+    const currentOffering =
+      offerings.current ?? offerings.all[RC_OFFERING_ID] ?? null;
+    const pkg = currentOffering?.availablePackages.find(
       (item) =>
         item.product.identifier === storeProductId ||
         item.identifier === storeProductId ||

@@ -8,6 +8,10 @@ export function getRevenueCatApiKey(): string | null {
   return null;
 }
 
+export function isUsingRevenueCatTestStore(): boolean {
+  return false;
+}
+
 export function wasPurchasesConfigured(): boolean {
   return false;
 }

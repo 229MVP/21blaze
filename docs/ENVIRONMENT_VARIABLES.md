@@ -47,11 +47,17 @@ Flags are **client UX only**, not authorization. Solo Play is never gated.
 
 | Variable | Required | Secret? | Description |
 |----------|----------|---------|-------------|
-| `EXPO_PUBLIC_REVENUECAT_API_KEY` | Recommended | No (SDK/public) | Shared / Test Store `test_` key |
-| `EXPO_PUBLIC_REVENUECAT_IOS_API_KEY` | iOS prod | No | iOS public SDK key |
-| `EXPO_PUBLIC_REVENUECAT_ANDROID_API_KEY` | Android prod | No | Android public SDK key |
+| `EXPO_PUBLIC_REVENUECAT_API_KEY` | Recommended | No (SDK/public) | Shared / Test Store `test_` key — **preferred for development / preview** |
+| `EXPO_PUBLIC_REVENUECAT_IOS_API_KEY` | iOS prod | No | iOS public SDK key (`appl_…`) — **required for production iOS** |
+| `EXPO_PUBLIC_REVENUECAT_ANDROID_API_KEY` | Android prod | No | Android public SDK key (`goog_…`) — **required for production Android** |
 
-Client catalog (code): products `blaze_ad_free`, `blaze_inferno_pack`, `blaze_neon_pack`, `blaze_founders_pack`; packages `ad_free` / `inferno` / `neon` / `founders`; offering `default`. **Dashboard must match — unverified.**
+Key selection (`getRevenueCatApiKey`):
+- **development / preview:** prefer `EXPO_PUBLIC_REVENUECAT_API_KEY` (Test Store), then platform key.
+- **production:** prefer platform key; never configure a `test_…` Test Store key.
+
+Set these via EAS Environment / secrets for builds — do **not** commit key values. Local `.env.local` is gitignored.
+
+Client catalog (code): products `blaze_ad_free`, `blaze_inferno_pack`, `blaze_neon_pack`, `blaze_founders_pack`; packages `ad_free` / `inferno` / `neon` / `founders`; offering `default`. **Dashboard must match.**
 
 Do **not** put RevenueCat secret API keys in the app.
 
@@ -74,8 +80,17 @@ Do **not** put RevenueCat secret API keys in the app.
 
 | Profile | Intent |
 |---------|--------|
-| **development** / **preview** | Enable Live Duel, Quick Match, Ranked, monetization, interstitial/rewarded ads, store purchases, progression, dailies, purchase diagnostics for QA. **`EXPO_PUBLIC_ENABLE_REWARDED_CURRENCY=false`** |
-| **production** | All of the above **disabled** (including diagnostics). Rewarded currency OFF |
+| **development** | Physical-device `developmentClient` (`ios.simulator: false`). Monetization + store purchases ON for Test Store QA. Multiplayer/progression OFF. Purchase diagnostics ON. |
+| **preview** | Internal distribution APK / device build. Same monetization flags as development. `ios.simulator: false`. |
+| **production** | Store distribution. Monetization / ads / purchases / diagnostics **disabled** by default flags. Never uses Test Store keys. |
+
+### iOS physical development build checklist
+
+1. Replace placeholder `extra.eas.projectId` via `eas init` (requires Expo login / `EXPO_TOKEN`).
+2. Register Apple team + device for internal distribution.
+3. Set EAS **development** environment: `EXPO_PUBLIC_REVENUECAT_API_KEY` = Test Store public key.
+4. Production EAS environment: set `EXPO_PUBLIC_REVENUECAT_IOS_API_KEY` to the real iOS public SDK key (never `test_…`).
+5. Build: `eas build --platform ios --profile development`
 
 **Blocked:** `extra.eas.projectId` is placeholder UUID — real EAS project must be linked before native builds are meaningful (**P1-1**).
 
