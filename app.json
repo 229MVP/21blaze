@@ -11,11 +11,7 @@
       "supportsTablet": true,
       "bundleIdentifier": "com.twentyoneblaze.app",
       "buildNumber": "901",
-<<<<<<< HEAD
       "deploymentTarget": "16.4",
-=======
-      "deploymentTarget": "15.1",
->>>>>>> origin/main
       "infoPlist": {
         "GADApplicationIdentifier": "ca-app-pub-3940256099942544~1458002511",
         "NSUserTrackingUsageDescription": "This identifier is used to deliver personalized ads when you allow tracking. Declining does not block Solo Play.",
