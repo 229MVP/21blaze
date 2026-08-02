@@ -1,6 +1,10 @@
 import { Platform } from 'react-native';
 
-import { getAppEnv, isProductionBuild } from '../config/featureFlags';
+import {
+  getAppEnv,
+  isProductionBuild,
+  isStorePurchasesEnabled,
+} from '../config/featureFlags';
 
 function readEnv(name: string): string {
   const value = process.env[name];
@@ -75,8 +79,17 @@ export function getConfiguredPurchasesUserId(): string | null {
 /**
  * Configure RevenueCat exactly once per process. No-ops on web / missing keys.
  * Uses the Supabase auth user id as the RevenueCat app user id.
+ *
+ * This is the single choke point for `Purchases.configure` — every purchase
+ * flow (offerings, purchase, restore, paywall, customer center) routes
+ * through here, so gating on `isStorePurchasesEnabled()` here guarantees
+ * RevenueCat is never initialized while purchases are intentionally
+ * disabled (ads-first releases).
  */
 export async function configureRevenueCat(appUserId: string): Promise<boolean> {
+  if (!isStorePurchasesEnabled()) {
+    return false;
+  }
   if (!isNativePurchasesSupported()) {
     return false;
   }

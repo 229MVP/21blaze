@@ -21,7 +21,10 @@ import { SettingsToggleRow } from '../components/settings/SettingsToggleRow';
 import { SvgRoot as Svg } from '../components/svg/SvgRoot';
 import { BlazeButton } from '../components/ui/BlazeButton';
 import { BlazePanel } from '../components/ui/BlazePanel';
-import { isPurchaseDiagnosticsEnabled } from '../config/featureFlags';
+import {
+  isPurchaseDiagnosticsEnabled,
+  isStorePurchasesEnabled,
+} from '../config/featureFlags';
 import type { Card } from '../game/types';
 import { openPrivacyOptions } from '../monetization/adConsentService';
 import type { RootStackParamList } from '../navigation/navigationTypes';
@@ -106,6 +109,7 @@ export function SettingsScreen({ navigation }: SettingsScreenProps) {
   const hasRemoveAds = useHasRemoveAdsEntitlement();
   const restoreStatus = usePurchaseStore((s) => s.restoreStatus);
   const restoreBusy = restoreStatus === 'restoring';
+  const purchasesEnabled = isStorePurchasesEnabled();
 
   const [cardModalVisible, setCardModalVisible] = useState(false);
   const [pendingCardStyle, setPendingCardStyle] = useState<CardStyle>(
@@ -214,107 +218,130 @@ export function SettingsScreen({ navigation }: SettingsScreenProps) {
                 />
               </BlazePanel>
 
-              <Text style={styles.sectionLabel}>ACCOUNT AND PURCHASES</Text>
-              <BlazePanel padding={0} style={styles.panel}>
-                <SettingsActionRow
-                  label="RESTORE PURCHASES"
-                  value={
-                    restoreBusy
-                      ? 'WORKING…'
-                      : restoreStatus === 'success'
-                        ? 'RESTORED'
-                        : undefined
-                  }
-                  disabled={restoreBusy}
-                  onPress={() => {
-                    if (restoreBusy) {
-                      return;
-                    }
-                    void usePurchaseStore
-                      .getState()
-                      .restorePurchases()
-                      .then((status) => {
-                        if (status === 'success') {
-                          Alert.alert(
-                            'Restored',
-                            'Eligible purchases were restored.',
-                          );
-                        } else if (status === 'unavailable') {
-                          Alert.alert(
-                            'Unavailable',
-                            'Purchases require a native development build.',
-                          );
-                        } else if (status !== 'cancelled') {
-                          const message =
-                            usePurchaseStore.getState().error ??
-                            'Please try again later.';
-                          Alert.alert('Restore failed', message);
-                        }
-                      });
-                  }}
-                />
-                <SettingsActionRow
-                  label="MANAGE SUBSCRIPTION"
-                  onPress={() => {
-                    void usePurchaseStore
-                      .getState()
-                      .openCustomerCenter()
-                      .then((status) => {
-                        if (status === 'unavailable') {
-                          Alert.alert(
-                            'Unavailable',
-                            'Customer Center requires a native development build with RevenueCat configured.',
-                          );
-                        } else if (status === 'error') {
-                          Alert.alert(
-                            'Unable to open',
-                            'Customer Center could not be opened. Try Restore Purchases.',
-                          );
-                        }
-                      });
-                  }}
-                />
-                <SettingsActionRow
-                  label="AD-FREE STATUS"
-                  value={hasRemoveAds ? 'ACTIVE' : 'NOT OWNED'}
-                  onPress={() => {
-                    Alert.alert(
-                      'Ad-Free Status',
-                      hasRemoveAds
-                        ? 'Remove Ads / Pro is active on this device.'
-                        : 'No Remove Ads entitlement is active.',
-                    );
-                  }}
-                />
-                <SettingsActionRow
-                  label="PRIVACY OPTIONS"
-                  onPress={() => {
-                    void openPrivacyOptions().then((opened) => {
-                      if (!opened) {
-                        Alert.alert(
-                          'Privacy Options',
-                          'Privacy options are unavailable on this platform.',
-                        );
+              {purchasesEnabled ? (
+                <>
+                  <Text style={styles.sectionLabel}>ACCOUNT AND PURCHASES</Text>
+                  <BlazePanel padding={0} style={styles.panel}>
+                    <SettingsActionRow
+                      label="RESTORE PURCHASES"
+                      value={
+                        restoreBusy
+                          ? 'WORKING…'
+                          : restoreStatus === 'success'
+                            ? 'RESTORED'
+                            : undefined
                       }
-                    });
-                  }}
-                />
-                <SettingsActionRow
-                  label="PURCHASE SUPPORT"
-                  onPress={() => {
-                    Alert.alert(
-                      'Purchase Support',
-                      'Purchases are optional. Cosmetics and Pro do not affect gameplay. Store prices come from the app store. Use Restore Purchases or Manage Subscription after reinstalling. Remove Ads / Pro do not remove optional rewarded ads you choose to watch.',
-                    );
-                  }}
-                />
-                {isPurchaseDiagnosticsEnabled() ? (
-                  <SettingsActionRow
-                    label="PURCHASE DIAGNOSTICS"
-                    onPress={() => navigation.navigate('PurchaseDiagnostics')}
-                  />
-                ) : null}
-              </BlazePanel>
+                      disabled={restoreBusy}
+                      onPress={() => {
+                        if (restoreBusy) {
+                          return;
+                        }
+                        void usePurchaseStore
+                          .getState()
+                          .restorePurchases()
+                          .then((status) => {
+                            if (status === 'success') {
+                              Alert.alert(
+                                'Restored',
+                                'Eligible purchases were restored.',
+                              );
+                            } else if (status === 'unavailable') {
+                              Alert.alert(
+                                'Unavailable',
+                                'Purchases require a native development build.',
+                              );
+                            } else if (status !== 'cancelled') {
+                              const message =
+                                usePurchaseStore.getState().error ??
+                                'Please try again later.';
+                              Alert.alert('Restore failed', message);
+                            }
+                          });
+                      }}
+                    />
+                    <SettingsActionRow
+                      label="MANAGE SUBSCRIPTION"
+                      onPress={() => {
+                        void usePurchaseStore
+                          .getState()
+                          .openCustomerCenter()
+                          .then((status) => {
+                            if (status === 'unavailable') {
+                              Alert.alert(
+                                'Unavailable',
+                                'Customer Center requires a native development build with RevenueCat configured.',
+                              );
+                            } else if (status === 'error') {
+                              Alert.alert(
+                                'Unable to open',
+                                'Customer Center could not be opened. Try Restore Purchases.',
+                              );
+                            }
+                          });
+                      }}
+                    />
+                    <SettingsActionRow
+                      label="AD-FREE STATUS"
+                      value={hasRemoveAds ? 'ACTIVE' : 'NOT OWNED'}
+                      onPress={() => {
+                        Alert.alert(
+                          'Ad-Free Status',
+                          hasRemoveAds
+                            ? 'Remove Ads / Pro is active on this device.'
+                            : 'No Remove Ads entitlement is active.',
+                        );
+                      }}
+                    />
+                    <SettingsActionRow
+                      label="PRIVACY OPTIONS"
+                      onPress={() => {
+                        void openPrivacyOptions().then((opened) => {
+                          if (!opened) {
+                            Alert.alert(
+                              'Privacy Options',
+                              'Privacy options are unavailable on this platform.',
+                            );
+                          }
+                        });
+                      }}
+                    />
+                    <SettingsActionRow
+                      label="PURCHASE SUPPORT"
+                      onPress={() => {
+                        Alert.alert(
+                          'Purchase Support',
+                          'Purchases are optional. Cosmetics and Pro do not affect gameplay. Store prices come from the app store. Use Restore Purchases or Manage Subscription after reinstalling. Remove Ads / Pro do not remove optional rewarded ads you choose to watch.',
+                        );
+                      }}
+                    />
+                    {isPurchaseDiagnosticsEnabled() ? (
+                      <SettingsActionRow
+                        label="PURCHASE DIAGNOSTICS"
+                        onPress={() => navigation.navigate('PurchaseDiagnostics')}
+                      />
+                    ) : null}
+                  </BlazePanel>
+                </>
+              ) : (
+                <>
+                  <Text style={styles.sectionLabel}>PRIVACY</Text>
+                  <BlazePanel padding={0} style={styles.panel}>
+                    <SettingsActionRow
+                      label="PRIVACY OPTIONS"
+                      onPress={() => {
+                        void openPrivacyOptions().then((opened) => {
+                          if (!opened) {
+                            Alert.alert(
+                              'Privacy Options',
+                              'Privacy options are unavailable on this platform.',
+                            );
+                          }
+                        });
+                      }}
+                    />
+                  </BlazePanel>
+                </>
+              )}
 
               <Text style={styles.sectionLabel}>DATA</Text>
               <BlazePanel padding={0} style={styles.panel}>

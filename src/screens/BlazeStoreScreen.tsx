@@ -84,18 +84,33 @@ export function BlazeStoreScreen({ navigation }: BlazeStoreScreenProps) {
   const [detail, setDetail] = useState<DetailTarget | null>(null);
   const [busy, setBusy] = useState(false);
 
+  const storeEnabled = isStorePurchasesEnabled();
+  const nativeOk = isNativePurchasesSupported();
+
   useEffect(() => {
-    void initializePurchases();
     void hydrateWallet();
     void hydrateCosmetics();
-    void loadOfferings();
-  }, [hydrateCosmetics, hydrateWallet, initializePurchases, loadOfferings]);
+    if (storeEnabled) {
+      // RevenueCat Offerings / customer info are only ever loaded when
+      // purchases are intentionally enabled (ads-first releases keep this off).
+      void initializePurchases();
+      void loadOfferings();
+    }
+  }, [
+    hydrateCosmetics,
+    hydrateWallet,
+    initializePurchases,
+    loadOfferings,
+    storeEnabled,
+  ]);
 
   const onRefresh = useCallback(() => {
-    void loadOfferings();
+    if (storeEnabled) {
+      void loadOfferings();
+    }
     void hydrateWallet();
     void hydrateCosmetics();
-  }, [hydrateCosmetics, hydrateWallet, loadOfferings]);
+  }, [hydrateCosmetics, hydrateWallet, loadOfferings, storeEnabled]);
 
   const priceFor = useCallback(
     (catalogId: string): string => {
@@ -104,9 +119,6 @@ export function BlazeStoreScreen({ navigation }: BlazeStoreScreenProps) {
     },
     [offerings],
   );
-
-  const storeEnabled = isStorePurchasesEnabled();
-  const nativeOk = isNativePurchasesSupported();
   const coinCosmetics = useMemo(
     () => COSMETIC_CATALOG.filter((item) => item.purchaseSource === 'coins'),
     [],
@@ -123,22 +135,22 @@ export function BlazeStoreScreen({ navigation }: BlazeStoreScreenProps) {
   return (
     <ScreenContainer style={styles.container} intensity="normal" padded={false}>
       <View style={styles.padded}>
-        <ScreenHeader title="BLAZE STORE" />
+        <ScreenHeader title={storeEnabled ? 'BLAZE STORE' : 'BLAZE REWARDS'} />
         <View style={styles.headerRow}>
           <Text style={styles.balance}>{balance.toLocaleString()} COINS</Text>
           {hasPro ? <Text style={styles.adFree}>PRO</Text> : null}
           {!hasPro && hasRemoveAds ? <Text style={styles.adFree}>AD-FREE</Text> : null}
         </View>
-        {isMonetizationTestMode() ? (
+        {isMonetizationTestMode() && storeEnabled ? (
           <Text style={styles.testBadge}>MONETIZATION TEST MODE</Text>
         ) : null}
         <Text style={styles.disclosure}>
-          Purchases are optional. Cosmetics and Pro do not affect gameplay fairness.
-          Store prices come from the app store. Restore Purchases is available for
-          eligible products.
+          {storeEnabled
+            ? 'Purchases are optional. Cosmetics and Pro do not affect gameplay fairness. Store prices come from the app store. Restore Purchases is available for eligible products.'
+            : 'Earn Blaze Coins by playing Solo matches, then spend them here. Cosmetics are optional and do not affect gameplay.'}
         </Text>
 
-        {!nativeOk || Platform.OS === 'web' ? (
+        {storeEnabled && (!nativeOk || Platform.OS === 'web') ? (
           <View style={styles.notice}>
             <Text style={styles.noticeTitle}>NATIVE STORE REQUIRED</Text>
             <Text style={styles.noticeBody}>
@@ -146,10 +158,6 @@ export function BlazeStoreScreen({ navigation }: BlazeStoreScreenProps) {
               in Expo Go and on web.
             </Text>
           </View>
-        ) : null}
-
-        {!storeEnabled ? (
-          <Text style={styles.error}>Store purchases are currently disabled.</Text>
         ) : null}
 
         <ScrollView
@@ -163,163 +171,168 @@ export function BlazeStoreScreen({ navigation }: BlazeStoreScreenProps) {
             />
           }
         >
-          <Section title="21 BLAZE PRO">
-            <View style={styles.proCard}>
-              <Text style={styles.proTitle}>
-                {hasPro ? 'PRO ACTIVE' : 'UNLOCK 21 BLAZE PRO'}
-              </Text>
-              <Text style={styles.proBody}>
-                Monthly, yearly, or lifetime. Includes ad-free interstitials. Does not
-                change cards, ratings, or matchmaking.
-              </Text>
-              <BlazeButton
-                title={hasPro ? 'MANAGE SUBSCRIPTION' : 'VIEW PRO PAYWALL'}
-                loading={paywallStatus === 'purchasing' || busy}
-                onPress={() => {
-                  void (async () => {
-                    setBusy(true);
-                    if (hasPro) {
-                      const status = await usePurchaseStore
-                        .getState()
-                        .openCustomerCenter();
-                      if (status === 'unavailable') {
-                        // Fall back to restore / paywall messaging.
-                      }
-                    } else {
-                      await presentProPaywall();
-                    }
-                    setBusy(false);
-                  })();
-                }}
-                fullWidth
-              />
-              {!hasPro ? (
-                <View style={styles.proPriceRow}>
-                  <Text style={styles.proPrice}>
-                    Monthly {priceFor('pro_monthly')}
+          {storeEnabled ? (
+            <>
+              <Section title="21 BLAZE PRO">
+                <View style={styles.proCard}>
+                  <Text style={styles.proTitle}>
+                    {hasPro ? 'PRO ACTIVE' : 'UNLOCK 21 BLAZE PRO'}
                   </Text>
-                  <Text style={styles.proPrice}>
-                    Yearly {priceFor('pro_yearly')}
+                  <Text style={styles.proBody}>
+                    Monthly, yearly, or lifetime. Includes ad-free interstitials. Does
+                    not change cards, ratings, or matchmaking.
                   </Text>
-                  <Text style={styles.proPrice}>
-                    Lifetime {priceFor('pro_lifetime')}
-                  </Text>
+                  <BlazeButton
+                    title={hasPro ? 'MANAGE SUBSCRIPTION' : 'VIEW PRO PAYWALL'}
+                    loading={paywallStatus === 'purchasing' || busy}
+                    onPress={() => {
+                      void (async () => {
+                        setBusy(true);
+                        if (hasPro) {
+                          const status = await usePurchaseStore
+                            .getState()
+                            .openCustomerCenter();
+                          if (status === 'unavailable') {
+                            // Fall back to restore / paywall messaging.
+                          }
+                        } else {
+                          await presentProPaywall();
+                        }
+                        setBusy(false);
+                      })();
+                    }}
+                    fullWidth
+                  />
+                  {!hasPro ? (
+                    <View style={styles.proPriceRow}>
+                      <Text style={styles.proPrice}>
+                        Monthly {priceFor('pro_monthly')}
+                      </Text>
+                      <Text style={styles.proPrice}>
+                        Yearly {priceFor('pro_yearly')}
+                      </Text>
+                      <Text style={styles.proPrice}>
+                        Lifetime {priceFor('pro_lifetime')}
+                      </Text>
+                    </View>
+                  ) : null}
                 </View>
-              ) : null}
-            </View>
-          </Section>
+              </Section>
 
-          <Section title="FEATURED">
-            <StoreRow
-              title="Founders Pack"
-              subtitle="Ad-Free + Inferno + Neon + Founder perks + 2,500 coins"
-              price={priceFor('blaze_founders_pack')}
-              owned={foundersOwned}
-              onPress={() =>
-                setDetail({
-                  id: 'blaze_founders_pack',
-                  title: 'Founders Pack',
-                  description:
-                    STORE_PRODUCTS.find((product) => product.id === 'blaze_founders_pack')
-                      ?.description ?? '',
-                  included: [
-                    'Ad-Free',
-                    'Inferno Pack',
-                    'Neon Pack',
-                    'Founder Frame',
-                    'Founder Title',
-                    '2,500 Blaze Coins (once)',
-                  ],
-                  priceLabel: priceFor('blaze_founders_pack'),
-                  kind: foundersOwned ? 'owned' : 'store',
-                  cosmeticKey: 'inferno_cards',
-                  category: 'card_theme',
-                })
-              }
-            />
-          </Section>
+              <Section title="FEATURED">
+                <StoreRow
+                  title="Founders Pack"
+                  subtitle="Ad-Free + Inferno + Neon + Founder perks + 2,500 coins"
+                  price={priceFor('blaze_founders_pack')}
+                  owned={foundersOwned}
+                  onPress={() =>
+                    setDetail({
+                      id: 'blaze_founders_pack',
+                      title: 'Founders Pack',
+                      description:
+                        STORE_PRODUCTS.find(
+                          (product) => product.id === 'blaze_founders_pack',
+                        )?.description ?? '',
+                      included: [
+                        'Ad-Free',
+                        'Inferno Pack',
+                        'Neon Pack',
+                        'Founder Frame',
+                        'Founder Title',
+                        '2,500 Blaze Coins (once)',
+                      ],
+                      priceLabel: priceFor('blaze_founders_pack'),
+                      kind: foundersOwned ? 'owned' : 'store',
+                      cosmeticKey: 'inferno_cards',
+                      category: 'card_theme',
+                    })
+                  }
+                />
+              </Section>
 
-          <Section title="REMOVE ADS">
-            <StoreRow
-              title="Remove Ads"
-              subtitle="Stops interstitial ads. Optional rewarded ads remain."
-              price={priceFor('blaze_ad_free')}
-              owned={hasRemoveAds}
-              onPress={() =>
-                setDetail({
-                  id: 'blaze_ad_free',
-                  title: 'Remove Ads',
-                  description:
-                    'Removes interstitial ads. Rewarded ads you choose to watch stay available.',
-                  included: ['No interstitial ads'],
-                  priceLabel: priceFor('blaze_ad_free'),
-                  kind: hasRemoveAds ? 'owned' : 'store',
-                })
-              }
-            />
-          </Section>
+              <Section title="REMOVE ADS">
+                <StoreRow
+                  title="Remove Ads"
+                  subtitle="Stops interstitial ads. Optional rewarded ads remain."
+                  price={priceFor('blaze_ad_free')}
+                  owned={hasRemoveAds}
+                  onPress={() =>
+                    setDetail({
+                      id: 'blaze_ad_free',
+                      title: 'Remove Ads',
+                      description:
+                        'Removes interstitial ads. Rewarded ads you choose to watch stay available.',
+                      included: ['No interstitial ads'],
+                      priceLabel: priceFor('blaze_ad_free'),
+                      kind: hasRemoveAds ? 'owned' : 'store',
+                    })
+                  }
+                />
+              </Section>
 
-          <Section title="CARD THEMES">
-            {STORE_PRODUCTS.filter((product) => product.category === 'card_theme').map(
-              (product) => {
-                const cosmeticKey = product.includedCosmetics[0] ?? product.id;
-                const isOwned = owned.includes(cosmeticKey);
-                return (
-                  <StoreRow
-                    key={product.id}
-                    title={product.displayName}
-                    subtitle={product.description}
-                    price={priceFor(product.id)}
-                    owned={isOwned}
-                    equipped={equipped.cardTheme === cosmeticKey}
-                    onPress={() =>
-                      setDetail({
-                        id: product.id,
-                        title: product.displayName,
-                        description: product.description,
-                        included: product.includedCosmetics,
-                        priceLabel: priceFor(product.id),
-                        kind: isOwned ? 'owned' : 'store',
-                        cosmeticKey,
-                        category: 'card_theme',
-                      })
-                    }
-                  />
-                );
-              },
-            )}
-          </Section>
+              <Section title="CARD THEMES">
+                {STORE_PRODUCTS.filter(
+                  (product) => product.category === 'card_theme',
+                ).map((product) => {
+                  const cosmeticKey = product.includedCosmetics[0] ?? product.id;
+                  const isOwned = owned.includes(cosmeticKey);
+                  return (
+                    <StoreRow
+                      key={product.id}
+                      title={product.displayName}
+                      subtitle={product.description}
+                      price={priceFor(product.id)}
+                      owned={isOwned}
+                      equipped={equipped.cardTheme === cosmeticKey}
+                      onPress={() =>
+                        setDetail({
+                          id: product.id,
+                          title: product.displayName,
+                          description: product.description,
+                          included: product.includedCosmetics,
+                          priceLabel: priceFor(product.id),
+                          kind: isOwned ? 'owned' : 'store',
+                          cosmeticKey,
+                          category: 'card_theme',
+                        })
+                      }
+                    />
+                  );
+                })}
+              </Section>
 
-          <Section title="ARENAS">
-            {STORE_PRODUCTS.filter((product) => product.category === 'arena').map(
-              (product) => {
-                const cosmeticKey = product.includedCosmetics[0] ?? product.id;
-                const isOwned = owned.includes(cosmeticKey);
-                return (
-                  <StoreRow
-                    key={product.id}
-                    title={product.displayName}
-                    subtitle={product.description}
-                    price={priceFor(product.id)}
-                    owned={isOwned}
-                    equipped={equipped.arena === cosmeticKey}
-                    onPress={() =>
-                      setDetail({
-                        id: product.id,
-                        title: product.displayName,
-                        description: product.description,
-                        included: product.includedCosmetics,
-                        priceLabel: priceFor(product.id),
-                        kind: isOwned ? 'owned' : 'store',
-                        cosmeticKey,
-                        category: 'arena',
-                      })
-                    }
-                  />
-                );
-              },
-            )}
-          </Section>
+              <Section title="ARENAS">
+                {STORE_PRODUCTS.filter((product) => product.category === 'arena').map(
+                  (product) => {
+                    const cosmeticKey = product.includedCosmetics[0] ?? product.id;
+                    const isOwned = owned.includes(cosmeticKey);
+                    return (
+                      <StoreRow
+                        key={product.id}
+                        title={product.displayName}
+                        subtitle={product.description}
+                        price={priceFor(product.id)}
+                        owned={isOwned}
+                        equipped={equipped.arena === cosmeticKey}
+                        onPress={() =>
+                          setDetail({
+                            id: product.id,
+                            title: product.displayName,
+                            description: product.description,
+                            included: product.includedCosmetics,
+                            priceLabel: priceFor(product.id),
+                            kind: isOwned ? 'owned' : 'store',
+                            cosmeticKey,
+                            category: 'arena',
+                          })
+                        }
+                      />
+                    );
+                  },
+                )}
+              </Section>
+            </>
+          ) : null}
 
           <Section title="COIN COSMETICS">
             {coinCosmetics.map((item) => {
@@ -348,24 +361,28 @@ export function BlazeStoreScreen({ navigation }: BlazeStoreScreenProps) {
             })}
           </Section>
 
-          {!offerings && !isLoadingOfferings && nativeOk ? (
+          {storeEnabled && !offerings && !isLoadingOfferings && nativeOk ? (
             <Text style={styles.error}>
               Offerings could not be loaded. Check RevenueCat configuration.
             </Text>
           ) : null}
-          {error ? <Text style={styles.error}>{error}</Text> : null}
-          {isLoadingOfferings ? <ActivityIndicator color={colors.primary} /> : null}
+          {storeEnabled && error ? <Text style={styles.error}>{error}</Text> : null}
+          {storeEnabled && isLoadingOfferings ? (
+            <ActivityIndicator color={colors.primary} />
+          ) : null}
         </ScrollView>
 
         <View style={styles.actions}>
-          <BlazeButton
-            title="RESTORE PURCHASES"
-            variant="secondary"
-            onPress={() => {
-              void restore();
-            }}
-            fullWidth
-          />
+          {storeEnabled ? (
+            <BlazeButton
+              title="RESTORE PURCHASES"
+              variant="secondary"
+              onPress={() => {
+                void restore();
+              }}
+              fullWidth
+            />
+          ) : null}
           {isPurchaseDiagnosticsEnabled() ? (
             <BlazeButton
               title="PURCHASE DIAGNOSTICS"

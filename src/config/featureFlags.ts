@@ -32,8 +32,9 @@ export function isProductionBuild(): boolean {
 }
 
 export function isPurchaseDiagnosticsEnabled(): boolean {
-  // Never show purchase diagnostics in production store builds.
-  if (isProductionBuild()) {
+  // Never show purchase diagnostics in production store builds, and never
+  // when store purchases are intentionally disabled (ads-first releases).
+  if (isProductionBuild() || !isStorePurchasesEnabled()) {
     return false;
   }
   return (
@@ -91,6 +92,15 @@ export function isStorePurchasesEnabled(): boolean {
     isMonetizationBetaEnabled() &&
     envFlag('EXPO_PUBLIC_ENABLE_STORE_PURCHASES', false)
   );
+}
+
+/**
+ * Forces Google/AdMob sample test ad units regardless of configured
+ * production ad unit IDs. Used for TestFlight so reviewers and testers
+ * never see live ads.
+ */
+export function isAdMobTestModeForced(): boolean {
+  return envFlag('EXPO_PUBLIC_ADMOB_USE_TEST_ADS', false);
 }
 
 export function isMonetizationTestMode(): boolean {

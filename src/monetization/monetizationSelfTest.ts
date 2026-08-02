@@ -26,11 +26,18 @@ function interstitialEligible(input: {
   sessionShown: number;
   now: number;
   enabled: boolean;
+  isFirstAppSession?: boolean;
+  dailyKey?: string | null;
+  dailyCount?: number;
 }): boolean {
   const MATCHES_PER_AD = 3;
-  const MIN_INTERVAL_MS = 8 * 60 * 1000;
+  const MIN_INTERVAL_MS = 10 * 60 * 1000;
   const MAX_PER_SESSION = 3;
+  const MAX_PER_UTC_DAY = 3;
   if (!input.enabled || input.hasRemoveAds) {
+    return false;
+  }
+  if (input.isFirstAppSession) {
     return false;
   }
   if (input.sessionShown >= MAX_PER_SESSION) {
@@ -43,6 +50,11 @@ function interstitialEligible(input: {
     input.lastShownAt !== null &&
     input.now - input.lastShownAt < MIN_INTERVAL_MS
   ) {
+    return false;
+  }
+  const todayKey = new Date(input.now).toISOString().slice(0, 10);
+  const dailyCountToday = input.dailyKey === todayKey ? (input.dailyCount ?? 0) : 0;
+  if (dailyCountToday >= MAX_PER_UTC_DAY) {
     return false;
   }
   return true;
@@ -197,10 +209,10 @@ export function runMonetizationSelfTests(): void {
       completedSoloMatches: 9,
       lastShownAt: 1_000_000,
       sessionShown: 0,
-      now: 1_000_000 + 7 * 60 * 1000,
+      now: 1_000_000 + 9 * 60 * 1000,
       enabled: true,
     }),
-    'interstitial respects eight-minute gap',
+    'interstitial respects ten-minute gap',
   );
   assert(
     !interstitialEligible({
@@ -213,6 +225,48 @@ export function runMonetizationSelfTests(): void {
     }),
     'interstitial session cap',
   );
+  assert(
+    !interstitialEligible({
+      hasRemoveAds: false,
+      completedSoloMatches: 9,
+      lastShownAt: null,
+      sessionShown: 0,
+      now: Date.now(),
+      enabled: true,
+      isFirstAppSession: true,
+    }),
+    'interstitial never on first app session',
+  );
+  {
+    const now = Date.UTC(2026, 0, 15, 12, 0, 0);
+    const todayKey = new Date(now).toISOString().slice(0, 10);
+    assert(
+      !interstitialEligible({
+        hasRemoveAds: false,
+        completedSoloMatches: 9,
+        lastShownAt: null,
+        sessionShown: 0,
+        now,
+        enabled: true,
+        dailyKey: todayKey,
+        dailyCount: 3,
+      }),
+      'interstitial respects three-per-UTC-day cap',
+    );
+    assert(
+      interstitialEligible({
+        hasRemoveAds: false,
+        completedSoloMatches: 9,
+        lastShownAt: null,
+        sessionShown: 0,
+        now,
+        enabled: true,
+        dailyKey: '2026-01-14',
+        dailyCount: 3,
+      }),
+      'interstitial daily cap resets on new UTC day',
+    );
+  }
 
   const midnight = COSMETIC_CATALOG.find((item) => item.key === 'midnight_cards');
   assert(midnight?.coinPrice === 3000, 'midnight coin price is server-trusted catalog');
