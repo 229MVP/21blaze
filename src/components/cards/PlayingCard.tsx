@@ -2,10 +2,12 @@ import React, { memo } from 'react';
 import { StyleSheet, Text, View, type ViewStyle } from 'react-native';
 
 import { colors, radii, shadows } from '../../theme/uiKit';
-import { CardBack } from './CardBack';
+import { CardBack, type CardBackVariant } from './CardBack';
 import { CardSuit } from './CardSuit';
 import type { CardRank, CardSize, CardSuit as Suit } from './cardTypes';
 import { cardAccessibilityLabel, suitSymbol } from './cardUtils';
+
+export type CardFaceVariant = 'classic' | 'midnight';
 
 type Props = {
   rank: CardRank;
@@ -19,6 +21,9 @@ type Props = {
   /** Optional exact dimensions for responsive lane cards. */
   width?: number;
   height?: number;
+  /** Version 1.1B "Blaze Locker" — code-driven card face / back cosmetics. */
+  faceVariant?: CardFaceVariant;
+  backVariant?: CardBackVariant;
 };
 
 type Dims = {
@@ -104,22 +109,35 @@ export const PlayingCard = memo(function PlayingCard({
   accessibilityLabel,
   width,
   height,
+  faceVariant = 'classic',
+  backVariant = 'classic',
 }: Props) {
   const d = resolveDims(size, width, height);
 
   if (faceDown) {
-    return <CardBack width={d.w} height={d.h} />;
+    return <CardBack width={d.w} height={d.h} variant={backVariant} />;
   }
 
   const red = suit === 'hearts' || suit === 'diamonds';
-  const color = red ? colors.suits.red : colors.suits.black;
+  const isMidnight = faceVariant === 'midnight';
+  const color = isMidnight
+    ? red
+      ? '#FF5A5A'
+      : '#E8E0D0'
+    : red
+      ? colors.suits.red
+      : colors.suits.black;
   const bottomCorner = Math.max(9, Math.round(d.corner * d.bottomScale));
   const dynamic: ViewStyle = {
     width: d.w,
     height: d.h,
     opacity: disabled ? 0.45 : 1,
-    borderColor:
-      selected || highlighted ? colors.border.active : '#B6B1A8',
+    backgroundColor: isMidnight ? '#141414' : undefined,
+    borderColor: selected || highlighted
+      ? colors.border.active
+      : isMidnight
+        ? 'rgba(201,162,39,0.55)'
+        : '#B6B1A8',
   };
 
   return (
@@ -127,7 +145,7 @@ export const PlayingCard = memo(function PlayingCard({
       accessible
       accessibilityRole="image"
       accessibilityLabel={
-        accessibilityLabel ?? cardAccessibilityLabel(rank, suit)
+        `${accessibilityLabel ?? cardAccessibilityLabel(rank, suit)}${isMidnight ? ', midnight style' : ''}`
       }
       style={[
         styles.card,

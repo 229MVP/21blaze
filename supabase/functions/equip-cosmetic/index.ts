@@ -3,14 +3,23 @@ import 'jsr:@supabase/functions-js/edge-runtime.d.ts';
 import { parseJsonBody, requireAuthedUser } from '../_shared/auth.ts';
 import { corsHeaders, errorResponse, jsonResponse } from '../_shared/cors.ts';
 
-const VALID_CATEGORIES = new Set([
-  'card_theme',
-  'arena',
-  'profile_frame',
-  'title',
-  'emote',
-  'victory_effect',
+const VALID_SLOTS = new Set([
+  'cardFaceId',
+  'cardBackId',
+  'arenaId',
+  'profileFrameId',
+  'playerTitleId',
+  'laneEffectId',
 ]);
+
+type EquipResult = {
+  cardFaceId?: string | null;
+  cardBackId?: string | null;
+  arenaId?: string | null;
+  profileFrameId?: string | null;
+  playerTitleId?: string | null;
+  laneEffectId?: string | null;
+};
 
 Deno.serve(async (request) => {
   if (request.method === 'OPTIONS') {
@@ -28,30 +37,35 @@ Deno.serve(async (request) => {
     }
 
     const body = (await parseJsonBody(request)) ?? {};
-    const cosmeticKey =
-      typeof body.cosmeticKey === 'string' ? body.cosmeticKey.trim() : '';
-    const category =
-      typeof body.category === 'string' ? body.category.trim() : '';
+    const cosmeticId =
+      typeof body.cosmeticId === 'string' ? body.cosmeticId.trim() : '';
+    const slot = typeof body.slot === 'string' ? body.slot.trim() : '';
 
-    if (!cosmeticKey || !category) {
-      return errorResponse('cosmeticKey and category are required.', 400);
+    if (!cosmeticId || !slot) {
+      return errorResponse('slot and cosmeticId are required.', 400);
     }
 
-    if (!VALID_CATEGORIES.has(category)) {
-      return errorResponse('Invalid cosmetic category.', 400);
+    if (!VALID_SLOTS.has(slot)) {
+      return errorResponse('Invalid equipment slot.', 400);
     }
 
     const { admin, userId } = auth;
-    const { data, error } = await admin.rpc('equip_cosmetic_secure', {
+    const { data, error } = await admin.rpc('equip_cosmetic', {
       p_user_id: userId,
-      p_cosmetic_key: cosmeticKey,
-      p_category: category,
+      p_slot: slot,
+      p_cosmetic_id: cosmeticId,
     });
 
     if (error) {
       const message = error.message || 'Unable to equip cosmetic.';
       if (/not owned/i.test(message)) {
         return errorResponse('Cosmetic is not owned.', 403);
+      }
+      if (/does not match slot/i.test(message)) {
+        return errorResponse('Cosmetic type does not match this equipment slot.', 400);
+      }
+      if (/not found/i.test(message)) {
+        return errorResponse('Cosmetic not found.', 404);
       }
       return errorResponse(message, 400);
     }
@@ -60,22 +74,16 @@ Deno.serve(async (request) => {
       return errorResponse('Equip failed.', 500);
     }
 
-    const equipped = data as Record<string, unknown>;
+    const equipped = data as EquipResult;
     return jsonResponse({
       ok: true,
       equipped: {
-        card_theme: String(equipped.card_theme ?? ''),
-        arena: String(equipped.arena ?? ''),
-        profile_frame: String(equipped.profile_frame ?? ''),
-        player_title:
-          equipped.player_title == null ? null : String(equipped.player_title),
-        victory_effect:
-          equipped.victory_effect == null
-            ? null
-            : String(equipped.victory_effect),
-        user_id: equipped.user_id == null ? userId : String(equipped.user_id),
-        updated_at:
-          equipped.updated_at == null ? null : String(equipped.updated_at),
+        cardFaceId: equipped.cardFaceId ?? null,
+        cardBackId: equipped.cardBackId ?? null,
+        arenaId: equipped.arenaId ?? null,
+        profileFrameId: equipped.profileFrameId ?? null,
+        playerTitleId: equipped.playerTitleId ?? null,
+        laneEffectId: equipped.laneEffectId ?? null,
       },
     });
   } catch (_error) {

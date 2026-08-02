@@ -2,6 +2,8 @@ import { useEffect } from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { BlazeButton } from '../components/buttons/BlazeButton';
+import { PlayerTitleBadge } from '../components/cosmetics/PlayerTitleBadge';
+import { ProfileFrameBadge } from '../components/cosmetics/ProfileFrameBadge';
 import { ScreenHeader } from '../components/Navigation/ScreenHeader';
 import { XpProgressBar } from '../components/Progression/XpProgressBar';
 import { ScreenContainer } from '../components/ScreenContainer';
@@ -10,8 +12,10 @@ import {
   isDailyRewardsEnabled,
   isMonetizationBetaEnabled,
   isStorePurchasesEnabled,
+  isV1_1LockerEnabled,
 } from '../config/featureFlags';
 import { getCosmetic } from '../cosmetics/catalog';
+import { useActiveProfileFrame } from '../cosmetics/useLockerCosmetics';
 import { trackEvent } from '../monetization/analytics';
 import type { PlayerProgressionScreenProps } from '../navigation/navigationTypes';
 import { useAuthStore } from '../store/useAuthStore';
@@ -62,6 +66,8 @@ export function PlayerProgressionScreen({ navigation }: PlayerProgressionScreenP
   const titleKey = equipped.playerTitle;
   const titleName = titleKey ? getCosmetic(titleKey)?.displayName ?? titleKey : null;
   const frameName = getCosmetic(equipped.profileFrame)?.displayName ?? 'Default Frame';
+  const activeProfileFrame = useActiveProfileFrame();
+  const v1_1LockerOn = isV1_1LockerEnabled();
   const level = progression?.level ?? 1;
   const totalXp = progression?.totalXp ?? 0;
   const currentXp = progression?.currentLevelXp ?? 0;
@@ -76,11 +82,24 @@ export function PlayerProgressionScreen({ navigation }: PlayerProgressionScreenP
         <ScreenHeader title="PROGRESSION" />
 
         <View style={styles.profileCard}>
+          {v1_1LockerOn ? (
+            <ProfileFrameBadge
+              variant={activeProfileFrame}
+              initial={profile?.display_name ?? 'P'}
+              size={56}
+            />
+          ) : null}
           <Text style={styles.frameLabel}>{frameName.toUpperCase()}</Text>
           <Text style={styles.displayName} numberOfLines={1}>
             {profile?.display_name ?? 'Player'}
           </Text>
-          {titleName ? <Text style={styles.titleLine}>{titleName}</Text> : null}
+          {titleName ? (
+            v1_1LockerOn ? (
+              <PlayerTitleBadge label={titleName} />
+            ) : (
+              <Text style={styles.titleLine}>{titleName}</Text>
+            )
+          ) : null}
           <Text style={styles.levelHuge}>LEVEL {level}</Text>
           <Text style={styles.totalXp}>{totalXp.toLocaleString()} TOTAL XP</Text>
           <XpProgressBar

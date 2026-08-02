@@ -34,6 +34,7 @@ export type RootStackParamList = {
   RankedMatchHistory: undefined;
   HowRankedWorks: undefined;
   BlazeStore: undefined;
+  BlazeLocker: undefined;
   PlayerProgression: undefined;
   DailyReward: undefined;
   DailyMissions: undefined;
@@ -114,6 +115,10 @@ export type HowRankedWorksScreenProps = NativeStackScreenProps<
 export type BlazeStoreScreenProps = NativeStackScreenProps<
   RootStackParamList,
   'BlazeStore'
+>;
+export type BlazeLockerScreenProps = NativeStackScreenProps<
+  RootStackParamList,
+  'BlazeLocker'
 >;
 export type PlayerProgressionScreenProps = NativeStackScreenProps<
   RootStackParamList,

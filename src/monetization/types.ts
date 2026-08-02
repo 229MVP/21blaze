@@ -107,4 +107,8 @@ export type EquippedCosmetics = {
   profileFrame: string;
   playerTitle: string | null;
   victoryEffect: string | null;
+  /** Version 1.1B "Blaze Locker" — independent card face / back / lane slots. */
+  cardFace: string;
+  cardBack: string;
+  laneEffect: string | null;
 };

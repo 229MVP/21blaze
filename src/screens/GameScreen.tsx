@@ -32,6 +32,10 @@ import { ConfirmationModal } from '../components/modals/ConfirmationModal';
 import { BottomActionBar } from '../components/Navigation/BottomActionBar';
 import { useActiveCardTheme } from '../cosmetics/useActiveCardTheme';
 import {
+  useActiveCardFaceVariant,
+  useActiveLaneEffect,
+} from '../cosmetics/useLockerCosmetics';
+import {
   FINAL_WARNING_SECONDS,
   LANE_IDS,
   MAX_BUSTS,
@@ -55,6 +59,8 @@ export function GameScreen({ navigation }: GameScreenProps) {
   const isCompactWidth = width < 380;
   const isCompactHeight = height < 780;
   const cardStyle = useActiveCardTheme();
+  const laneEffect = useActiveLaneEffect();
+  const laneFaceVariant = useActiveCardFaceVariant();
   useSoloGameFeedback();
 
   const status = useGameStore((state) => state.status);
@@ -429,6 +435,8 @@ export function GameScreen({ navigation }: GameScreenProps) {
                       selected={flags.selected}
                       danger={flags.danger}
                       cleared={flags.cleared}
+                      laneEffect={laneEffect}
+                      faceVariant={laneFaceVariant}
                       feedbackType={
                         isEventLane ? lastMoveEvent?.type ?? null : null
                       }

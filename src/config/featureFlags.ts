@@ -134,3 +134,13 @@ export function isDailyMissionsEnabled(): boolean {
     envFlag('EXPO_PUBLIC_ENABLE_DAILY_MISSIONS', false)
   );
 }
+
+/**
+ * Version 1.1B "Blaze Locker" — earnable, code-driven cosmetic unlocks.
+ * Defaults OFF so Version 1.0 / 1.1A behavior is unchanged until this is
+ * explicitly enabled. Never gates paid purchases — RevenueCat/store pricing
+ * stays governed exclusively by isStorePurchasesEnabled().
+ */
+export function isV1_1LockerEnabled(): boolean {
+  return envFlag('EXPO_PUBLIC_ENABLE_V1_1_LOCKER', false);
+}

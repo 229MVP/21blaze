@@ -40,6 +40,21 @@ export const V1_1_REWARDS_ANALYTICS_EVENTS = [
 export type V1_1RewardsAnalyticsEvent =
   (typeof V1_1_REWARDS_ANALYTICS_EVENTS)[number];
 
+/** Version 1.1B "Blaze Locker" — never include access tokens, raw UUIDs,
+ * full wallet records, database responses, or secrets in these payloads. */
+export const V1_1B_LOCKER_ANALYTICS_EVENTS = [
+  'blaze_locker_viewed',
+  'cosmetic_previewed',
+  'cosmetic_unlock_started',
+  'cosmetic_unlock_completed',
+  'cosmetic_unlock_failed',
+  'cosmetic_equipped',
+  'insufficient_coins_shown',
+  'seven_day_title_unlocked',
+] as const;
+
+export type V1_1BLockerAnalyticsEvent = (typeof V1_1B_LOCKER_ANALYTICS_EVENTS)[number];
+
 const recent: Array<{ name: string; at: number }> = [];
 
 export function trackEvent(name: string, payload: AnalyticsPayload = {}): void {

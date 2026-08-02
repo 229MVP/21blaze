@@ -12,6 +12,8 @@ import { LinearGradient } from 'expo-linear-gradient';
 
 import { LevelUpOverlay } from '../components/Progression/LevelUpOverlay';
 import { XpProgressBar } from '../components/Progression/XpProgressBar';
+import { PlayerTitleBadge } from '../components/cosmetics/PlayerTitleBadge';
+import { ProfileFrameBadge } from '../components/cosmetics/ProfileFrameBadge';
 import { BlazeScreenBackground } from '../components/layout/BlazeScreenBackground';
 import { ResultHero } from '../components/results/ResultHero';
 import { ResultsTable } from '../components/results/ResultsTable';
@@ -22,8 +24,12 @@ import {
   isMonetizationBetaEnabled,
   isProgressionBetaEnabled,
   isRewardedCurrencyEnabled,
+  isV1_1LockerEnabled,
   isV1_1RewardsEnabled,
 } from '../config/featureFlags';
+import { getCosmetic } from '../cosmetics/catalog';
+import { useActiveProfileFrame } from '../cosmetics/useLockerCosmetics';
+import { useCosmeticStore } from '../store/useCosmeticStore';
 import { shouldSyncV1_1Reward } from '../config/economyConfig';
 import { PROGRESSION_CONFIG } from '../config/progressionConfig';
 import { MAX_BUSTS } from '../game/constants';
@@ -139,6 +145,9 @@ export function ResultsScreen({ navigation, route }: ResultsScreenProps) {
   const v1_1Reward = matchId ? v1_1RewardByMatchId[matchId] : undefined;
 
   const progressionEnabled = isProgressionBetaEnabled();
+  const v1_1LockerOn = isV1_1LockerEnabled();
+  const activeProfileFrame = useActiveProfileFrame();
+  const equippedPlayerTitle = useCosmeticStore((state) => state.equippedCosmetics.playerTitle);
   const progression = useProgressionStore((state) => state.progression);
   const dailyMissions = useProgressionStore((state) => state.dailyMissions);
   const pendingLevelUp = useProgressionStore((state) => state.pendingLevelUp);
@@ -512,6 +521,19 @@ export function ResultsScreen({ navigation, route }: ResultsScreenProps) {
             animationKey={animationKey}
           />
 
+          {v1_1LockerOn && (activeProfileFrame === 'flame' || equippedPlayerTitle) ? (
+            <View style={styles.cosmeticRow} accessibilityRole="text">
+              {activeProfileFrame === 'flame' ? (
+                <ProfileFrameBadge variant="flame" initial="P" size={32} />
+              ) : null}
+              {equippedPlayerTitle ? (
+                <PlayerTitleBadge
+                  label={getCosmetic(equippedPlayerTitle)?.displayName ?? equippedPlayerTitle}
+                />
+              ) : null}
+            </View>
+          ) : null}
+
           <View
             style={[
               styles.statusPill,
@@ -749,6 +771,12 @@ const styles = StyleSheet.create({
     paddingTop: kitSpacing.lg,
     paddingBottom: kitSpacing.xl,
     gap: kitSpacing.sm,
+  },
+  cosmeticRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
   },
   statusPill: {
     width: '100%',

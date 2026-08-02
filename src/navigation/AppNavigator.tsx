@@ -1,7 +1,8 @@
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createNavigationContainerRef } from '@react-navigation/native';
 
-import { isPurchaseDiagnosticsEnabled } from '../config/featureFlags';
+import { isPurchaseDiagnosticsEnabled, isV1_1LockerEnabled } from '../config/featureFlags';
+import { BlazeLockerScreen } from '../screens/BlazeLockerScreen';
 import { BlazeStoreScreen } from '../screens/BlazeStoreScreen';
 import { CreateLiveRoomScreen } from '../screens/CreateLiveRoomScreen';
 import { DailyMissionsScreen } from '../screens/DailyMissionsScreen';
@@ -68,6 +69,9 @@ export function AppNavigator() {
       <Stack.Screen name="RankedMatchHistory" component={RankedMatchHistoryScreen} />
       <Stack.Screen name="HowRankedWorks" component={HowRankedWorksScreen} />
       <Stack.Screen name="BlazeStore" component={BlazeStoreScreen} />
+      {isV1_1LockerEnabled() ? (
+        <Stack.Screen name="BlazeLocker" component={BlazeLockerScreen} />
+      ) : null}
       <Stack.Screen name="PlayerProgression" component={PlayerProgressionScreen} />
       <Stack.Screen name="DailyReward" component={DailyRewardScreen} />
       <Stack.Screen name="DailyMissions" component={DailyMissionsScreen} />

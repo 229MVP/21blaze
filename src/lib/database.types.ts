@@ -608,6 +608,9 @@ export type Database = {
           profile_frame: string;
           player_title: string | null;
           victory_effect: string | null;
+          card_face: string;
+          card_back: string;
+          lane_effect: string | null;
           updated_at: string;
         };
         Insert: {
@@ -617,6 +620,9 @@ export type Database = {
           profile_frame?: string;
           player_title?: string | null;
           victory_effect?: string | null;
+          card_face?: string;
+          card_back?: string;
+          lane_effect?: string | null;
           updated_at?: string;
         };
         Update: {
@@ -626,7 +632,55 @@ export type Database = {
           profile_frame?: string;
           player_title?: string | null;
           victory_effect?: string | null;
+          card_face?: string;
+          card_back?: string;
+          lane_effect?: string | null;
           updated_at?: string;
+        };
+        Relationships: [];
+      };
+      cosmetic_catalog: {
+        Row: {
+          id: string;
+          name: string;
+          description: string;
+          category: string | null;
+          cosmetic_type: string | null;
+          rarity: string;
+          unlock_method: string | null;
+          blaze_coin_cost: number | null;
+          is_enabled: boolean;
+          sort_order: number;
+          metadata: Json;
+          created_at: string;
+        };
+        Insert: {
+          id: string;
+          name: string;
+          description?: string;
+          category?: string | null;
+          cosmetic_type?: string | null;
+          rarity?: string;
+          unlock_method?: string | null;
+          blaze_coin_cost?: number | null;
+          is_enabled?: boolean;
+          sort_order?: number;
+          metadata?: Json;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          name?: string;
+          description?: string;
+          category?: string | null;
+          cosmetic_type?: string | null;
+          rarity?: string;
+          unlock_method?: string | null;
+          blaze_coin_cost?: number | null;
+          is_enabled?: boolean;
+          sort_order?: number;
+          metadata?: Json;
+          created_at?: string;
         };
         Relationships: [];
       };
