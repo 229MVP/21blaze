@@ -29,7 +29,7 @@ import { PauseOverlay } from '../components/GameTimer/PauseOverlay';
 import { TimerDisplay } from '../components/GameTimer/TimerDisplay';
 import { BlazeScreenBackground } from '../components/layout/BlazeScreenBackground';
 import { ConfirmationModal } from '../components/modals/ConfirmationModal';
-import { BottomActionBar } from '../components/navigation/BottomActionBar';
+import { BottomActionBar } from '../components/Navigation/BottomActionBar';
 import { useActiveCardTheme } from '../cosmetics/useActiveCardTheme';
 import {
   FINAL_WARNING_SECONDS,
