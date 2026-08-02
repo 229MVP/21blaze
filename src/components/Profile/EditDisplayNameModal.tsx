@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { StyleSheet, Text, TextInput, View } from 'react-native';
 
 import { BlazeButton } from '../buttons/BlazeButton';
-import { BlazeModal } from '../Settings/BlazeModal';
+import { BlazeModal } from '../settings/BlazeModal';
 import { useAuthStore } from '../../store/useAuthStore';
 import { colors } from '../../theme/colors';
 import { radius } from '../../theme/radius';

@@ -15,7 +15,7 @@ import { PlayingCard } from '../components/Card/PlayingCard';
 import { BlazeScreenBackground } from '../components/layout/BlazeScreenBackground';
 import { ScreenHeader } from '../components/layout/ScreenHeader';
 import { ConfirmationModal } from '../components/modals/ConfirmationModal';
-import { BlazeModal } from '../components/Settings/BlazeModal';
+import { BlazeModal } from '../components/settings/BlazeModal';
 import { SettingsActionRow } from '../components/settings/SettingsActionRow';
 import { SettingsToggleRow } from '../components/settings/SettingsToggleRow';
 import { SvgRoot as Svg } from '../components/svg/SvgRoot';
