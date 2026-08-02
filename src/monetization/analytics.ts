@@ -22,6 +22,24 @@ export const PROGRESSION_ANALYTICS_EVENTS = [
 export type ProgressionAnalyticsEvent =
   (typeof PROGRESSION_ANALYTICS_EVENTS)[number];
 
+/** Version 1.1A "Blaze Rewards" — never include amounts derived from an
+ * untrusted client value; only server-confirmed numbers. Never log access
+ * tokens, raw user IDs, move logs, RevenueCat keys, ad verification
+ * secrets, or database records. */
+export const V1_1_REWARDS_ANALYTICS_EVENTS = [
+  'match_reward_requested',
+  'match_reward_confirmed',
+  'match_reward_failed',
+  'first_match_bonus_granted',
+  'active_play_reward_granted',
+  'rewarded_ad_started',
+  'rewarded_ad_completed',
+  'rewarded_ad_verification_failed',
+] as const;
+
+export type V1_1RewardsAnalyticsEvent =
+  (typeof V1_1_REWARDS_ANALYTICS_EVENTS)[number];
+
 const recent: Array<{ name: string; at: number }> = [];
 
 export function trackEvent(name: string, payload: AnalyticsPayload = {}): void {

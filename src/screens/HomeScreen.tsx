@@ -27,6 +27,7 @@ import {
   isProgressionBetaEnabled,
   isRankedBetaEnabled,
   isStorePurchasesEnabled,
+  isV1_1RewardsEnabled,
 } from '../config/featureFlags';
 import { getCosmetic } from '../cosmetics/catalog';
 import { APP_VERSION } from '../game/constants';
@@ -114,6 +115,7 @@ export function HomeScreen({ navigation, route }: HomeScreenProps) {
   const storeEnabled = isMonetizationBetaEnabled();
   const purchasesEnabled = isStorePurchasesEnabled();
   const progressionEnabled = isProgressionBetaEnabled();
+  const v1_1RewardsOn = isV1_1RewardsEnabled();
   const profile = useAuthStore((state) => state.profile);
   const progression = useProgressionStore((state) => state.progression);
   const dailyRewardStatus = useProgressionStore(
@@ -147,7 +149,7 @@ export function HomeScreen({ navigation, route }: HomeScreenProps) {
       await hydrateWallet();
       await hydrateCosmetics();
       await initializePurchases();
-      if (progressionEnabled) {
+      if (progressionEnabled || v1_1RewardsOn) {
         void hydrateProgression();
       }
       if (isMounted) {
@@ -169,6 +171,7 @@ export function HomeScreen({ navigation, route }: HomeScreenProps) {
     initializePurchases,
     progressionEnabled,
     setHighScore,
+    v1_1RewardsOn,
   ]);
 
   useEffect(() => {
@@ -337,6 +340,32 @@ export function HomeScreen({ navigation, route }: HomeScreenProps) {
             <View style={styles.coinOnlyRow}>
               <Text style={styles.coinValue}>{balance.toLocaleString()} COINS</Text>
               {hasRemoveAds ? <Text style={styles.adFree}>AD-FREE</Text> : null}
+              {v1_1RewardsOn && (showDailyLink || showMissionsLink) ? (
+                <View style={styles.claimRow}>
+                  {showDailyLink ? (
+                    <Pressable
+                      accessibilityRole="button"
+                      accessibilityLabel="Daily reward available"
+                      onPress={() => navigation.navigate('DailyReward')}
+                      style={({ pressed }) => pressed && styles.pressed}
+                    >
+                      <Text style={styles.claimLink}>DAILY READY</Text>
+                    </Pressable>
+                  ) : null}
+                  {showMissionsLink ? (
+                    <Pressable
+                      accessibilityRole="button"
+                      accessibilityLabel={`${missionClaimable} claimable missions`}
+                      onPress={() => navigation.navigate('DailyMissions')}
+                      style={({ pressed }) => pressed && styles.pressed}
+                    >
+                      <Text style={styles.claimLink}>
+                        MISSIONS · {missionClaimable}
+                      </Text>
+                    </Pressable>
+                  ) : null}
+                </View>
+              ) : null}
             </View>
           ) : null}
 

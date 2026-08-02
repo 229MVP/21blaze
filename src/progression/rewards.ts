@@ -1,12 +1,18 @@
 import type { DailyRewardDay, LevelUpReward } from './types';
 
+/**
+ * Version 1.1A calendar. Keep in sync with
+ * `daily_reward_for_streak_day` in
+ * `supabase/migrations/0008_v1_1_rewards_economy.sql` and the shared
+ * edge-function mirror in `supabase/functions/_shared/progression.ts`.
+ */
 export const DAILY_REWARD_CALENDAR: readonly DailyRewardDay[] = [
-  { day: 1, blazeCoins: 25, xp: 25, cosmeticId: null },
-  { day: 2, blazeCoins: 30, xp: 30, cosmeticId: null },
-  { day: 3, blazeCoins: 40, xp: 40, cosmeticId: null },
-  { day: 4, blazeCoins: 50, xp: 50, cosmeticId: null },
-  { day: 5, blazeCoins: 60, xp: 60, cosmeticId: null },
-  { day: 6, blazeCoins: 75, xp: 75, cosmeticId: null },
+  { day: 1, blazeCoins: 20, xp: 20, cosmeticId: null },
+  { day: 2, blazeCoins: 25, xp: 25, cosmeticId: null },
+  { day: 3, blazeCoins: 30, xp: 30, cosmeticId: null },
+  { day: 4, blazeCoins: 40, xp: 40, cosmeticId: null },
+  { day: 5, blazeCoins: 50, xp: 50, cosmeticId: null },
+  { day: 6, blazeCoins: 60, xp: 60, cosmeticId: null },
   {
     day: 7,
     blazeCoins: 100,
