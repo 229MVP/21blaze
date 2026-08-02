@@ -1,8 +1,14 @@
 import { Platform } from 'react-native';
 
+import { getAppEnv, isProductionBuild } from '../config/featureFlags';
+
 function readEnv(name: string): string {
   const value = process.env[name];
   return typeof value === 'string' ? value.trim() : '';
+}
+
+function isTestStoreApiKey(key: string): boolean {
+  return key.startsWith('test_');
 }
 
 export function isNativePurchasesSupported(): boolean {
@@ -10,8 +16,12 @@ export function isNativePurchasesSupported(): boolean {
 }
 
 /**
- * Public SDK keys only. Prefer platform-specific keys; fall back to shared
- * EXPO_PUBLIC_REVENUECAT_API_KEY (RevenueCat Test Store uses a single test_ key).
+ * Public SDK keys only.
+ *
+ * Development / preview physical builds: prefer EXPO_PUBLIC_REVENUECAT_API_KEY
+ * (RevenueCat Test Store `test_…` key).
+ *
+ * Production: prefer platform-specific keys and never accept a Test Store key.
  */
 export function getRevenueCatApiKey(): string | null {
   if (!isNativePurchasesSupported()) {
@@ -19,15 +29,35 @@ export function getRevenueCatApiKey(): string | null {
   }
 
   const shared = readEnv('EXPO_PUBLIC_REVENUECAT_API_KEY');
-  if (Platform.OS === 'ios') {
-    const ios = readEnv('EXPO_PUBLIC_REVENUECAT_IOS_API_KEY');
-    const key = ios || shared;
-    return key.length > 0 ? key : null;
+  const platformKey =
+    Platform.OS === 'ios'
+      ? readEnv('EXPO_PUBLIC_REVENUECAT_IOS_API_KEY')
+      : readEnv('EXPO_PUBLIC_REVENUECAT_ANDROID_API_KEY');
+
+  if (isProductionBuild()) {
+    if (platformKey.length > 0 && !isTestStoreApiKey(platformKey)) {
+      return platformKey;
+    }
+    if (shared.length > 0 && !isTestStoreApiKey(shared)) {
+      return shared;
+    }
+    return null;
   }
 
-  const android = readEnv('EXPO_PUBLIC_REVENUECAT_ANDROID_API_KEY');
-  const key = android || shared;
-  return key.length > 0 ? key : null;
+  // development | preview | unknown/__DEV__: Test Store first, then platform.
+  if (shared.length > 0) {
+    return shared;
+  }
+  if (platformKey.length > 0) {
+    return platformKey;
+  }
+  return null;
+}
+
+/** True when the resolved public key is a RevenueCat Test Store key. */
+export function isUsingRevenueCatTestStore(): boolean {
+  const key = getRevenueCatApiKey();
+  return Boolean(key && isTestStoreApiKey(key));
 }
 
 let configured = false;
@@ -66,11 +96,22 @@ export async function configureRevenueCat(appUserId: string): Promise<boolean> {
       return false;
     }
 
+    // Hard stop: never configure Test Store keys into production binaries.
+    if (isProductionBuild() && isTestStoreApiKey(apiKey)) {
+      return false;
+    }
+
     try {
       const PurchasesModule = await import('react-native-purchases');
       const Purchases = PurchasesModule.default;
+      const verboseLogs =
+        !isProductionBuild() &&
+        (getAppEnv() === 'development' ||
+          (typeof __DEV__ !== 'undefined' && __DEV__));
       Purchases.setLogLevel(
-        __DEV__ ? PurchasesModule.LOG_LEVEL.DEBUG : PurchasesModule.LOG_LEVEL.WARN,
+        verboseLogs
+          ? PurchasesModule.LOG_LEVEL.DEBUG
+          : PurchasesModule.LOG_LEVEL.WARN,
       );
 
       if (!configured) {

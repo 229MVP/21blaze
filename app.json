@@ -11,6 +11,7 @@
       "supportsTablet": true,
       "bundleIdentifier": "com.twentyoneblaze.app",
       "buildNumber": "901",
+      "deploymentTarget": "16.4",
       "infoPlist": {
         "GADApplicationIdentifier": "ca-app-pub-3940256099942544~1458002511",
         "NSUserTrackingUsageDescription": "This identifier is used to deliver personalized ads when you allow tracking. Declining does not block Solo Play.",
@@ -18,7 +19,8 @@
           {
             "SKAdNetworkIdentifier": "cstr6suwn9.skadnetwork"
           }
-        ]
+        ],
+        "ITSAppUsesNonExemptEncryption": false
       }
     },
     "android": {
@@ -30,14 +32,31 @@
         "backgroundImage": "./assets/android-icon-background.png",
         "monochromeImage": "./assets/android-icon-monochrome.png"
       },
-      "predictiveBackGestureEnabled": false
+      "predictiveBackGestureEnabled": false,
+      "permissions": [
+        "android.permission.RECORD_AUDIO",
+        "android.permission.MODIFY_AUDIO_SETTINGS",
+        "android.permission.FOREGROUND_SERVICE",
+        "android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK"
+      ]
     },
     "web": {
       "favicon": "./assets/favicon.png"
     },
     "plugins": [
       "expo-font",
-      "expo-splash-screen",
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/splash-icon.png",
+          "imageWidth": 200,
+          "resizeMode": "contain",
+          "backgroundColor": "#0B0B0C",
+          "dark": {
+            "backgroundColor": "#0B0B0C"
+          }
+        }
+      ],
       "expo-dev-client",
       [
         "react-native-google-mobile-ads",
@@ -47,14 +66,23 @@
         }
       ],
       "expo-audio",
-      "expo-asset"
+      "expo-asset",
+      [
+        "expo-build-properties",
+        {
+          "ios": {
+            "deploymentTarget": "16.4"
+          }
+        }
+      ]
     ],
     "extra": {
-      "eas": {
-        "projectId": "00000000-0000-0000-0000-000000000000"
-      },
       "rcVersion": "0.9.0",
-      "note": "EAS projectId is a PLACEHOLDER — replace via `eas init` / EXPO_TOKEN before preview builds. AdMob IDs above are Google TEST IDs (acceptable for Internal Beta preview; forbidden in production store binaries)."
-    }
+      "note": "EAS projectId is a PLACEHOLDER — replace via `eas init` / EXPO_TOKEN before preview builds. AdMob IDs above are Google TEST IDs (acceptable for Internal Beta preview; forbidden in production store binaries).",
+      "eas": {
+        "projectId": "0c5db163-a4c0-4a17-9a8a-e12eed3bf511"
+      }
+    },
+    "owner": "229mvp"
   }
 }
