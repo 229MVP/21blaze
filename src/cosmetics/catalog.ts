@@ -4,7 +4,11 @@ export type CosmeticCategory =
   | 'profile_frame'
   | 'title'
   | 'emote'
-  | 'victory_effect';
+  | 'victory_effect'
+  // Version 1.1B "Blaze Locker" — independent card face / back and lane slots.
+  | 'card_face'
+  | 'card_back'
+  | 'lane_effect';
 
 export type CosmeticPurchaseSource =
   | 'free'
@@ -184,13 +188,18 @@ export const COSMETIC_CATALOG: readonly CosmeticDefinition[] = [
     betaAvailability: true,
   },
   {
+    // Version 1.1B "Blaze Locker" — see src/cosmetics/lockerCatalog.ts and
+    // supabase/migrations/0009_v1_1b_blaze_locker.sql for the authoritative
+    // catalog row (id, cosmetic_type, unlock_method). This entry stays
+    // in sync purely for legacy BlazeStoreScreen display purposes.
     key: 'flame_profile_frame',
     category: 'profile_frame',
-    displayName: 'Flame Frame',
-    description: 'Blaze Coin profile frame.',
+    displayName: 'Flame Profile Frame',
+    description:
+      'Orange-to-gold profile frame with small flame accents at the top corners.',
     previewAsset: 'flame_profile_frame',
     purchaseSource: 'coins',
-    coinPrice: 2500,
+    coinPrice: 400,
     entitlementKey: null,
     sortOrder: 43,
     betaAvailability: true,
@@ -198,7 +207,7 @@ export const COSMETIC_CATALOG: readonly CosmeticDefinition[] = [
   {
     key: 'seven_day_blaze_title',
     category: 'title',
-    displayName: 'Seven-Day Blaze',
+    displayName: 'Seven Day Blaze',
     description: 'Earned by completing a full seven-day daily reward streak.',
     previewAsset: 'seven_day_blaze_title',
     purchaseSource: 'achievement',
@@ -220,13 +229,16 @@ export const COSMETIC_CATALOG: readonly CosmeticDefinition[] = [
     betaAvailability: true,
   },
   {
+    // Version 1.1B "Blaze Locker" — redefined from a level-5 free reward
+    // into a 150-coin card back (see src/cosmetics/lockerCatalog.ts).
     key: 'ember_card_back',
-    category: 'card_theme',
+    category: 'card_back',
     displayName: 'Ember Card Back',
-    description: 'Level 5 free card theme.',
+    description:
+      'Deep charcoal and ember-red gradient with a thin orange border and a centered flame mark.',
     previewAsset: 'ember_card_back',
-    purchaseSource: 'achievement',
-    coinPrice: null,
+    purchaseSource: 'coins',
+    coinPrice: 150,
     entitlementKey: null,
     sortOrder: 102,
     betaAvailability: true,
@@ -336,4 +348,7 @@ export const FREE_DEFAULTS: Record<CosmeticCategory, string> = {
   title: '',
   emote: '',
   victory_effect: '',
+  card_face: 'classic_card_face',
+  card_back: 'classic_card_back',
+  lane_effect: '',
 };

@@ -17,6 +17,7 @@ import {
   loadProgressionHistory as loadProgressionHistoryRemote,
   ProgressionServiceError,
 } from '../services/progressionService';
+import { useCosmeticStore } from './useCosmeticStore';
 import { useWalletStore } from './useWalletStore';
 
 export type ClaimStatus = 'idle' | 'claiming' | 'success' | 'error';
@@ -271,6 +272,12 @@ export const useProgressionStore = create<ProgressionStore>((set, get) => ({
       }
       if (result.streakReset) {
         trackEvent('daily_streak_reset');
+      }
+      if (result.unlockedCosmetic === 'seven_day_blaze_title') {
+        trackEvent('seven_day_title_unlocked');
+        // Version 1.1B — refresh Locker ownership so the new title is
+        // immediately shown as owned/equippable without a manual refresh.
+        void useCosmeticStore.getState().refreshOwnership();
       }
       if (result.xpGranted > 0) {
         trackEvent('xp_earned', {

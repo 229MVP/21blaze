@@ -50,7 +50,8 @@
     "test:ranked": "npx tsx src/ranked/rankedSelfTest.ts",
     "test:monetization": "npx tsx src/monetization/monetizationSelfTest.ts",
     "test:progression": "npx tsx src/progression/progressionSelfTest.ts",
-    "test:v1.1-rewards": "npx tsx src/monetization/v1_1RewardsSelfTest.ts"
+    "test:v1.1-rewards": "npx tsx src/monetization/v1_1RewardsSelfTest.ts",
+    "test:v1.1b-locker": "npx tsx src/monetization/v1_1bLockerSelfTest.ts"
   },
   "private": true
 }

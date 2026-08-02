@@ -34,7 +34,13 @@ type Props = {
   accessibilityHint?: string;
   feedbackType?: MoveEventType | null;
   feedbackEventId?: string | null;
+  /** Version 1.1B "Blaze Locker" — code-driven lane visual cosmetics. */
+  laneEffect?: 'gold_lane_glow' | null;
+  faceVariant?: 'classic' | 'midnight';
 };
+
+const GOLD_LANE_BORDER = '#FFC94A';
+const GOLD_LANE_PULSE = '#FFE18C';
 
 const MIN_VISIBLE_PEEK = 16;
 const TWO_CARD_GAP = 4;
@@ -87,7 +93,10 @@ export const LaneBox = memo(function LaneBox({
   accessibilityHint,
   feedbackType = null,
   feedbackEventId = null,
+  laneEffect = null,
+  faceVariant = 'classic',
 }: Props) {
+  const hasGoldGlow = laneEffect === 'gold_lane_glow';
   const { width: viewportWidth } = useWindowDimensions();
   const [rowWidth, setRowWidth] = useState(0);
   const cardSize = useMemo(
@@ -159,7 +168,9 @@ export const LaneBox = memo(function LaneBox({
     const borderColor = interpolateColor(
       flashTone.value,
       [0, 1, 2],
-      [colors.border.orange, colors.fire.orange, colors.status.danger],
+      hasGoldGlow
+        ? [GOLD_LANE_BORDER, GOLD_LANE_PULSE, colors.status.danger]
+        : [colors.border.orange, colors.fire.orange, colors.status.danger],
     );
 
     return {
@@ -190,6 +201,17 @@ export const LaneBox = memo(function LaneBox({
 
   return (
     <Animated.View style={[styles.shell, animatedStyle]}>
+      {hasGoldGlow ? (
+        <View
+          pointerEvents="none"
+          importantForAccessibility="no-hide-descendants"
+          accessibilityElementsHidden
+          style={StyleSheet.absoluteFill}
+        >
+          <View style={[styles.goldCorner, styles.goldCornerTopLeft]} />
+          <View style={[styles.goldCorner, styles.goldCornerTopRight]} />
+        </View>
+      ) : null}
       <Pressable
         onPress={onPress}
         disabled={disabled}
@@ -244,6 +266,7 @@ export const LaneBox = memo(function LaneBox({
                     width={cardSize.width}
                     height={cardSize.height}
                     disabled={disabled}
+                    faceVariant={faceVariant}
                   />
                 </View>
               ))
@@ -315,5 +338,25 @@ const styles = StyleSheet.create({
     fontFamily: typography.families.condensed,
     fontSize: 11,
     letterSpacing: 1,
+  },
+  goldCorner: {
+    position: 'absolute',
+    width: 14,
+    height: 14,
+    borderColor: GOLD_LANE_BORDER,
+  },
+  goldCornerTopLeft: {
+    top: -1,
+    left: -1,
+    borderTopWidth: 2,
+    borderLeftWidth: 2,
+    borderTopLeftRadius: 12,
+  },
+  goldCornerTopRight: {
+    top: -1,
+    right: -1,
+    borderTopWidth: 2,
+    borderRightWidth: 2,
+    borderTopRightRadius: 12,
   },
 });

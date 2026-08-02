@@ -13,6 +13,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 
 import { blazeAssets } from '../assets/blazeAssets';
 import { FlameIcon } from '../components/branding/FlameIcon';
+import { ProfileFrameBadge } from '../components/cosmetics/ProfileFrameBadge';
 import { BlazeScreenBackground } from '../components/layout/BlazeScreenBackground';
 import { EditDisplayNameModal } from '../components/Profile/EditDisplayNameModal';
 import { LevelUpOverlay } from '../components/Progression/LevelUpOverlay';
@@ -27,9 +28,11 @@ import {
   isProgressionBetaEnabled,
   isRankedBetaEnabled,
   isStorePurchasesEnabled,
+  isV1_1LockerEnabled,
   isV1_1RewardsEnabled,
 } from '../config/featureFlags';
 import { getCosmetic } from '../cosmetics/catalog';
+import { useActiveProfileFrame, useLockerBadgeVisible } from '../cosmetics/useLockerCosmetics';
 import { APP_VERSION } from '../game/constants';
 import type { HomeScreenProps } from '../navigation/navigationTypes';
 import {
@@ -116,6 +119,9 @@ export function HomeScreen({ navigation, route }: HomeScreenProps) {
   const purchasesEnabled = isStorePurchasesEnabled();
   const progressionEnabled = isProgressionBetaEnabled();
   const v1_1RewardsOn = isV1_1RewardsEnabled();
+  const v1_1LockerOn = isV1_1LockerEnabled();
+  const lockerBadgeVisible = useLockerBadgeVisible();
+  const activeProfileFrame = useActiveProfileFrame();
   const profile = useAuthStore((state) => state.profile);
   const progression = useProgressionStore((state) => state.progression);
   const dailyRewardStatus = useProgressionStore(
@@ -254,6 +260,13 @@ export function HomeScreen({ navigation, route }: HomeScreenProps) {
 
           {progressionEnabled ? (
             <View style={styles.profileRow}>
+              {v1_1LockerOn ? (
+                <ProfileFrameBadge
+                  variant={activeProfileFrame}
+                  initial={profile?.display_name ?? 'P'}
+                  size={40}
+                />
+              ) : null}
               <Pressable
                 accessibilityRole="button"
                 accessibilityLabel={`Level ${progression?.level ?? 1}. Open progression.`}
@@ -394,6 +407,23 @@ export function HomeScreen({ navigation, route }: HomeScreenProps) {
               onPress={() => navigation.navigate('Game')}
               accessibilityLabel="Solo play 21 Blaze"
             />
+            {v1_1LockerOn ? (
+              <View style={styles.lockerButtonWrap}>
+                <BlazeButton
+                  label="BLAZE LOCKER"
+                  variant="secondary"
+                  onPress={() => navigation.navigate('BlazeLocker')}
+                  accessibilityLabel={
+                    lockerBadgeVisible
+                      ? 'Open Blaze Locker. New cosmetics available.'
+                      : 'Open Blaze Locker'
+                  }
+                />
+                {lockerBadgeVisible ? (
+                  <View style={styles.lockerBadge} accessibilityElementsHidden />
+                ) : null}
+              </View>
+            ) : null}
             {isLiveDuelEnabled() ? (
               <BlazeButton
                 label="LIVE DUEL"
@@ -676,6 +706,20 @@ const styles = StyleSheet.create({
     width: '100%',
     gap: kitSpacing.sm,
     marginTop: 2,
+  },
+  lockerButtonWrap: {
+    position: 'relative',
+  },
+  lockerBadge: {
+    position: 'absolute',
+    top: -3,
+    right: -3,
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+    backgroundColor: kitColors.fire.brightOrange,
+    borderWidth: 2,
+    borderColor: kitColors.background.primary,
   },
   secondaryRow: {
     flexDirection: 'row',

@@ -50,9 +50,12 @@ export const LEVEL_REWARDS: ReadonlyArray<LevelUpReward> = [
     title: 'Rookie Blazer',
   },
   {
+    // Version 1.1B redefines ember_card_back as a 150-coin Blaze Locker
+    // item (see src/cosmetics/lockerCatalog.ts); the level-5 slot no
+    // longer grants a free cosmetic to avoid an id collision.
     level: 5,
     blazeCoins: 0,
-    cosmeticId: 'ember_card_back',
+    cosmeticId: null,
     title: null,
   },
   { level: 7, blazeCoins: 100, cosmeticId: null, title: null },

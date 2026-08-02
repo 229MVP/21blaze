@@ -343,6 +343,8 @@ export type DailyRewardClaimResult = {
   streakContinued: boolean;
   streakReset: boolean;
   status: DailyRewardStatus | null;
+  /** Version 1.1B — cosmetic id unlocked by this claim, if any (e.g. Day 7's seven_day_blaze_title). */
+  unlockedCosmetic: string | null;
 };
 
 export type DailyMissionClaimResult = {
@@ -535,6 +537,9 @@ export async function claimDailyReward(): Promise<DailyRewardClaimResult> {
       result.streakReset ?? result.streak_reset ?? result.resets_streak,
     ),
     status,
+    unlockedCosmetic: asNullableString(
+      result.unlockedCosmetic ?? result.unlocked_cosmetic,
+    ),
   };
 }
 

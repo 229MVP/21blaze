@@ -28,6 +28,7 @@
         "EXPO_PUBLIC_ENABLE_V1_1_REWARDS": "false",
         "EXPO_PUBLIC_ENABLE_DAILY_REWARDS": "false",
         "EXPO_PUBLIC_ENABLE_DAILY_MISSIONS": "false",
+        "EXPO_PUBLIC_ENABLE_V1_1_LOCKER": "false",
         "EXPO_PUBLIC_ENABLE_PURCHASE_DIAGNOSTICS": "true",
         "EXPO_PUBLIC_ADMOB_USE_TEST_ADS": "true"
       }
@@ -55,6 +56,7 @@
         "EXPO_PUBLIC_ENABLE_V1_1_REWARDS": "false",
         "EXPO_PUBLIC_ENABLE_DAILY_REWARDS": "false",
         "EXPO_PUBLIC_ENABLE_DAILY_MISSIONS": "false",
+        "EXPO_PUBLIC_ENABLE_V1_1_LOCKER": "false",
         "EXPO_PUBLIC_ENABLE_PURCHASE_DIAGNOSTICS": "true",
         "EXPO_PUBLIC_ADMOB_USE_TEST_ADS": "true"
       }
@@ -80,6 +82,7 @@
         "EXPO_PUBLIC_ENABLE_V1_1_REWARDS": "false",
         "EXPO_PUBLIC_ENABLE_DAILY_REWARDS": "false",
         "EXPO_PUBLIC_ENABLE_DAILY_MISSIONS": "false",
+        "EXPO_PUBLIC_ENABLE_V1_1_LOCKER": "false",
         "EXPO_PUBLIC_ENABLE_PURCHASE_DIAGNOSTICS": "false",
         "EXPO_PUBLIC_ADMOB_USE_TEST_ADS": "true"
       }
@@ -108,6 +111,7 @@
         "EXPO_PUBLIC_ENABLE_V1_1_REWARDS": "false",
         "EXPO_PUBLIC_ENABLE_DAILY_REWARDS": "false",
         "EXPO_PUBLIC_ENABLE_DAILY_MISSIONS": "false",
+        "EXPO_PUBLIC_ENABLE_V1_1_LOCKER": "false",
         "EXPO_PUBLIC_ENABLE_PURCHASE_DIAGNOSTICS": "false",
         "EXPO_PUBLIC_ADMOB_USE_TEST_ADS": "false"
       }
