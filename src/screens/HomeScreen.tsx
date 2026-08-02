@@ -26,6 +26,7 @@ import {
   isMonetizationBetaEnabled,
   isProgressionBetaEnabled,
   isRankedBetaEnabled,
+  isStorePurchasesEnabled,
 } from '../config/featureFlags';
 import { getCosmetic } from '../cosmetics/catalog';
 import { APP_VERSION } from '../game/constants';
@@ -111,6 +112,7 @@ export function HomeScreen({ navigation, route }: HomeScreenProps) {
   );
   const hasRemoveAds = useHasRemoveAdsEntitlement();
   const storeEnabled = isMonetizationBetaEnabled();
+  const purchasesEnabled = isStorePurchasesEnabled();
   const progressionEnabled = isProgressionBetaEnabled();
   const profile = useAuthStore((state) => state.profile);
   const progression = useProgressionStore((state) => state.progression);
@@ -381,10 +383,12 @@ export function HomeScreen({ navigation, route }: HomeScreenProps) {
             ) : null}
             {storeEnabled ? (
               <BlazeButton
-                label="BLAZE STORE"
+                label={purchasesEnabled ? 'BLAZE STORE' : 'BLAZE REWARDS'}
                 variant="secondary"
                 onPress={() => navigation.navigate('BlazeStore')}
-                accessibilityLabel="Open Blaze Store"
+                accessibilityLabel={
+                  purchasesEnabled ? 'Open Blaze Store' : 'Open Blaze Rewards'
+                }
               />
             ) : null}
             <View style={styles.secondaryRow}>

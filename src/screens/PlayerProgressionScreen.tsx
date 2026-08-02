@@ -9,6 +9,7 @@ import {
   isDailyMissionsEnabled,
   isDailyRewardsEnabled,
   isMonetizationBetaEnabled,
+  isStorePurchasesEnabled,
 } from '../config/featureFlags';
 import { getCosmetic } from '../cosmetics/catalog';
 import { trackEvent } from '../monetization/analytics';
@@ -146,7 +147,7 @@ export function PlayerProgressionScreen({ navigation }: PlayerProgressionScreenP
           ) : null}
           {isMonetizationBetaEnabled() ? (
             <BlazeButton
-              title="BLAZE STORE"
+              title={isStorePurchasesEnabled() ? 'BLAZE STORE' : 'BLAZE REWARDS'}
               variant="outline"
               onPress={() => navigation.navigate('BlazeStore')}
               fullWidth

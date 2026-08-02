@@ -1,5 +1,7 @@
 import { Platform } from 'react-native';
 
+import { isAdMobTestModeForced } from '../config/featureFlags';
+
 /** Google sample / test IDs — used whenever production IDs are not configured. */
 export const ADMOB_TEST = {
   androidAppId: 'ca-app-pub-3940256099942544~3347511713',
@@ -19,6 +21,9 @@ export function getAdMobAppId(): string | null {
   if (Platform.OS === 'web') {
     return null;
   }
+  if (isAdMobTestModeForced()) {
+    return Platform.OS === 'ios' ? ADMOB_TEST.iosAppId : ADMOB_TEST.androidAppId;
+  }
   if (Platform.OS === 'ios') {
     return readEnv('EXPO_PUBLIC_ADMOB_IOS_APP_ID') || ADMOB_TEST.iosAppId;
   }
@@ -31,6 +36,9 @@ export function getAdMobAppId(): string | null {
 export function getRewardedAdUnitId(): string | null {
   if (Platform.OS === 'web') {
     return null;
+  }
+  if (isAdMobTestModeForced()) {
+    return Platform.OS === 'ios' ? ADMOB_TEST.rewardedIos : ADMOB_TEST.rewardedAndroid;
   }
   if (Platform.OS === 'ios') {
     return readEnv('EXPO_PUBLIC_ADMOB_REWARDED_IOS_ID') || ADMOB_TEST.rewardedIos;
@@ -47,6 +55,11 @@ export function getInterstitialAdUnitId(): string | null {
   if (Platform.OS === 'web') {
     return null;
   }
+  if (isAdMobTestModeForced()) {
+    return Platform.OS === 'ios'
+      ? ADMOB_TEST.interstitialIos
+      : ADMOB_TEST.interstitialAndroid;
+  }
   if (Platform.OS === 'ios') {
     return (
       readEnv('EXPO_PUBLIC_ADMOB_INTERSTITIAL_IOS_ID') || ADMOB_TEST.interstitialIos
@@ -62,6 +75,9 @@ export function getInterstitialAdUnitId(): string | null {
 }
 
 export function isUsingTestAdUnits(): boolean {
+  if (isAdMobTestModeForced()) {
+    return true;
+  }
   const rewarded = getRewardedAdUnitId();
   const interstitial = getInterstitialAdUnitId();
   return (

@@ -14,6 +14,7 @@ import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { ErrorBoundary } from './src/components/ErrorBoundary';
+import { hydrateInterstitialCaps } from './src/monetization/interstitialAdService';
 import { AppNavigator, navigationRef } from './src/navigation/AppNavigator';
 import { blazeAudio } from './src/services/audio/blazeAudio';
 import { useAuthStore } from './src/store/useAuthStore';
@@ -69,6 +70,7 @@ export default function App() {
     void useSettingsStore.getState().hydrateSettings();
     void useScoreHistoryStore.getState().hydrateScoreHistory();
     void useAuthStore.getState().initializeAuth();
+    void hydrateInterstitialCaps();
   }, []);
 
   useEffect(() => {

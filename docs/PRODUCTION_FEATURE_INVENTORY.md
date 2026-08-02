@@ -1,5 +1,12 @@
 # Production Feature Inventory — 21 Blaze 0.9.0
 
+> **Superseded for v1.0 release flags:** the v1.0 release strategy pivoted to
+> **ads-first, purchases disabled** (`EXPO_PUBLIC_ENABLE_STORE_PURCHASES=false`
+> for TestFlight and production). See
+> [`ADS_FIRST_RELEASE_NOTES.md`](./ADS_FIRST_RELEASE_NOTES.md) for the current
+> flag matrix and rationale. This document remains as the Internal Beta
+> historical record.
+
 **Track:** Internal Beta 0.9.0 (Solo-focused)  
 **Branch:** `cursor/internal-beta-0-9-0-1a6b`  
 **Version:** `0.9.0` (`app.json`, `package.json`, `APP_VERSION`); `android.versionCode=901`; `ios.buildNumber=901`  

@@ -31,17 +31,31 @@ If either is missing, auth falls to **local mode**. Home exposes **Retry Online*
 | `EXPO_PUBLIC_ENABLE_LIVE_DUEL` | `false` | Live Duel UX |
 | `EXPO_PUBLIC_ENABLE_QUICK_MATCH` | `false` | Quick Match UX |
 | `EXPO_PUBLIC_ENABLE_RANKED_BETA` | `false` | Ranked UX |
-| `EXPO_PUBLIC_ENABLE_MONETIZATION_BETA` | `false` | Monetization master UX |
-| `EXPO_PUBLIC_ENABLE_REWARDED_ADS` | `false` | Rewarded ads (requires monetization) |
-| `EXPO_PUBLIC_ENABLE_REWARDED_CURRENCY` | `false` | Coin grants from rewarded ads — **OFF everywhere until SSV complete** |
+| `EXPO_PUBLIC_ENABLE_MONETIZATION_BETA` | `false` | Monetization master UX (coin chip, Blaze Store/Rewards route, coin panels) |
+| `EXPO_PUBLIC_ENABLE_REWARDED_ADS` | `false` | Rewarded ad SDK/infra (requires monetization) — does **not** by itself grant currency |
+| `EXPO_PUBLIC_ENABLE_REWARDED_CURRENCY` | `false` | Coin grants from rewarded ads — **OFF everywhere until AdMob SSV is complete** (see Ads-first release notes) |
 | `EXPO_PUBLIC_ENABLE_INTERSTITIAL_ADS` | `false` | Interstitials (requires monetization) |
-| `EXPO_PUBLIC_ENABLE_STORE_PURCHASES` | `false` | IAP UX (requires monetization) |
+| `EXPO_PUBLIC_ENABLE_STORE_PURCHASES` | `false` | IAP UX (requires monetization). **`false` for TestFlight and the public App Store release (v1.0, ads-first).** RevenueCat products/paywall remain configured for a future release. |
 | `EXPO_PUBLIC_ENABLE_PROGRESSION_BETA` | `false` | Progression master UX |
 | `EXPO_PUBLIC_ENABLE_DAILY_REWARDS` | `false` | Daily rewards (requires progression) |
 | `EXPO_PUBLIC_ENABLE_DAILY_MISSIONS` | `false` | Daily missions (requires progression) |
-| `EXPO_PUBLIC_ENABLE_PURCHASE_DIAGNOSTICS` | `false` | PurchaseDiagnosticsScreen entry (also refused in production) |
+| `EXPO_PUBLIC_ENABLE_PURCHASE_DIAGNOSTICS` | `false` | PurchaseDiagnosticsScreen entry — also refused in production **and whenever store purchases are disabled** |
 
 Flags are **client UX only**, not authorization. Solo Play is never gated.
+
+When `EXPO_PUBLIC_ENABLE_STORE_PURCHASES=false`:
+- `configureRevenueCat` (the single choke point for `Purchases.configure`) returns immediately without configuring the SDK.
+- `usePurchaseStore`'s `purchaseProduct`, `restorePurchases`, `presentProPaywall`, `openCustomerCenter`, `refreshCustomerInfo` all no-op (`'unavailable'` / no-op) without setting a visible error.
+- `BlazeStoreScreen` renders as **BLAZE REWARDS**: Pro / Founders / Remove Ads / store-sourced card themes & arenas are hidden; only the coin-earnable cosmetics section and Restore/Diagnostics-free footer remain.
+- `SettingsScreen`'s **ACCOUNT AND PURCHASES** section collapses to a **PRIVACY** section (Privacy Options only).
+
+See [`ADS_FIRST_RELEASE_NOTES.md`](./ADS_FIRST_RELEASE_NOTES.md) for the full v1.0 ads-first plan.
+
+### AdMob test mode override
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `EXPO_PUBLIC_ADMOB_USE_TEST_ADS` | `false` | When `true`, always use Google's sample test ad units regardless of configured production IDs. Set `true` for development/preview/TestFlight; `false` for the public App Store release. |
 
 ### RevenueCat (public SDK keys)
 
@@ -80,9 +94,12 @@ Do **not** put RevenueCat secret API keys in the app.
 
 | Profile | Intent |
 |---------|--------|
-| **development** | Physical-device `developmentClient` (`ios.simulator: false`). Monetization + store purchases ON for Test Store QA. Multiplayer/progression OFF. Purchase diagnostics ON. |
-| **preview** | Internal distribution APK / device build. Same monetization flags as development. `ios.simulator: false`. |
-| **production** | Store distribution. Monetization / ads / purchases / diagnostics **disabled** by default flags. Never uses Test Store keys. |
+| **development** | Physical-device `developmentClient` (`ios.simulator: false`). Monetization + store purchases ON for RevenueCat Test Store QA. Ads ON with forced test ad units. Multiplayer/progression OFF. Purchase diagnostics ON. |
+| **preview** | Internal distribution APK / device build. Same flags as development — used for internal QA of purchases and ads together. |
+| **testflight** | `distribution: store`, `autoIncrement: true`, **not** `developmentClient`. Ads-first: monetization + ads ON with forced test ad units, **store purchases OFF**, purchase diagnostics OFF. No RevenueCat Test Store key is required or used. |
+| **production** | Store distribution. Ads-first: monetization + ads ON, **store purchases OFF**, real (non-test) ad units expected via secrets, purchase diagnostics OFF. Never uses a Test Store key. |
+
+Build TestFlight with `eas build --platform ios --profile testflight`.
 
 ### iOS physical development build checklist
 

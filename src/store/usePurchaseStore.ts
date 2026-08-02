@@ -98,6 +98,9 @@ export const usePurchaseStore = create<PurchaseStore>((set, get) => ({
   },
 
   purchaseProduct: async (catalogProductId) => {
+    if (!isStorePurchasesEnabled()) {
+      return 'unavailable';
+    }
     if (get().activePurchaseProductId) {
       return 'purchasing';
     }
@@ -139,6 +142,9 @@ export const usePurchaseStore = create<PurchaseStore>((set, get) => ({
   },
 
   restorePurchases: async () => {
+    if (!isStorePurchasesEnabled()) {
+      return 'unavailable';
+    }
     const userId = currentUserId();
     if (!userId) {
       set({ error: 'Sign in required to restore purchases.' });
@@ -170,6 +176,9 @@ export const usePurchaseStore = create<PurchaseStore>((set, get) => ({
   },
 
   presentProPaywall: async () => {
+    if (!isStorePurchasesEnabled()) {
+      return 'unavailable';
+    }
     const userId = currentUserId();
     if (!userId) {
       set({ error: 'Sign in required for purchases.' });
@@ -204,6 +213,9 @@ export const usePurchaseStore = create<PurchaseStore>((set, get) => ({
   },
 
   openCustomerCenter: async () => {
+    if (!isStorePurchasesEnabled()) {
+      return 'unavailable';
+    }
     const userId = currentUserId();
     if (!userId) {
       set({ error: 'Sign in required.' });
@@ -221,6 +233,9 @@ export const usePurchaseStore = create<PurchaseStore>((set, get) => ({
   },
 
   refreshCustomerInfo: async () => {
+    if (!isStorePurchasesEnabled()) {
+      return;
+    }
     const userId = currentUserId();
     if (!userId) {
       return;

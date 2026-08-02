@@ -8,36 +8,68 @@ import {
 } from './adConsentService';
 import { isInterstitialAdsEnabled } from '../config/featureFlags';
 
-const STORAGE_KEY = '21blaze.interstitialCaps.v1';
-const MIN_INTERVAL_MS = 8 * 60 * 1000;
+const STORAGE_KEY = '21blaze.interstitialCaps.v2';
+const FIRST_SESSION_KEY = '21blaze.hasLaunchedSession.v1';
+const MIN_INTERVAL_MS = 10 * 60 * 1000;
 const MATCHES_PER_AD = 3;
 const MAX_PER_SESSION = 3;
+const MAX_PER_UTC_DAY = 3;
 
 type CapState = {
   completedSoloMatches: number;
   lastShownAt: number | null;
+  /** UTC yyyy-mm-dd of the last day an interstitial was shown. */
+  dailyKey: string | null;
+  dailyCount: number;
+};
+
+const DEFAULT_CAPS: CapState = {
+  completedSoloMatches: 0,
+  lastShownAt: null,
+  dailyKey: null,
+  dailyCount: 0,
 };
 
 let sessionShown = 0;
-let caps: CapState = { completedSoloMatches: 0, lastShownAt: null };
+let caps: CapState = { ...DEFAULT_CAPS };
 let mobileAdsReady = false;
+/** True until this process has completed one full hydrate — blocks ads on first launch. */
+let isFirstAppSession = true;
+
+function utcDayKey(nowMs: number): string {
+  return new Date(nowMs).toISOString().slice(0, 10);
+}
 
 export async function hydrateInterstitialCaps(): Promise<void> {
   try {
     const raw = await AsyncStorage.getItem(STORAGE_KEY);
-    if (!raw) {
-      return;
-    }
-    const parsed = JSON.parse(raw) as CapState;
-    if (typeof parsed.completedSoloMatches === 'number') {
+    if (raw) {
+      const parsed = JSON.parse(raw) as Partial<CapState>;
       caps = {
-        completedSoloMatches: parsed.completedSoloMatches,
+        completedSoloMatches:
+          typeof parsed.completedSoloMatches === 'number'
+            ? parsed.completedSoloMatches
+            : 0,
         lastShownAt:
           typeof parsed.lastShownAt === 'number' ? parsed.lastShownAt : null,
+        dailyKey: typeof parsed.dailyKey === 'string' ? parsed.dailyKey : null,
+        dailyCount:
+          typeof parsed.dailyCount === 'number' ? parsed.dailyCount : 0,
       };
     }
   } catch {
-    // ignore
+    // ignore — keep defaults
+  }
+
+  try {
+    const seen = await AsyncStorage.getItem(FIRST_SESSION_KEY);
+    isFirstAppSession = !seen;
+    if (!seen) {
+      await AsyncStorage.setItem(FIRST_SESSION_KEY, '1');
+    }
+  } catch {
+    // Fail safe: treat as first session so we never show ads before launch is confirmed.
+    isFirstAppSession = true;
   }
 }
 
@@ -64,6 +96,9 @@ export function canShowInterstitial(hasRemoveAds: boolean): boolean {
   if (Platform.OS === 'web') {
     return false;
   }
+  if (isFirstAppSession) {
+    return false;
+  }
   if (sessionShown >= MAX_PER_SESSION) {
     return false;
   }
@@ -74,6 +109,11 @@ export function canShowInterstitial(hasRemoveAds: boolean): boolean {
     caps.lastShownAt !== null &&
     Date.now() - caps.lastShownAt < MIN_INTERVAL_MS
   ) {
+    return false;
+  }
+  const todayKey = utcDayKey(Date.now());
+  const dailyCountToday = caps.dailyKey === todayKey ? caps.dailyCount : 0;
+  if (dailyCountToday >= MAX_PER_UTC_DAY) {
     return false;
   }
   return true;
@@ -168,6 +208,13 @@ export async function maybeShowInterstitialAfterSoloHome(
       sessionShown += 1;
       caps.completedSoloMatches = 0;
       caps.lastShownAt = Date.now();
+      const todayKey = utcDayKey(Date.now());
+      if (caps.dailyKey === todayKey) {
+        caps.dailyCount += 1;
+      } else {
+        caps.dailyKey = todayKey;
+        caps.dailyCount = 1;
+      }
       await persistCaps();
     }
     return shown;
@@ -178,6 +225,7 @@ export async function maybeShowInterstitialAfterSoloHome(
 
 export function __resetInterstitialForTests(): void {
   sessionShown = 0;
-  caps = { completedSoloMatches: 0, lastShownAt: null };
+  caps = { ...DEFAULT_CAPS };
   mobileAdsReady = false;
+  isFirstAppSession = false;
 }
