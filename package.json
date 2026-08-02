@@ -1,6 +1,6 @@
 {
   "name": "21-blaze",
-  "version": "0.9.0",
+  "version": "1.1.0",
   "main": "index.ts",
   "dependencies": {
     "@expo-google-fonts/anton": "^0.4.2",
@@ -49,7 +49,8 @@
     "test:game": "npx tsx src/game/gameEngineSelfTest.ts",
     "test:ranked": "npx tsx src/ranked/rankedSelfTest.ts",
     "test:monetization": "npx tsx src/monetization/monetizationSelfTest.ts",
-    "test:progression": "npx tsx src/progression/progressionSelfTest.ts"
+    "test:progression": "npx tsx src/progression/progressionSelfTest.ts",
+    "test:v1.1-rewards": "npx tsx src/monetization/v1_1RewardsSelfTest.ts"
   },
   "private": true
 }

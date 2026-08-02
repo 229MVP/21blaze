@@ -111,16 +111,26 @@ export function isProgressionBetaEnabled(): boolean {
   return envFlag('EXPO_PUBLIC_ENABLE_PROGRESSION_BETA', false);
 }
 
+/**
+ * Version 1.1 "Blaze Rewards" master switch — Results itemized reward
+ * summary, Home reward indicators, daily rewards, and daily missions.
+ * Defaults OFF so Version 1.0 TestFlight behavior remains unchanged
+ * until this is explicitly enabled for a 1.1 release build.
+ */
+export function isV1_1RewardsEnabled(): boolean {
+  return envFlag('EXPO_PUBLIC_ENABLE_V1_1_REWARDS', false);
+}
+
 export function isDailyRewardsEnabled(): boolean {
   return (
-    isProgressionBetaEnabled() &&
+    isV1_1RewardsEnabled() &&
     envFlag('EXPO_PUBLIC_ENABLE_DAILY_REWARDS', false)
   );
 }
 
 export function isDailyMissionsEnabled(): boolean {
   return (
-    isProgressionBetaEnabled() &&
+    isV1_1RewardsEnabled() &&
     envFlag('EXPO_PUBLIC_ENABLE_DAILY_MISSIONS', false)
   );
 }

@@ -51,6 +51,8 @@ export type MatchProgressionSummary = {
   fiveCardClears: number;
   totalLaneClears: number;
   maximumMultiplierReached: number;
+  /** Busts in this match. Used by the "fewer than three busts" mission. */
+  busts: number | null;
   matchMode: MatchXpMode | 'unknown';
   matchCompleted: boolean;
   validCompletion: boolean;
@@ -73,13 +75,19 @@ export type PlayerProgressionRow = {
 const MIN_DAILY_CLAIM_INTERVAL_MS = 20 * 60 * 60 * 1000;
 const MAX_STREAK_CONTINUATION_MS = 48 * 60 * 60 * 1000;
 
+/**
+ * Version 1.1A calendar. Keep in sync with
+ * `daily_reward_for_streak_day` in
+ * `supabase/migrations/0008_v1_1_rewards_economy.sql` and the client
+ * mirror in `src/progression/rewards.ts`.
+ */
 const DAILY_REWARD_CALENDAR = [
-  { day: 1, blazeCoins: 25, xp: 25, cosmeticId: null as string | null },
-  { day: 2, blazeCoins: 30, xp: 30, cosmeticId: null },
-  { day: 3, blazeCoins: 40, xp: 40, cosmeticId: null },
-  { day: 4, blazeCoins: 50, xp: 50, cosmeticId: null },
-  { day: 5, blazeCoins: 60, xp: 60, cosmeticId: null },
-  { day: 6, blazeCoins: 75, xp: 75, cosmeticId: null },
+  { day: 1, blazeCoins: 20, xp: 20, cosmeticId: null as string | null },
+  { day: 2, blazeCoins: 25, xp: 25, cosmeticId: null },
+  { day: 3, blazeCoins: 30, xp: 30, cosmeticId: null },
+  { day: 4, blazeCoins: 40, xp: 40, cosmeticId: null },
+  { day: 5, blazeCoins: 50, xp: 50, cosmeticId: null },
+  { day: 6, blazeCoins: 60, xp: 60, cosmeticId: null },
   {
     day: 7,
     blazeCoins: 100,
@@ -192,6 +200,7 @@ export function buildMatchSummaryFromReplay(
     matchMode: MatchXpMode | 'unknown';
     matchCompleted?: boolean;
     validCompletion?: boolean;
+    busts?: number | null;
   },
 ): MatchProgressionSummary {
   let state = createServerGameState(seed);
@@ -235,6 +244,7 @@ export function buildMatchSummaryFromReplay(
     fiveCardClears,
     totalLaneClears: state.clearedLanes,
     maximumMultiplierReached,
+    busts: options.busts ?? state.busts,
     matchMode: options.matchMode,
     matchCompleted: options.matchCompleted ?? true,
     validCompletion: options.validCompletion ?? true,
@@ -251,6 +261,7 @@ export function buildMatchSummaryFromVerifiedFields(input: {
   exactTwentyOneClears?: number;
   fiveCardClears?: number;
   maximumMultiplierReached?: number;
+  busts?: number | null;
   matchMode: MatchXpMode | 'unknown';
   matchCompleted?: boolean;
   validCompletion?: boolean;
@@ -260,6 +271,7 @@ export function buildMatchSummaryFromVerifiedFields(input: {
     fiveCardClears: Math.max(0, input.fiveCardClears ?? 0),
     totalLaneClears: Math.max(0, input.lanesCleared),
     maximumMultiplierReached: Math.max(0, input.maximumMultiplierReached ?? 0),
+    busts: input.busts ?? null,
     matchMode: input.matchMode,
     matchCompleted: input.matchCompleted ?? true,
     validCompletion: input.validCompletion ?? true,
@@ -274,6 +286,7 @@ export function tryBuildMatchSummaryFromMoveLog(
     matchCompleted?: boolean;
     validCompletion?: boolean;
     lanesClearedFallback?: number;
+    busts?: number | null;
   },
 ): MatchProgressionSummary {
   const validated = validateMoveLog(moveLog);
@@ -283,6 +296,7 @@ export function tryBuildMatchSummaryFromMoveLog(
       matchMode: options.matchMode,
       matchCompleted: options.matchCompleted,
       validCompletion: options.validCompletion,
+      busts: options.busts,
     });
   }
 
@@ -340,6 +354,7 @@ export async function applyMissionProgressFromMatch(
     p_valid_completion: summary.validCompletion,
     p_allow_live_duel: options?.allowLiveDuel ?? true,
     p_allow_ranked: options?.allowRanked ?? true,
+    p_busts: summary.busts,
   });
 
   if (error) {

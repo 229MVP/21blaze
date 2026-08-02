@@ -107,6 +107,28 @@ export async function claimAdReward(input: {
   return invoke('claim-ad-reward', input);
 }
 
+export type V1_1MatchRewardResult = {
+  ok: boolean;
+  alreadyProcessed: boolean;
+  matchCoins: number;
+  firstMatchBonusCoins: number;
+  activeTimeCoins: number;
+  activeTimeSeconds: number;
+  xpGranted: number;
+  totalCoins: number;
+  balance: number;
+};
+
+/**
+ * Version 1.1A — single secure Solo match reward call. The server computes
+ * and verifies every amount; the client sends only the matchId.
+ */
+export async function claimV1_1MatchReward(
+  matchId: string,
+): Promise<V1_1MatchRewardResult> {
+  return invoke('claim-match-rewards', { matchId });
+}
+
 export async function purchaseCosmeticWithCoins(
   cosmeticKey: string,
 ): Promise<{ balance: number; cosmeticKey: string }> {
