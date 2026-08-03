@@ -17,6 +17,32 @@ export type AssetLoadStatus = 'idle' | 'loading' | 'loaded' | 'failed';
 const statusById = new Map<string, AssetLoadStatus>();
 const inFlightById = new Map<string, Promise<AssetLoadStatus>>();
 
+// Version 1.2B — lightweight change notification so
+// `useResolvedVisualTheme()` can react to a REAL asset load failure and
+// actually fall back to classic for that category, instead of the
+// `unavailableThemeIds` parameter (built in 1.2A) never being populated.
+let failureVersion = 0;
+const failureListeners = new Set<() => void>();
+
+function markFailed(id: string): void {
+  statusById.set(id, 'failed');
+  failureVersion += 1;
+  for (const listener of failureListeners) {
+    listener();
+  }
+}
+
+export function subscribeToAssetFailures(listener: () => void): () => void {
+  failureListeners.add(listener);
+  return () => {
+    failureListeners.delete(listener);
+  };
+}
+
+export function getAssetFailureVersion(): number {
+  return failureVersion;
+}
+
 function isSupportedOnThisPlatform(entry: VisualAssetEntry): boolean {
   if (Platform.OS !== 'ios' && Platform.OS !== 'android' && Platform.OS !== 'web') {
     return true; // unknown platform — do not block
@@ -45,7 +71,7 @@ export async function loadVisualAsset(id: string): Promise<AssetLoadStatus> {
 
   const entry = getAssetEntry(id);
   if (!entry) {
-    statusById.set(id, 'failed');
+    markFailed(id);
     if (__DEV__) {
       console.warn(`[visualAssetLoader] Unknown asset id "${id}" — treating as failed/missing.`);
     }
@@ -58,7 +84,7 @@ export async function loadVisualAsset(id: string): Promise<AssetLoadStatus> {
   }
 
   if (!isSupportedOnThisPlatform(entry)) {
-    statusById.set(id, 'failed');
+    markFailed(id);
     return 'failed';
   }
 
@@ -73,7 +99,7 @@ export async function loadVisualAsset(id: string): Promise<AssetLoadStatus> {
       statusById.set(id, 'loaded');
       return 'loaded';
     } catch (error) {
-      statusById.set(id, 'failed');
+      markFailed(id);
       if (__DEV__) {
         console.warn(`[visualAssetLoader] Failed to preload asset "${id}":`, error);
       }
@@ -98,6 +124,53 @@ export async function preloadThemeAssets(requiredAssets: readonly string[]): Pro
 }
 
 /**
+ * Version 1.2B — preload tiers (spec section 20 / docs/V1_2B_EFFECT_TIMING_SPEC.md):
+ *   'launch'         -> critical + high priority only (equipped card face/
+ *                        back/arena/lane essentials + critical profile
+ *                        frame assets) — called from Home on mount.
+ *   'before_gameplay' -> the full requiredAssets set (adds any remaining
+ *                        normal/low priority pieces) — called from
+ *                        GameScreen on mount; a no-op re-download for
+ *                        anything the launch tier already cached.
+ * Ids already 'loaded'/'failed'/in-flight are always skipped (see
+ * `loadVisualAsset`), so calling both tiers back-to-back never duplicates
+ * a request.
+ */
+const PRIORITY_RANK: Record<VisualAssetEntry['preloadPriority'], number> = {
+  critical: 4,
+  high: 3,
+  normal: 2,
+  low: 1,
+  lazy: 0,
+};
+
+function idsAtOrAbovePriority(ids: readonly string[], minPriority: VisualAssetEntry['preloadPriority']): string[] {
+  const minRank = PRIORITY_RANK[minPriority];
+  return ids.filter((id) => {
+    const entry = getAssetEntry(id);
+    if (!entry) {
+      return false;
+    }
+    return PRIORITY_RANK[entry.preloadPriority] >= minRank;
+  });
+}
+
+/** Launch tier: only critical/high priority assets among `requiredAssets`. */
+export async function preloadLaunchCriticalThemeAssets(requiredAssets: readonly string[]): Promise<void> {
+  await preloadVisualAssets(idsAtOrAbovePriority(requiredAssets, 'high'));
+}
+
+/**
+ * Lazy tier: preloads ids that are NOT part of the player's currently
+ * equipped theme (e.g. unowned Locker preview art, alternate/unequipped
+ * theme swatches). Callers pass the full candidate id list; already
+ * equipped/loaded ids are naturally skipped by the loader's cache.
+ */
+export async function preloadLazyVisualAssets(ids: readonly string[]): Promise<void> {
+  await preloadVisualAssets(ids);
+}
+
+/**
  * Ids (from `requiredAssets`) whose load previously failed — feed this
  * into `resolvePlayerVisualTheme({ unavailableThemeIds })`-style logic
  * so a broken/missing optional asset never blocks gameplay or crashes.
@@ -115,6 +188,8 @@ export function getMissingAssetCount(): number {
 export function __resetVisualAssetLoaderForTests(): void {
   statusById.clear();
   inFlightById.clear();
+  failureVersion = 0;
+  failureListeners.clear();
 }
 
 export { VISUAL_ASSET_MANIFEST };

@@ -115,7 +115,10 @@ const REGISTRY: readonly ThemeDefinition[] = [
     cosmeticId: 'gold_lane_glow',
   },
 
-  // board_effect (foundation only — no ownable cosmetic yet, see 1.2A audit)
+  // board_effect (no ownable cosmetic — never directly equipped. Version
+  // 1.2B derives this slot from whether the player's *other* equipped
+  // slots form a coordinated Ember Blaze loadout; see
+  // `resolvePlayerVisualTheme.ts`'s `resolveEmberFamilyEffectThemes`.)
   {
     themeId: 'classic_board_effect',
     category: 'board_effect',
@@ -127,8 +130,19 @@ const REGISTRY: readonly ThemeDefinition[] = [
     isEnabled: true,
     cosmeticId: null,
   },
+  {
+    themeId: 'ember_board_effect',
+    category: 'board_effect',
+    displayName: 'Ember Blaze Board Effects',
+    rarity: 'epic',
+    assetVersion: 1,
+    requiredAssets: ['ember_board_overlay_asset'],
+    fallbackThemeId: 'classic_board_effect',
+    isEnabled: true,
+    cosmeticId: null,
+  },
 
-  // victory_effect (foundation only — no ownable cosmetic yet)
+  // victory_effect (same non-ownable, coordinated-loadout-derived rule).
   {
     themeId: 'classic_victory_effect',
     category: 'victory_effect',
@@ -136,6 +150,17 @@ const REGISTRY: readonly ThemeDefinition[] = [
     rarity: 'common',
     assetVersion: 1,
     requiredAssets: ['classic_victory_overlay_asset'],
+    fallbackThemeId: 'classic_victory_effect',
+    isEnabled: true,
+    cosmeticId: null,
+  },
+  {
+    themeId: 'ember_victory_effect',
+    category: 'victory_effect',
+    displayName: 'Ember Blaze Victory',
+    rarity: 'epic',
+    assetVersion: 1,
+    requiredAssets: ['ember_victory_overlay_asset'],
     fallbackThemeId: 'classic_victory_effect',
     isEnabled: true,
     cosmeticId: null,
@@ -252,4 +277,25 @@ const THEME_FALLBACK_MAX_HOPS = 8;
 
 export function getAllThemeDefinitions(): readonly ThemeDefinition[] {
   return REGISTRY;
+}
+
+/**
+ * Version 1.2B — maps a set of FAILED asset ids (from
+ * `visualAssetLoader.getFailedAssetIds()`) onto the theme ids that
+ * require any of them, so a real load failure can be fed into
+ * `resolvePlayerVisualTheme({ unavailableThemeIds })` and actually fall
+ * back to classic for that category — closing the gap where 1.2A wired
+ * the parameter but nothing populated it from real load failures.
+ */
+export function findThemeIdsRequiringAnyAsset(failedAssetIds: ReadonlySet<string>): Set<string> {
+  if (failedAssetIds.size === 0) {
+    return new Set();
+  }
+  const themeIds = new Set<string>();
+  for (const def of REGISTRY) {
+    if (def.requiredAssets.some((assetId) => failedAssetIds.has(assetId))) {
+      themeIds.add(def.themeId);
+    }
+  }
+  return themeIds;
 }
