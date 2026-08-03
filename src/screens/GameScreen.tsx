@@ -30,11 +30,14 @@ import { TimerDisplay } from '../components/GameTimer/TimerDisplay';
 import { BlazeScreenBackground } from '../components/layout/BlazeScreenBackground';
 import { ConfirmationModal } from '../components/modals/ConfirmationModal';
 import { BottomActionBar } from '../components/Navigation/BottomActionBar';
+import { ThemedBoardEffectLayer } from '../components/themes/ThemedBoardEffectLayer';
 import { useActiveCardTheme } from '../cosmetics/useActiveCardTheme';
 import {
   useActiveCardFaceVariant,
   useActiveLaneEffect,
+  useResolvedVisualTheme,
 } from '../cosmetics/useLockerCosmetics';
+import { useBoardEffectEventBridge } from '../hooks/useBoardEffectEventBridge';
 import { useInterstitialScreenTracking } from '../hooks/useInterstitialScreenTracking';
 import {
   FINAL_WARNING_SECONDS,
@@ -62,8 +65,10 @@ export function GameScreen({ navigation }: GameScreenProps) {
   const cardStyle = useActiveCardTheme();
   const laneEffect = useActiveLaneEffect();
   const laneFaceVariant = useActiveCardFaceVariant();
+  const resolvedVisualTheme = useResolvedVisualTheme();
   useSoloGameFeedback();
   useInterstitialScreenTracking('gameplay');
+  useBoardEffectEventBridge(resolvedVisualTheme.boardEffectTheme);
 
   const status = useGameStore((state) => state.status);
   const score = useGameStore((state) => state.score);
@@ -335,6 +340,8 @@ export function GameScreen({ navigation }: GameScreenProps) {
           event={lastMoveEvent}
           onFinished={handleFeedbackFinished}
         />
+
+        <ThemedBoardEffectLayer />
 
         {isPreparingMatch || status !== 'playing' ? (
           <View style={styles.preparing}>

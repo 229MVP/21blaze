@@ -24,6 +24,7 @@ import { BlazePanel } from '../components/ui/BlazePanel';
 import {
   isPurchaseDiagnosticsEnabled,
   isStorePurchasesEnabled,
+  isThemePreviewDevEnabled,
 } from '../config/featureFlags';
 import type { Card } from '../game/types';
 import {
@@ -396,6 +397,12 @@ export function SettingsScreen({ navigation }: SettingsScreenProps) {
                   <SettingsActionRow
                     label="OPEN UI KIT PREVIEW"
                     onPress={() => navigation.navigate('BlazeUIKitPreview')}
+                  />
+                ) : null}
+                {isThemePreviewDevEnabled() ? (
+                  <SettingsActionRow
+                    label="OPEN THEME PREVIEW"
+                    onPress={() => navigation.navigate('ThemePreview')}
                   />
                 ) : null}
               </BlazePanel>

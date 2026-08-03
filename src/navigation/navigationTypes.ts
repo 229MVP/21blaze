@@ -42,6 +42,8 @@ export type RootStackParamList = {
   Feedback: undefined;
   /** Development-only UI kit gallery. Registered only when __DEV__ is true. */
   BlazeUIKitPreview: undefined;
+  /** Development-only theme gallery. Registered only when the dev-preview flag + __DEV__ are both true. */
+  ThemePreview: undefined;
 };
 
 export type HomeScreenProps = NativeStackScreenProps<RootStackParamList, 'Home'>;
@@ -141,4 +143,8 @@ export type FeedbackScreenProps = NativeStackScreenProps<RootStackParamList, 'Fe
 export type BlazeUIKitPreviewScreenProps = NativeStackScreenProps<
   RootStackParamList,
   'BlazeUIKitPreview'
+>;
+export type ThemePreviewScreenProps = NativeStackScreenProps<
+  RootStackParamList,
+  'ThemePreview'
 >;

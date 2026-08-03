@@ -1,6 +1,8 @@
 import { StyleSheet, Text, View } from 'react-native';
 
 import type { LockerCosmeticType } from '../../cosmetics/lockerCatalog';
+import { resolveThemeDefinition } from '../../themes/themeRegistry';
+import type { ThemeCategory } from '../../themes/types';
 import { PlayingCard } from '../cards';
 import { LaneBox } from '../game/LaneBox';
 import { ArenaPreviewPanel } from './ArenaPreviewPanel';
@@ -19,10 +21,13 @@ const PREVIEW_LANE_CARDS = [
 ];
 
 /**
- * Version 1.1B "Blaze Locker" — cosmetic previews built entirely from real,
- * reusable production components (never a screenshot). Each branch renders
- * the same component used elsewhere in the app (gameplay cards, LaneBox,
- * profile frame, player title), just fed the cosmetic being previewed.
+ * Version 1.1B "Blaze Locker" (Version 1.2A: theme-registry-aware) —
+ * cosmetic previews built entirely from real, reusable production
+ * components (never a screenshot). Each branch renders the same
+ * component used elsewhere in the app (gameplay cards, LaneBox, profile
+ * frame, player title), driven by `resolveThemeDefinition()` instead of
+ * a raw `cosmeticId === '...'` comparison — a future 1.2B art swap for
+ * any of these ids never requires touching this file again.
  */
 export function CosmeticPreview({ cosmeticId, cosmeticType, name }: Props) {
   return (
@@ -37,6 +42,9 @@ export function CosmeticPreview({ cosmeticId, cosmeticType, name }: Props) {
 }
 
 function renderPreview(cosmeticId: string, cosmeticType: LockerCosmeticType) {
+  const category = cosmeticType as ThemeCategory;
+  const themeId = resolveThemeDefinition(category, cosmeticId).themeId;
+
   switch (cosmeticType) {
     case 'card_face':
       return (
@@ -44,7 +52,7 @@ function renderPreview(cosmeticId: string, cosmeticType: LockerCosmeticType) {
           rank="A"
           suit="hearts"
           size="medium"
-          faceVariant={cosmeticId === 'midnight_card_style' ? 'midnight' : 'classic'}
+          faceVariant={themeId === 'midnight_card_style' ? 'midnight' : 'classic'}
         />
       );
     case 'card_back':
@@ -54,7 +62,7 @@ function renderPreview(cosmeticId: string, cosmeticType: LockerCosmeticType) {
           suit="hearts"
           size="medium"
           faceDown
-          backVariant={cosmeticId === 'ember_card_back' ? 'ember' : 'classic'}
+          backVariant={themeId === 'ember_card_back' ? 'ember' : 'classic'}
         />
       );
     case 'lane_effect':
@@ -65,16 +73,16 @@ function renderPreview(cosmeticId: string, cosmeticType: LockerCosmeticType) {
             total={17}
             cards={PREVIEW_LANE_CARDS}
             disabled
-            laneEffect={cosmeticId === 'gold_lane_glow' ? 'gold_lane_glow' : null}
+            laneEffect={themeId === 'gold_lane_glow' ? 'gold_lane_glow' : null}
           />
         </View>
       );
     case 'arena':
-      return <ArenaPreviewPanel arenaId={cosmeticId} width={132} height={84} />;
+      return <ArenaPreviewPanel arenaId={themeId} width={132} height={84} />;
     case 'profile_frame':
       return (
         <ProfileFrameBadge
-          variant={cosmeticId === 'flame_profile_frame' ? 'flame' : 'default'}
+          variant={themeId === 'flame_profile_frame' ? 'flame' : 'default'}
           initial="P"
           size={64}
         />
@@ -83,7 +91,7 @@ function renderPreview(cosmeticId: string, cosmeticType: LockerCosmeticType) {
       return (
         <View style={styles.titlePreview}>
           <Text style={styles.titlePreviewName}>Player</Text>
-          <PlayerTitleBadge label={cosmeticId === 'no_title' ? 'NO TITLE' : 'SEVEN DAY BLAZE'} emphasized />
+          <PlayerTitleBadge label={themeId === 'no_title' ? 'NO TITLE' : 'SEVEN DAY BLAZE'} emphasized />
         </View>
       );
     default:
