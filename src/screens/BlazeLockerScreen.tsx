@@ -152,6 +152,7 @@ export function BlazeLockerScreen({ navigation }: BlazeLockerScreenProps) {
   const onPreview = (entry: LockerCatalogEntry) => {
     selectPreview(entry.id);
     trackEvent('cosmetic_previewed', { cosmeticId: entry.id, cosmeticType: entry.cosmeticType });
+    trackEvent('cosmetic_preview_started', { cosmeticId: entry.id, cosmeticType: entry.cosmeticType });
   };
 
   const onCardButtonPress = (entry: LockerCatalogEntry) => {

@@ -3,6 +3,7 @@ import { Asset } from 'expo-asset';
 
 import { getAssetEntry, VISUAL_ASSET_MANIFEST } from '../assets/manifest/visualAssetManifest';
 import { isAssetSupportedOnPlatform, type VisualAssetEntry } from '../assets/manifest/types';
+import { trackEvent } from '../monetization/analytics';
 
 /**
  * Version 1.2A — preloads the assets required by the player's currently
@@ -27,6 +28,8 @@ const failureListeners = new Set<() => void>();
 function markFailed(id: string): void {
   statusById.set(id, 'failed');
   failureVersion += 1;
+  // Safe: `id` is a public asset-manifest id, never player-identifying data.
+  trackEvent('theme_asset_load_failed', { assetId: id });
   for (const listener of failureListeners) {
     listener();
   }

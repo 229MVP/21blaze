@@ -222,6 +222,11 @@ export const useCosmeticStore = create<CosmeticStore>((set, get) => ({
         error: null,
       });
       trackEvent('cosmetic_equipped', { cosmeticId, slot });
+      // Version 1.2C — a themed slot (card face/back/arena/lane/profile
+      // frame/title) was actively chosen by the player, distinct from a
+      // fallback the resolver applies automatically (see
+      // `visual_fallback_used` in `useResolvedVisualTheme`).
+      trackEvent('theme_selected', { cosmeticId, slot });
       return true;
     } catch (error) {
       set({
