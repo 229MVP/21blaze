@@ -8,6 +8,7 @@ import { CreateLiveRoomScreen } from '../screens/CreateLiveRoomScreen';
 import { DailyMissionsScreen } from '../screens/DailyMissionsScreen';
 import { DailyRewardScreen } from '../screens/DailyRewardScreen';
 import { BlazeUIKitPreviewScreen } from '../screens/dev/BlazeUIKitPreviewScreen';
+import { FeedbackScreen } from '../screens/FeedbackScreen';
 import { GameScreen } from '../screens/GameScreen';
 import { HighScoresScreen } from '../screens/HighScoresScreen';
 import { HomeScreen } from '../screens/HomeScreen';
@@ -75,6 +76,7 @@ export function AppNavigator() {
       <Stack.Screen name="PlayerProgression" component={PlayerProgressionScreen} />
       <Stack.Screen name="DailyReward" component={DailyRewardScreen} />
       <Stack.Screen name="DailyMissions" component={DailyMissionsScreen} />
+      <Stack.Screen name="Feedback" component={FeedbackScreen} />
       {isPurchaseDiagnosticsEnabled() ? (
         <Stack.Screen
           name="PurchaseDiagnostics"

@@ -39,6 +39,7 @@ export type RootStackParamList = {
   DailyReward: undefined;
   DailyMissions: undefined;
   PurchaseDiagnostics: undefined;
+  Feedback: undefined;
   /** Development-only UI kit gallery. Registered only when __DEV__ is true. */
   BlazeUIKitPreview: undefined;
 };
@@ -136,6 +137,7 @@ export type PurchaseDiagnosticsScreenProps = NativeStackScreenProps<
   RootStackParamList,
   'PurchaseDiagnostics'
 >;
+export type FeedbackScreenProps = NativeStackScreenProps<RootStackParamList, 'Feedback'>;
 export type BlazeUIKitPreviewScreenProps = NativeStackScreenProps<
   RootStackParamList,
   'BlazeUIKitPreview'

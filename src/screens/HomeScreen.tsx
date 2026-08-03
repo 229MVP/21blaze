@@ -15,6 +15,7 @@ import { blazeAssets } from '../assets/blazeAssets';
 import { FlameIcon } from '../components/branding/FlameIcon';
 import { ProfileFrameBadge } from '../components/cosmetics/ProfileFrameBadge';
 import { BlazeScreenBackground } from '../components/layout/BlazeScreenBackground';
+import { WhatsNewOverlay } from '../components/modals/WhatsNewOverlay';
 import { EditDisplayNameModal } from '../components/Profile/EditDisplayNameModal';
 import { LevelUpOverlay } from '../components/Progression/LevelUpOverlay';
 import { XpProgressBar } from '../components/Progression/XpProgressBar';
@@ -32,7 +33,12 @@ import {
   isV1_1RewardsEnabled,
 } from '../config/featureFlags';
 import { getCosmetic } from '../cosmetics/catalog';
-import { useActiveProfileFrame, useLockerBadgeVisible } from '../cosmetics/useLockerCosmetics';
+import {
+  useActiveProfileFrame,
+  useLockerBadgeVisible,
+  useTrackLockerAffordability,
+} from '../cosmetics/useLockerCosmetics';
+import { useInterstitialScreenTracking } from '../hooks/useInterstitialScreenTracking';
 import { APP_VERSION } from '../game/constants';
 import type { HomeScreenProps } from '../navigation/navigationTypes';
 import {
@@ -51,6 +57,7 @@ import { useProgressionStore } from '../store/useProgressionStore';
 import { useScoreHistoryStore } from '../store/useScoreHistoryStore';
 import { useSettingsStore } from '../store/useSettingsStore';
 import { useWalletStore } from '../store/useWalletStore';
+import { hasSeenWhatsNew, markWhatsNewSeen } from '../services/whatsNewService';
 import { colors as kitColors, spacing as kitSpacing } from '../theme/uiKit';
 
 const CONTENT_MAX_WIDTH = 410;
@@ -122,6 +129,8 @@ export function HomeScreen({ navigation, route }: HomeScreenProps) {
   const v1_1LockerOn = isV1_1LockerEnabled();
   const lockerBadgeVisible = useLockerBadgeVisible();
   const activeProfileFrame = useActiveProfileFrame();
+  useInterstitialScreenTracking('home');
+  useTrackLockerAffordability();
   const profile = useAuthStore((state) => state.profile);
   const progression = useProgressionStore((state) => state.progression);
   const dailyRewardStatus = useProgressionStore(
@@ -137,6 +146,7 @@ export function HomeScreen({ navigation, route }: HomeScreenProps) {
   );
 
   const [nameEditorOpen, setNameEditorOpen] = useState(false);
+  const [whatsNewVisible, setWhatsNewVisible] = useState(false);
 
   const dailyReady =
     Boolean(dailyRewardStatus?.isAvailable) ||
@@ -179,6 +189,21 @@ export function HomeScreen({ navigation, route }: HomeScreenProps) {
     setHighScore,
     v1_1RewardsOn,
   ]);
+
+  useEffect(() => {
+    if (!v1_1LockerOn || !v1_1RewardsOn) {
+      return;
+    }
+    let cancelled = false;
+    void hasSeenWhatsNew().then((seen) => {
+      if (!cancelled && !seen) {
+        setWhatsNewVisible(true);
+      }
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [v1_1LockerOn, v1_1RewardsOn]);
 
   useEffect(() => {
     const fromSolo = route.params?.fromSoloComplete === true;
@@ -486,6 +511,19 @@ export function HomeScreen({ navigation, route }: HomeScreenProps) {
           onContinue={acknowledgeLevelUp}
         />
       ) : null}
+
+      <WhatsNewOverlay
+        visible={whatsNewVisible}
+        onOpenLocker={() => {
+          setWhatsNewVisible(false);
+          void markWhatsNewSeen();
+          navigation.navigate('BlazeLocker');
+        }}
+        onPlayNow={() => {
+          setWhatsNewVisible(false);
+          void markWhatsNewSeen();
+        }}
+      />
     </BlazeScreenBackground>
   );
 }

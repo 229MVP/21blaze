@@ -1,6 +1,9 @@
+import { useEffect, useRef } from 'react';
+
 import type { CardBackVariant } from '../components/cards/CardBack';
 import type { CardFaceVariant } from '../components/cards/PlayingCard';
 import { isDailyRewardsEnabled, isV1_1LockerEnabled } from '../config/featureFlags';
+import { trackEvent } from '../monetization/analytics';
 import { useCosmeticStore } from '../store/useCosmeticStore';
 import { useProgressionStore } from '../store/useProgressionStore';
 import { useWalletStore } from '../store/useWalletStore';
@@ -86,4 +89,33 @@ export function useLockerBadgeVisible(): boolean {
       !owned.includes(entry.id) &&
       balance >= entry.blazeCoinCost,
   );
+}
+
+/**
+ * Fires `locker_affordability_reached` exactly once per transition into
+ * "can afford at least one locked cosmetic" (never repeatedly while it
+ * stays true, and re-arms only after affordability drops and rises again).
+ */
+export function useTrackLockerAffordability(): void {
+  const catalog = useCosmeticStore((state) => state.catalog);
+  const owned = useCosmeticStore((state) => state.ownedCosmetics);
+  const balance = useWalletStore((state) => state.balance);
+  const wasAffordable = useRef(false);
+
+  useEffect(() => {
+    if (!isV1_1LockerEnabled()) {
+      return;
+    }
+    const affordable = catalog.some(
+      (entry) =>
+        entry.unlockMethod === 'blaze_coins' &&
+        entry.blazeCoinCost != null &&
+        !owned.includes(entry.id) &&
+        balance >= entry.blazeCoinCost,
+    );
+    if (affordable && !wasAffordable.current) {
+      trackEvent('locker_affordability_reached');
+    }
+    wasAffordable.current = affordable;
+  }, [catalog, owned, balance]);
 }

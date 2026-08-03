@@ -278,4 +278,69 @@ export async function fetchServerEntitlements(): Promise<string[]> {
   return data.map((row) => String(row.entitlement_key));
 }
 
+export type RewardedAdRequestResult =
+  | { ok: true; requestId: string; rewardAmount: number; dailyRemaining: number }
+  | { ok: false; reason: string; dailyRemaining: number };
+
+/**
+ * Version 1.1C — pre-registers a rewarded-ad reward attempt server-side
+ * (enforcing the daily cap) before the client ever loads an ad.
+ */
+export async function requestRewardedAdGrant(): Promise<RewardedAdRequestResult> {
+  const { data, error } = await withTimeout(
+    supabase.functions.invoke('request-rewarded-ad', { body: {} }),
+    'request-rewarded-ad',
+  );
+  if (error) {
+    throw new MonetizationServiceError(error.message || 'Unable to request rewarded ad.');
+  }
+  const result = data as {
+    ok: boolean;
+    reason?: string;
+    requestId?: string;
+    rewardAmount?: number;
+    dailyRemaining?: number;
+  };
+  if (!result.ok || !result.requestId) {
+    return {
+      ok: false,
+      reason: result.reason ?? 'unavailable',
+      dailyRemaining: result.dailyRemaining ?? 0,
+    };
+  }
+  return {
+    ok: true,
+    requestId: result.requestId,
+    rewardAmount: result.rewardAmount ?? 25,
+    dailyRemaining: result.dailyRemaining ?? 0,
+  };
+}
+
+export type RewardedAdRequestStatus = {
+  status: 'pending' | 'verified' | 'expired' | 'failed';
+  rewardAmount: number;
+};
+
+/**
+ * Polls the server-authoritative status of a rewarded-ad reward request.
+ * The client never decides this value itself — it only reflects whatever
+ * `verify_and_grant_rewarded_ad` has (or has not yet) written.
+ */
+export async function fetchRewardedAdRequestStatus(
+  requestId: string,
+): Promise<RewardedAdRequestStatus | null> {
+  const { data, error } = await supabase
+    .from('rewarded_ad_requests')
+    .select('status, reward_amount')
+    .eq('id', requestId)
+    .maybeSingle();
+  if (error || !data) {
+    return null;
+  }
+  return {
+    status: data.status as RewardedAdRequestStatus['status'],
+    rewardAmount: Number(data.reward_amount),
+  };
+}
+
 export { MonetizationServiceError };

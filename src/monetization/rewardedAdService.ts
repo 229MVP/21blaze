@@ -1,12 +1,12 @@
 import { Platform } from 'react-native';
 
+import { recordRewardedAdInteraction } from './adActivityTracker';
 import { getRewardedAdUnitId } from './adUnitIds';
-import {
-  canRequestPersonalizedAds,
-  requestAdConsentIfNeeded,
-} from './adConsentService';
+import { canRequestPersonalizedAds } from './adConsentService';
+import { trackEvent } from './analytics';
 import type { AdRewardType } from './types';
 import { isRewardedAdsEnabled } from '../config/featureFlags';
+import { initializeAdsOnce } from '../services/adService';
 
 export type RewardedAdOutcome =
   | { status: 'earned'; clientRewardId: string }
@@ -17,26 +17,6 @@ export type RewardedAdOutcome =
 function createClientRewardId(rewardType: AdRewardType): string {
   const rand = Math.random().toString(36).slice(2, 10);
   return `${rewardType}:${Date.now()}:${rand}`;
-}
-
-let mobileAdsReady = false;
-
-async function ensureMobileAds(): Promise<boolean> {
-  if (Platform.OS === 'web') {
-    return false;
-  }
-  if (mobileAdsReady) {
-    return true;
-  }
-  try {
-    await requestAdConsentIfNeeded();
-    const { default: mobileAds } = await import('react-native-google-mobile-ads');
-    await mobileAds().initialize();
-    mobileAdsReady = true;
-    return true;
-  } catch {
-    return false;
-  }
 }
 
 /**
@@ -62,7 +42,7 @@ export async function showRewardedAd(
     return { status: 'unavailable', message: 'Ad unit is not configured.' };
   }
 
-  const ready = await ensureMobileAds();
+  const ready = await initializeAdsOnce();
   if (!ready) {
     return { status: 'unavailable', message: 'Ads could not be initialized.' };
   }
@@ -89,6 +69,8 @@ export async function showRewardedAd(
       };
 
       const loadedUnsub = rewarded.addAdEventListener(ads.RewardedAdEventType.LOADED, () => {
+        recordRewardedAdInteraction();
+        trackEvent('rewarded_ad_loaded');
         void rewarded.show();
       });
       const earnedUnsub = rewarded.addAdEventListener(
