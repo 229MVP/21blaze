@@ -15,6 +15,8 @@ import { XpProgressBar } from '../components/Progression/XpProgressBar';
 import { RewardedCoinButton } from '../components/ads/RewardedCoinButton';
 import { PlayerTitleBadge } from '../components/cosmetics/PlayerTitleBadge';
 import { ProfileFrameBadge } from '../components/cosmetics/ProfileFrameBadge';
+import { ThemedVictoryEffect } from '../components/themes/ThemedVictoryEffect';
+import { useResolvedVisualTheme } from '../cosmetics/useLockerCosmetics';
 import { BlazeScreenBackground } from '../components/layout/BlazeScreenBackground';
 import { ResultHero } from '../components/results/ResultHero';
 import { ResultsTable } from '../components/results/ResultsTable';
@@ -91,6 +93,7 @@ export function ResultsScreen({ navigation, route }: ResultsScreenProps) {
   const { width } = useWindowDimensions();
   const reduceMotion = useReducedMotionSetting();
   const columnWidth = Math.min(CONTENT_MAX, width - 24);
+  const resolvedVisualTheme = useResolvedVisualTheme();
   useInterstitialScreenTracking('results');
 
   const restartGame = useGameStore((state) => state.restartGame);
@@ -502,6 +505,11 @@ export function ResultsScreen({ navigation, route }: ResultsScreenProps) {
           }
           locations={[0, 0.4, 1]}
           style={styles.heroGlow}
+        />
+
+        <ThemedVictoryEffect
+          trigger={isNewHighScore ? 'newHighScore' : null}
+          themeId={resolvedVisualTheme.victoryEffectTheme}
         />
 
         <ScrollView

@@ -54,7 +54,9 @@
     "test:progression": "npx tsx src/progression/progressionSelfTest.ts",
     "test:v1.1-rewards": "npx tsx src/monetization/v1_1RewardsSelfTest.ts",
     "test:v1.1b-locker": "npx tsx src/monetization/v1_1bLockerSelfTest.ts",
-    "test:v1.1c-ads": "npx tsx src/monetization/v1_1cAdsSelfTest.ts"
+    "test:v1.1c-ads": "npx tsx src/monetization/v1_1cAdsSelfTest.ts",
+    "test:v1.2a-visual-theme": "npx tsx src/themes/v1_2aVisualThemeSelfTest.ts",
+    "validate:visual-assets": "npx tsx scripts/validate-visual-assets.mjs"
   },
   "private": true
 }

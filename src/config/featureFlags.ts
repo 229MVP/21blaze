@@ -144,3 +144,34 @@ export function isDailyMissionsEnabled(): boolean {
 export function isV1_1LockerEnabled(): boolean {
   return envFlag('EXPO_PUBLIC_ENABLE_V1_1_LOCKER', false);
 }
+
+/**
+ * Version 1.2A "Visual Theme System Foundation" — master switch for the
+ * new theme/asset-manifest architecture. When false, every themed
+ * component and hook falls back to the exact Version 1.1 classic
+ * visuals; nothing in `src/themes/` is bypassed by disabling this, it is
+ * simply never asked to resolve anything but classic.
+ */
+export function isV1_2VisualSystemEnabled(): boolean {
+  return envFlag('EXPO_PUBLIC_ENABLE_V1_2_VISUAL_SYSTEM', false);
+}
+
+/**
+ * Developer-only Theme Preview screen. Requires BOTH this flag AND a
+ * development build (`__DEV__`) — never reachable from production
+ * navigation regardless of this flag's value.
+ */
+export function isThemePreviewDevEnabled(): boolean {
+  const isDev = typeof __DEV__ !== 'undefined' && __DEV__;
+  return isDev && envFlag('EXPO_PUBLIC_ENABLE_THEME_PREVIEW_DEV', false);
+}
+
+/** Board-effect overlay (card_placed/exact_21/five_card_clear/bust/etc. visual queue). */
+export function isBoardEffectsEnabled(): boolean {
+  return isV1_2VisualSystemEnabled() && envFlag('EXPO_PUBLIC_ENABLE_BOARD_EFFECTS', false);
+}
+
+/** Victory-effect overlay (standard win / new high score celebration). */
+export function isVictoryEffectsEnabled(): boolean {
+  return isV1_2VisualSystemEnabled() && envFlag('EXPO_PUBLIC_ENABLE_VICTORY_EFFECTS', false);
+}

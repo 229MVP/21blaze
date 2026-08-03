@@ -36,6 +36,7 @@ import { getCosmetic } from '../cosmetics/catalog';
 import {
   useActiveProfileFrame,
   useLockerBadgeVisible,
+  usePreloadEquippedVisualTheme,
   useTrackLockerAffordability,
 } from '../cosmetics/useLockerCosmetics';
 import { useInterstitialScreenTracking } from '../hooks/useInterstitialScreenTracking';
@@ -131,6 +132,7 @@ export function HomeScreen({ navigation, route }: HomeScreenProps) {
   const activeProfileFrame = useActiveProfileFrame();
   useInterstitialScreenTracking('home');
   useTrackLockerAffordability();
+  usePreloadEquippedVisualTheme();
   const profile = useAuthStore((state) => state.profile);
   const progression = useProgressionStore((state) => state.progression);
   const dailyRewardStatus = useProgressionStore(
