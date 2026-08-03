@@ -26,7 +26,10 @@ import {
   isStorePurchasesEnabled,
 } from '../config/featureFlags';
 import type { Card } from '../game/types';
-import { openPrivacyOptions } from '../monetization/adConsentService';
+import {
+  openPrivacyOptions,
+  resetAdConsentForDevelopment,
+} from '../monetization/adConsentService';
 import type { RootStackParamList } from '../navigation/navigationTypes';
 import {
   CARD_STYLE_LABELS,
@@ -305,6 +308,19 @@ export function SettingsScreen({ navigation }: SettingsScreenProps) {
                         });
                       }}
                     />
+                    {__DEV__ ? (
+                      <SettingsActionRow
+                        label="RESET AD CONSENT (DEV)"
+                        onPress={() => {
+                          void resetAdConsentForDevelopment().then(() => {
+                            Alert.alert(
+                              'Ad Consent Reset',
+                              'The UMP consent decision was cleared for testing. It will be requested again next time ads initialize.',
+                            );
+                          });
+                        }}
+                      />
+                    ) : null}
                     <SettingsActionRow
                       label="PURCHASE SUPPORT"
                       onPress={() => {
@@ -339,9 +355,30 @@ export function SettingsScreen({ navigation }: SettingsScreenProps) {
                         });
                       }}
                     />
+                    {__DEV__ ? (
+                      <SettingsActionRow
+                        label="RESET AD CONSENT (DEV)"
+                        onPress={() => {
+                          void resetAdConsentForDevelopment().then(() => {
+                            Alert.alert(
+                              'Ad Consent Reset',
+                              'The UMP consent decision was cleared for testing. It will be requested again next time ads initialize.',
+                            );
+                          });
+                        }}
+                      />
+                    ) : null}
                   </BlazePanel>
                 </>
               )}
+
+              <Text style={styles.sectionLabel}>SUPPORT</Text>
+              <BlazePanel padding={0} style={styles.panel}>
+                <SettingsActionRow
+                  label="FEEDBACK"
+                  onPress={() => navigation.navigate('Feedback')}
+                />
+              </BlazePanel>
 
               <Text style={styles.sectionLabel}>DATA</Text>
               <BlazePanel padding={0} style={styles.panel}>

@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
+import { RewardedCoinButton } from '../components/ads/RewardedCoinButton';
 import { BlazeButton } from '../components/buttons/BlazeButton';
 import { CosmeticPreview } from '../components/cosmetics/CosmeticPreview';
 import { CosmeticUnlockOverlay } from '../components/cosmetics/CosmeticUnlockOverlay';
@@ -17,6 +18,7 @@ import {
   type LockerCatalogEntry,
   type LockerTab,
 } from '../cosmetics/lockerCatalog';
+import { useInterstitialScreenTracking } from '../hooks/useInterstitialScreenTracking';
 import { trackEvent } from '../monetization/analytics';
 import type { BlazeLockerScreenProps } from '../navigation/navigationTypes';
 import { useAuthStore } from '../store/useAuthStore';
@@ -90,6 +92,7 @@ export function BlazeLockerScreen({ navigation }: BlazeLockerScreenProps) {
 
   const [tab, setTab] = useState<LockerTab>('FEATURED');
   const [confirmTarget, setConfirmTarget] = useState<LockerCatalogEntry | null>(null);
+  useInterstitialScreenTracking('cosmeticUnlock');
 
   useEffect(() => {
     trackEvent('blaze_locker_viewed');
@@ -115,6 +118,14 @@ export function BlazeLockerScreen({ navigation }: BlazeLockerScreenProps) {
       (entry) => entry.unlockMethod !== 'free' && tabForCosmeticType(entry.cosmeticType) === tab,
     );
   }, [tab, catalog, owned]);
+
+  const hasUnaffordableItem = catalog.some(
+    (entry) =>
+      entry.unlockMethod === 'blaze_coins' &&
+      entry.blazeCoinCost != null &&
+      !owned.includes(entry.id) &&
+      balance < entry.blazeCoinCost,
+  );
 
   const pendingUnlockEntry = pendingUnlock
     ? catalog.find((entry) => entry.id === pendingUnlock.cosmeticId) ?? null
@@ -197,6 +208,8 @@ export function BlazeLockerScreen({ navigation }: BlazeLockerScreenProps) {
             CONNECT ONLINE TO UNLOCK OR CHANGE COSMETICS
           </Text>
         ) : null}
+
+        {hasUnaffordableItem ? <RewardedCoinButton placement="locker" /> : null}
 
         <ScrollView
           horizontal

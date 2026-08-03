@@ -35,6 +35,7 @@ import {
   useActiveCardFaceVariant,
   useActiveLaneEffect,
 } from '../cosmetics/useLockerCosmetics';
+import { useInterstitialScreenTracking } from '../hooks/useInterstitialScreenTracking';
 import {
   FINAL_WARNING_SECONDS,
   LANE_IDS,
@@ -62,6 +63,7 @@ export function GameScreen({ navigation }: GameScreenProps) {
   const laneEffect = useActiveLaneEffect();
   const laneFaceVariant = useActiveCardFaceVariant();
   useSoloGameFeedback();
+  useInterstitialScreenTracking('gameplay');
 
   const status = useGameStore((state) => state.status);
   const score = useGameStore((state) => state.score);

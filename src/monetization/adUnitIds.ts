@@ -1,6 +1,7 @@
 import { Platform } from 'react-native';
 
 import { isAdMobTestModeForced } from '../config/featureFlags';
+import { resolveAdUnitId, type AdSupportedPlatform } from './adUnitResolution';
 
 /** Google sample / test IDs — used whenever production IDs are not configured. */
 export const ADMOB_TEST = {
@@ -17,61 +18,60 @@ function readEnv(name: string): string {
   return typeof value === 'string' ? value.trim() : '';
 }
 
-export function getAdMobAppId(): string | null {
-  if (Platform.OS === 'web') {
-    return null;
-  }
-  if (isAdMobTestModeForced()) {
-    return Platform.OS === 'ios' ? ADMOB_TEST.iosAppId : ADMOB_TEST.androidAppId;
-  }
-  if (Platform.OS === 'ios') {
-    return readEnv('EXPO_PUBLIC_ADMOB_IOS_APP_ID') || ADMOB_TEST.iosAppId;
-  }
-  if (Platform.OS === 'android') {
-    return readEnv('EXPO_PUBLIC_ADMOB_ANDROID_APP_ID') || ADMOB_TEST.androidAppId;
+function currentPlatform(): AdSupportedPlatform | null {
+  if (Platform.OS === 'ios' || Platform.OS === 'android') {
+    return Platform.OS;
   }
   return null;
+}
+
+export function getAdMobAppId(): string | null {
+  const platform = currentPlatform();
+  if (!platform) {
+    return null;
+  }
+  return resolveAdUnitId({
+    platform,
+    isTestModeForced: isAdMobTestModeForced(),
+    configuredValue:
+      platform === 'ios'
+        ? readEnv('EXPO_PUBLIC_ADMOB_IOS_APP_ID')
+        : readEnv('EXPO_PUBLIC_ADMOB_ANDROID_APP_ID'),
+    testValue: platform === 'ios' ? ADMOB_TEST.iosAppId : ADMOB_TEST.androidAppId,
+  });
 }
 
 export function getRewardedAdUnitId(): string | null {
-  if (Platform.OS === 'web') {
+  const platform = currentPlatform();
+  if (!platform) {
     return null;
   }
-  if (isAdMobTestModeForced()) {
-    return Platform.OS === 'ios' ? ADMOB_TEST.rewardedIos : ADMOB_TEST.rewardedAndroid;
-  }
-  if (Platform.OS === 'ios') {
-    return readEnv('EXPO_PUBLIC_ADMOB_REWARDED_IOS_ID') || ADMOB_TEST.rewardedIos;
-  }
-  if (Platform.OS === 'android') {
-    return (
-      readEnv('EXPO_PUBLIC_ADMOB_REWARDED_ANDROID_ID') || ADMOB_TEST.rewardedAndroid
-    );
-  }
-  return null;
+  return resolveAdUnitId({
+    platform,
+    isTestModeForced: isAdMobTestModeForced(),
+    configuredValue:
+      platform === 'ios'
+        ? readEnv('EXPO_PUBLIC_ADMOB_REWARDED_IOS_ID')
+        : readEnv('EXPO_PUBLIC_ADMOB_REWARDED_ANDROID_ID'),
+    testValue: platform === 'ios' ? ADMOB_TEST.rewardedIos : ADMOB_TEST.rewardedAndroid,
+  });
 }
 
 export function getInterstitialAdUnitId(): string | null {
-  if (Platform.OS === 'web') {
+  const platform = currentPlatform();
+  if (!platform) {
     return null;
   }
-  if (isAdMobTestModeForced()) {
-    return Platform.OS === 'ios'
-      ? ADMOB_TEST.interstitialIos
-      : ADMOB_TEST.interstitialAndroid;
-  }
-  if (Platform.OS === 'ios') {
-    return (
-      readEnv('EXPO_PUBLIC_ADMOB_INTERSTITIAL_IOS_ID') || ADMOB_TEST.interstitialIos
-    );
-  }
-  if (Platform.OS === 'android') {
-    return (
-      readEnv('EXPO_PUBLIC_ADMOB_INTERSTITIAL_ANDROID_ID') ||
-      ADMOB_TEST.interstitialAndroid
-    );
-  }
-  return null;
+  return resolveAdUnitId({
+    platform,
+    isTestModeForced: isAdMobTestModeForced(),
+    configuredValue:
+      platform === 'ios'
+        ? readEnv('EXPO_PUBLIC_ADMOB_INTERSTITIAL_IOS_ID')
+        : readEnv('EXPO_PUBLIC_ADMOB_INTERSTITIAL_ANDROID_ID'),
+    testValue:
+      platform === 'ios' ? ADMOB_TEST.interstitialIos : ADMOB_TEST.interstitialAndroid,
+  });
 }
 
 export function isUsingTestAdUnits(): boolean {

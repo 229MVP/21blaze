@@ -639,6 +639,42 @@ export type Database = {
         };
         Relationships: [];
       };
+      rewarded_ad_requests: {
+        Row: {
+          id: string;
+          user_id: string;
+          status: string;
+          reward_amount: number;
+          transaction_id: string | null;
+          requested_at: string;
+          verified_at: string | null;
+          expires_at: string;
+          metadata: Json;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          status?: string;
+          reward_amount?: number;
+          transaction_id?: string | null;
+          requested_at?: string;
+          verified_at?: string | null;
+          expires_at: string;
+          metadata?: Json;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          status?: string;
+          reward_amount?: number;
+          transaction_id?: string | null;
+          requested_at?: string;
+          verified_at?: string | null;
+          expires_at?: string;
+          metadata?: Json;
+        };
+        Relationships: [];
+      };
       cosmetic_catalog: {
         Row: {
           id: string;

@@ -55,6 +55,32 @@ export const V1_1B_LOCKER_ANALYTICS_EVENTS = [
 
 export type V1_1BLockerAnalyticsEvent = (typeof V1_1B_LOCKER_ANALYTICS_EVENTS)[number];
 
+/** Version 1.1C "Ads, Retention Polish, and TestFlight RC" — never log
+ * secrets, access tokens, raw callback payloads, or full UUIDs. */
+export const V1_1C_ANALYTICS_EVENTS = [
+  'ump_status_updated',
+  'ump_form_presented',
+  'privacy_options_opened',
+  'interstitial_eligible',
+  'interstitial_loaded',
+  'interstitial_shown',
+  'interstitial_dismissed',
+  'interstitial_failed',
+  'rewarded_ad_requested',
+  'rewarded_ad_loaded',
+  'rewarded_ad_completed',
+  'rewarded_ad_dismissed',
+  'rewarded_ad_verification_started',
+  'rewarded_ad_verified',
+  'rewarded_ad_verification_failed',
+  'daily_streak_viewed',
+  'daily_mission_viewed',
+  'locker_affordability_reached',
+  'version_1_1_whats_new_viewed',
+] as const;
+
+export type V1_1CAnalyticsEvent = (typeof V1_1C_ANALYTICS_EVENTS)[number];
+
 const recent: Array<{ name: string; at: number }> = [];
 
 export function trackEvent(name: string, payload: AnalyticsPayload = {}): void {

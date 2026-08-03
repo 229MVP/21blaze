@@ -23,3 +23,11 @@ export function canRequestPersonalizedAds(): boolean {
 export async function openPrivacyOptions(): Promise<boolean> {
   return false;
 }
+
+export async function resetAdConsentForDevelopment(): Promise<void> {
+  consentState = 'unavailable';
+}
+
+export async function isPrivacyOptionsRequired(): Promise<boolean> {
+  return false;
+}

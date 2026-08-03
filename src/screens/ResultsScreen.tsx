@@ -12,6 +12,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 
 import { LevelUpOverlay } from '../components/Progression/LevelUpOverlay';
 import { XpProgressBar } from '../components/Progression/XpProgressBar';
+import { RewardedCoinButton } from '../components/ads/RewardedCoinButton';
 import { PlayerTitleBadge } from '../components/cosmetics/PlayerTitleBadge';
 import { ProfileFrameBadge } from '../components/cosmetics/ProfileFrameBadge';
 import { BlazeScreenBackground } from '../components/layout/BlazeScreenBackground';
@@ -35,6 +36,7 @@ import { PROGRESSION_CONFIG } from '../config/progressionConfig';
 import { MAX_BUSTS } from '../game/constants';
 import { formatTimerSeconds } from '../game/timerEngine';
 import type { GameOverReason } from '../game/types';
+import { useInterstitialScreenTracking } from '../hooks/useInterstitialScreenTracking';
 import { useReducedMotionSetting } from '../hooks/useReducedMotionSetting';
 import { trackEvent } from '../monetization/analytics';
 import { showRewardedAd } from '../monetization/rewardedAdService';
@@ -89,6 +91,7 @@ export function ResultsScreen({ navigation, route }: ResultsScreenProps) {
   const { width } = useWindowDimensions();
   const reduceMotion = useReducedMotionSetting();
   const columnWidth = Math.min(CONTENT_MAX, width - 24);
+  useInterstitialScreenTracking('results');
 
   const restartGame = useGameStore((state) => state.restartGame);
   const eligibility = useGameStore((state) => state.eligibility);
@@ -638,6 +641,9 @@ export function ResultsScreen({ navigation, route }: ResultsScreenProps) {
                 </>
               ) : null}
               {doubleRewardSection}
+              {v1_1RewardStatus === 'verified' ? (
+                <RewardedCoinButton placement="results" />
+              ) : null}
             </BlazePanel>
           ) : showCoinsPanel || xpSummary ? (
             <BlazePanel style={styles.rewardsPanel}>

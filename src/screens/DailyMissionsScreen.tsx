@@ -1,9 +1,12 @@
 import { useEffect } from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 
+import { RewardedCoinButton } from '../components/ads/RewardedCoinButton';
 import { BlazeButton } from '../components/buttons/BlazeButton';
 import { ScreenHeader } from '../components/Navigation/ScreenHeader';
 import { ScreenContainer } from '../components/ScreenContainer';
+import { useInterstitialScreenTracking } from '../hooks/useInterstitialScreenTracking';
+import { trackEvent } from '../monetization/analytics';
 import type { DailyMissionsScreenProps } from '../navigation/navigationTypes';
 import type { DailyMissionView } from '../progression/types';
 import { useAuthStore } from '../store/useAuthStore';
@@ -29,6 +32,33 @@ function formatReset(iso: string | null | undefined): string {
   })}`;
 }
 
+type MissionCardState =
+  | 'IN PROGRESS'
+  | 'CLAIM'
+  | 'CLAIMING…'
+  | 'CLAIMED'
+  | 'SYNC REQUIRED';
+
+function resolveMissionCardState(
+  mission: DailyMissionView,
+  claiming: boolean,
+  online: boolean,
+): MissionCardState {
+  if (mission.isClaimed) {
+    return 'CLAIMED';
+  }
+  if (claiming) {
+    return 'CLAIMING…';
+  }
+  if (mission.isComplete && !online) {
+    return 'SYNC REQUIRED';
+  }
+  if (mission.isComplete) {
+    return 'CLAIM';
+  }
+  return 'IN PROGRESS';
+}
+
 function MissionCard({
   mission,
   claiming,
@@ -45,10 +75,17 @@ function MissionCard({
       ? 1
       : Math.max(0, Math.min(1, mission.progress / mission.targetValue));
   const widthPercent = `${Math.round(fraction * 100)}%` as `${number}%`;
-  const canClaim = mission.isComplete && !mission.isClaimed && online;
+  const state = resolveMissionCardState(mission, claiming, online);
+  const canClaim = state === 'CLAIM';
 
   return (
-    <View style={styles.missionCard}>
+    <View
+      style={styles.missionCard}
+      accessibilityRole="summary"
+      accessibilityLabel={`${mission.name}. ${mission.description}. Progress ${mission.progress} of ${mission.targetValue}. Reward ${mission.blazeCoinReward} coins${
+        mission.xpReward > 0 ? ` and ${mission.xpReward} XP` : ''
+      }. ${state}.`}
+    >
       <Text style={styles.missionName}>{mission.name}</Text>
       <Text style={styles.missionDesc}>{mission.description}</Text>
       <View style={styles.progressTrack}>
@@ -59,16 +96,19 @@ function MissionCard({
           {mission.progress}/{mission.targetValue}
         </Text>
         <Text style={styles.rewardText}>
-          +{mission.xpReward} XP · +{mission.blazeCoinReward} coins
+          +{mission.blazeCoinReward} coins
+          {mission.xpReward > 0 ? ` · +${mission.xpReward} XP` : ''}
         </Text>
       </View>
-      {mission.isClaimed ? (
+      {state === 'CLAIMED' ? (
         <Text style={styles.claimed}>CLAIMED</Text>
+      ) : state === 'SYNC REQUIRED' ? (
+        <Text style={styles.syncRequired}>SYNC REQUIRED</Text>
       ) : (
         <BlazeButton
-          title="CLAIM"
+          title={state === 'IN PROGRESS' ? 'IN PROGRESS' : state}
           onPress={onClaim}
-          disabled={!canClaim || claiming}
+          disabled={!canClaim}
           loading={claiming}
           fullWidth
         />
@@ -85,10 +125,12 @@ export function DailyMissionsScreen({ navigation }: DailyMissionsScreenProps) {
   const loadDailyMissions = useProgressionStore((state) => state.loadDailyMissions);
   const claimMission = useProgressionStore((state) => state.claimMission);
   const clearError = useProgressionStore((state) => state.clearError);
+  useInterstitialScreenTracking('missionClaim');
 
   useEffect(() => {
     clearError();
     void loadDailyMissions();
+    trackEvent('daily_mission_viewed');
   }, [clearError, loadDailyMissions]);
 
   const missions = dailyMissions?.missions ?? [];
@@ -127,6 +169,8 @@ export function DailyMissionsScreen({ navigation }: DailyMissionsScreenProps) {
         )}
 
         {error ? <Text style={styles.error}>{error}</Text> : null}
+
+        <RewardedCoinButton placement="missions" />
 
         <BlazeButton
           title="BACK"
@@ -209,6 +253,12 @@ const styles = StyleSheet.create({
   claimed: {
     fontFamily: fontFamilies.bodyBold,
     color: colors.success,
+    textAlign: 'center',
+    letterSpacing: 1.2,
+  },
+  syncRequired: {
+    fontFamily: fontFamilies.bodyBold,
+    color: colors.gold,
     textAlign: 'center',
     letterSpacing: 1.2,
   },

@@ -1,10 +1,15 @@
 /** Web stub — interstitials are unsupported on Expo Web. */
+import type { InterstitialScreen } from './interstitialPolicy';
 
 export async function hydrateInterstitialCaps(): Promise<void> {
   // no-op
 }
 
 export function recordSoloMatchCompletedForInterstitial(): void {
+  // no-op
+}
+
+export function setInterstitialCurrentScreen(_screen: InterstitialScreen): void {
   // no-op
 }
 
