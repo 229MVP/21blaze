@@ -12,6 +12,11 @@ import { LinearGradient } from 'expo-linear-gradient';
 
 import { LevelUpOverlay } from '../components/Progression/LevelUpOverlay';
 import { XpProgressBar } from '../components/Progression/XpProgressBar';
+import { RewardedCoinButton } from '../components/ads/RewardedCoinButton';
+import { PlayerTitleBadge } from '../components/cosmetics/PlayerTitleBadge';
+import { ProfileFrameBadge } from '../components/cosmetics/ProfileFrameBadge';
+import { ThemedVictoryEffect } from '../components/themes/ThemedVictoryEffect';
+import { useResolvedVisualTheme } from '../cosmetics/useLockerCosmetics';
 import { BlazeScreenBackground } from '../components/layout/BlazeScreenBackground';
 import { ResultHero } from '../components/results/ResultHero';
 import { ResultsTable } from '../components/results/ResultsTable';
@@ -22,11 +27,18 @@ import {
   isMonetizationBetaEnabled,
   isProgressionBetaEnabled,
   isRewardedCurrencyEnabled,
+  isV1_1LockerEnabled,
+  isV1_1RewardsEnabled,
 } from '../config/featureFlags';
+import { getCosmetic } from '../cosmetics/catalog';
+import { useActiveProfileFrame } from '../cosmetics/useLockerCosmetics';
+import { useCosmeticStore } from '../store/useCosmeticStore';
+import { shouldSyncV1_1Reward } from '../config/economyConfig';
 import { PROGRESSION_CONFIG } from '../config/progressionConfig';
 import { MAX_BUSTS } from '../game/constants';
 import { formatTimerSeconds } from '../game/timerEngine';
 import type { GameOverReason } from '../game/types';
+import { useInterstitialScreenTracking } from '../hooks/useInterstitialScreenTracking';
 import { useReducedMotionSetting } from '../hooks/useReducedMotionSetting';
 import { trackEvent } from '../monetization/analytics';
 import { showRewardedAd } from '../monetization/rewardedAdService';
@@ -81,6 +93,8 @@ export function ResultsScreen({ navigation, route }: ResultsScreenProps) {
   const { width } = useWindowDimensions();
   const reduceMotion = useReducedMotionSetting();
   const columnWidth = Math.min(CONTENT_MAX, width - 24);
+  const resolvedVisualTheme = useResolvedVisualTheme();
+  useInterstitialScreenTracking('results');
 
   const restartGame = useGameStore((state) => state.restartGame);
   const eligibility = useGameStore((state) => state.eligibility);
@@ -125,7 +139,21 @@ export function ResultsScreen({ navigation, route }: ResultsScreenProps) {
   const [doubleBusy, setDoubleBusy] = useState(false);
   const [doubleDone, setDoubleDone] = useState(false);
 
+  const v1_1RewardsOn = isV1_1RewardsEnabled();
+  const claimV1_1Reward = useWalletStore((state) => state.claimV1_1Reward);
+  const markV1_1RewardLocal = useWalletStore(
+    (state) => state.markV1_1RewardLocal,
+  );
+  const v1_1RewardStatus = useWalletStore((state) => state.v1_1RewardStatus);
+  const v1_1RewardByMatchId = useWalletStore(
+    (state) => state.v1_1RewardByMatchId,
+  );
+  const v1_1Reward = matchId ? v1_1RewardByMatchId[matchId] : undefined;
+
   const progressionEnabled = isProgressionBetaEnabled();
+  const v1_1LockerOn = isV1_1LockerEnabled();
+  const activeProfileFrame = useActiveProfileFrame();
+  const equippedPlayerTitle = useCosmeticStore((state) => state.equippedCosmetics.playerTitle);
   const progression = useProgressionStore((state) => state.progression);
   const dailyMissions = useProgressionStore((state) => state.dailyMissions);
   const pendingLevelUp = useProgressionStore((state) => state.pendingLevelUp);
@@ -148,7 +176,9 @@ export function ResultsScreen({ navigation, route }: ResultsScreenProps) {
   }, [submitVerifiedMatchIfNeeded]);
 
   useEffect(() => {
-    if (!matchId || gameOverReason === 'quit') {
+    // Version 1.1A supersedes the flat 1.0 solo-coin formula with its own
+    // reward flow (see the effect below) — never grant both for one match.
+    if (!matchId || gameOverReason === 'quit' || v1_1RewardsOn) {
       return;
     }
     void (async () => {
@@ -180,6 +210,31 @@ export function ResultsScreen({ navigation, route }: ResultsScreenProps) {
     progressionEnabled,
     refreshProgression,
     score,
+    v1_1RewardsOn,
+  ]);
+
+  useEffect(() => {
+    const decision = shouldSyncV1_1Reward({
+      v1_1RewardsOn,
+      matchId,
+      gameOverReason,
+      eligibility,
+    });
+    if (decision === 'skip' || decision === 'wait') {
+      return;
+    }
+    if (decision === 'local') {
+      markV1_1RewardLocal(matchId!);
+      return;
+    }
+    void claimV1_1Reward(matchId!);
+  }, [
+    claimV1_1Reward,
+    eligibility,
+    gameOverReason,
+    markV1_1RewardLocal,
+    matchId,
+    v1_1RewardsOn,
   ]);
 
   useEffect(() => {
@@ -378,6 +433,61 @@ export function ResultsScreen({ navigation, route }: ResultsScreenProps) {
 
   const animationKey = matchId ?? `${score}-${gameOverReason ?? 'result'}`;
 
+  const doubleRewardSection = (
+    <>
+      {(showCoinsPanel || v1_1RewardStatus === 'verified') &&
+      isRewardedCurrencyEnabled() &&
+      !doubleDone &&
+      !(matchId && doubledMatchIds[matchId]) ? (
+        <BlazeButton
+          label="DOUBLE REWARD"
+          variant="ghost"
+          size="sm"
+          loading={doubleBusy}
+          onPress={() => {
+            void (async () => {
+              setDoubleBusy(true);
+              trackEvent('rewarded_ad_requested', {
+                type: 'double_solo',
+              });
+              trackEvent('rewarded_ad_started', {
+                type: 'double_solo',
+              });
+              const outcome = await showRewardedAd(
+                'double_solo_match_coins',
+              );
+              if (outcome.status === 'earned') {
+                trackEvent('rewarded_ad_completed');
+                const granted = await claimRewardedDouble({
+                  matchId: matchId!,
+                  clientRewardId: outcome.clientRewardId,
+                });
+                if (granted > 0) {
+                  setDoubleDone(true);
+                } else {
+                  // Client reported the ad as watched, but the
+                  // server-side claim did not grant currency —
+                  // never trust the client callback alone.
+                  trackEvent('rewarded_ad_verification_failed');
+                }
+              } else if (outcome.status === 'dismissed') {
+                trackEvent('rewarded_ad_failed', {
+                  reason: 'dismissed',
+                });
+              } else {
+                trackEvent('rewarded_ad_failed');
+              }
+              setDoubleBusy(false);
+            })();
+          }}
+        />
+      ) : null}
+      {doubleDone || (matchId && doubledMatchIds[matchId]) ? (
+        <Text style={styles.doubled}>REWARD DOUBLED</Text>
+      ) : null}
+    </>
+  );
+
   return (
     <BlazeScreenBackground
       variant="dramatic"
@@ -395,6 +505,11 @@ export function ResultsScreen({ navigation, route }: ResultsScreenProps) {
           }
           locations={[0, 0.4, 1]}
           style={styles.heroGlow}
+        />
+
+        <ThemedVictoryEffect
+          trigger={isNewHighScore ? 'newHighScore' : null}
+          themeId={resolvedVisualTheme.victoryEffectTheme}
         />
 
         <ScrollView
@@ -416,6 +531,19 @@ export function ResultsScreen({ navigation, route }: ResultsScreenProps) {
             reduceMotion={reduceMotion}
             animationKey={animationKey}
           />
+
+          {v1_1LockerOn && (activeProfileFrame === 'flame' || equippedPlayerTitle) ? (
+            <View style={styles.cosmeticRow} accessibilityRole="text">
+              {activeProfileFrame === 'flame' ? (
+                <ProfileFrameBadge variant="flame" initial="P" size={32} />
+              ) : null}
+              {equippedPlayerTitle ? (
+                <PlayerTitleBadge
+                  label={getCosmetic(equippedPlayerTitle)?.displayName ?? equippedPlayerTitle}
+                />
+              ) : null}
+            </View>
+          ) : null}
 
           <View
             style={[
@@ -453,7 +581,79 @@ export function ResultsScreen({ navigation, route }: ResultsScreenProps) {
             compact
           />
 
-          {(showCoinsPanel || xpSummary) && (
+          {v1_1RewardsOn && matchId && gameOverReason !== 'quit' ? (
+            <BlazePanel style={styles.rewardsPanel}>
+              {v1_1RewardStatus === 'syncing' ? (
+                <Text style={styles.syncLabel}>SYNCING REWARDS…</Text>
+              ) : null}
+              {v1_1RewardStatus === 'local' ? (
+                <Text style={styles.rewardsNote}>
+                  LOCAL MATCH — NO ONLINE REWARDS
+                </Text>
+              ) : null}
+              {v1_1RewardStatus === 'failed' ? (
+                <>
+                  <Text style={styles.rewardsNote}>
+                    REWARD SYNC FAILED — RETRY AVAILABLE
+                  </Text>
+                  <BlazeButton
+                    label="RETRY"
+                    variant="ghost"
+                    size="sm"
+                    onPress={() => {
+                      void claimV1_1Reward(matchId);
+                    }}
+                  />
+                </>
+              ) : null}
+              {v1_1RewardStatus === 'verified' && v1_1Reward ? (
+                <>
+                  <Text style={styles.syncLabel}>REWARDS VERIFIED</Text>
+                  <View style={styles.rewardsRow}>
+                    {v1_1Reward.matchCoins > 0 ? (
+                      <View style={styles.rewardCell}>
+                        <Text style={styles.rewardLabel}>MATCH COMPLETE</Text>
+                        <Text style={styles.rewardValue}>
+                          +{v1_1Reward.matchCoins.toLocaleString()} Coins
+                        </Text>
+                      </View>
+                    ) : null}
+                    {v1_1Reward.firstMatchBonusCoins > 0 ? (
+                      <View style={styles.rewardCell}>
+                        <Text style={styles.rewardLabel}>
+                          FIRST MATCH BONUS
+                        </Text>
+                        <Text style={styles.rewardValue}>
+                          +{v1_1Reward.firstMatchBonusCoins.toLocaleString()}{' '}
+                          Coins
+                        </Text>
+                      </View>
+                    ) : null}
+                    {v1_1Reward.activeTimeCoins > 0 ? (
+                      <View style={styles.rewardCell}>
+                        <Text style={styles.rewardLabel}>ACTIVE PLAY</Text>
+                        <Text style={styles.rewardValue}>
+                          +{v1_1Reward.activeTimeCoins.toLocaleString()} Coins
+                        </Text>
+                      </View>
+                    ) : null}
+                    {v1_1Reward.xpGranted > 0 ? (
+                      <View style={styles.rewardCell}>
+                        <Text style={styles.rewardLabel}>XP</Text>
+                        <Text style={styles.rewardValue}>
+                          +{v1_1Reward.xpGranted.toLocaleString()} XP
+                        </Text>
+                      </View>
+                    ) : null}
+                  </View>
+                </>
+              ) : null}
+              {doubleRewardSection}
+              {v1_1RewardStatus === 'verified' ? (
+                <RewardedCoinButton placement="results" />
+              ) : null}
+            </BlazePanel>
+          ) : showCoinsPanel || xpSummary ? (
             <BlazePanel style={styles.rewardsPanel}>
               {xpSummary?.state === 'syncing' ? (
                 <Text style={styles.syncLabel}>SYNCING REWARDS…</Text>
@@ -485,50 +685,9 @@ export function ResultsScreen({ navigation, route }: ResultsScreenProps) {
                 </Text>
               ) : null}
 
-              {showCoinsPanel &&
-              isRewardedCurrencyEnabled() &&
-              !doubleDone &&
-              !(matchId && doubledMatchIds[matchId]) ? (
-                <BlazeButton
-                  label="DOUBLE REWARD"
-                  variant="ghost"
-                  size="sm"
-                  loading={doubleBusy}
-                  onPress={() => {
-                    void (async () => {
-                      setDoubleBusy(true);
-                      trackEvent('rewarded_ad_requested', {
-                        type: 'double_solo',
-                      });
-                      const outcome = await showRewardedAd(
-                        'double_solo_match_coins',
-                      );
-                      if (outcome.status === 'earned') {
-                        trackEvent('rewarded_ad_completed');
-                        const granted = await claimRewardedDouble({
-                          matchId: matchId!,
-                          clientRewardId: outcome.clientRewardId,
-                        });
-                        if (granted > 0) {
-                          setDoubleDone(true);
-                        }
-                      } else if (outcome.status === 'dismissed') {
-                        trackEvent('rewarded_ad_failed', {
-                          reason: 'dismissed',
-                        });
-                      } else {
-                        trackEvent('rewarded_ad_failed');
-                      }
-                      setDoubleBusy(false);
-                    })();
-                  }}
-                />
-              ) : null}
-              {doubleDone || (matchId && doubledMatchIds[matchId]) ? (
-                <Text style={styles.doubled}>REWARD DOUBLED</Text>
-              ) : null}
+              {doubleRewardSection}
             </BlazePanel>
-          )}
+          ) : null}
 
           {xpSummary &&
           progression &&
@@ -626,6 +785,12 @@ const styles = StyleSheet.create({
     paddingTop: kitSpacing.lg,
     paddingBottom: kitSpacing.xl,
     gap: kitSpacing.sm,
+  },
+  cosmeticRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
   },
   statusPill: {
     width: '100%',

@@ -107,32 +107,126 @@ export async function claimAdReward(input: {
   return invoke('claim-ad-reward', input);
 }
 
+export type V1_1MatchRewardResult = {
+  ok: boolean;
+  alreadyProcessed: boolean;
+  matchCoins: number;
+  firstMatchBonusCoins: number;
+  activeTimeCoins: number;
+  activeTimeSeconds: number;
+  xpGranted: number;
+  totalCoins: number;
+  balance: number;
+};
+
+/**
+ * Version 1.1A — single secure Solo match reward call. The server computes
+ * and verifies every amount; the client sends only the matchId.
+ */
+export async function claimV1_1MatchReward(
+  matchId: string,
+): Promise<V1_1MatchRewardResult> {
+  return invoke('claim-match-rewards', { matchId });
+}
+
 export async function purchaseCosmeticWithCoins(
   cosmeticKey: string,
-): Promise<{ balance: number; cosmeticKey: string }> {
-  return invoke('purchase-cosmetic', { cosmeticKey });
+): Promise<{ balance: number; cosmeticKey: string; alreadyOwned: boolean }> {
+  const data = await invoke<{
+    balance: number;
+    cosmeticId: string;
+    alreadyOwned?: boolean;
+  }>('purchase-cosmetic', { cosmeticId: cosmeticKey });
+  return {
+    balance: data.balance,
+    cosmeticKey: data.cosmeticId,
+    alreadyOwned: Boolean(data.alreadyOwned),
+  };
 }
+
+/** Version 1.1B equip slots — see src/cosmetics/lockerCatalog.ts. */
+export type EquipSlot =
+  | 'cardFaceId'
+  | 'cardBackId'
+  | 'arenaId'
+  | 'profileFrameId'
+  | 'playerTitleId'
+  | 'laneEffectId';
+
+export type FullLoadout = {
+  cardFaceId: string;
+  cardBackId: string;
+  arenaId: string;
+  profileFrameId: string;
+  playerTitleId: string | null;
+  laneEffectId: string | null;
+};
 
 export async function equipCosmeticRemote(
   cosmeticKey: string,
-  category: string,
-): Promise<EquippedCosmetics> {
+  slot: EquipSlot,
+): Promise<FullLoadout> {
   const data = await invoke<{
     equipped: {
-      card_theme: string;
-      arena: string;
-      profile_frame: string;
-      player_title: string | null;
-      victory_effect: string | null;
+      cardFaceId: string | null;
+      cardBackId: string | null;
+      arenaId: string | null;
+      profileFrameId: string | null;
+      playerTitleId: string | null;
+      laneEffectId: string | null;
     };
-  }>('equip-cosmetic', { cosmeticKey, category });
+  }>('equip-cosmetic', { cosmeticId: cosmeticKey, slot });
   return {
-    cardTheme: data.equipped.card_theme,
-    arena: data.equipped.arena,
-    profileFrame: data.equipped.profile_frame,
-    playerTitle: data.equipped.player_title,
-    victoryEffect: data.equipped.victory_effect,
+    cardFaceId: data.equipped.cardFaceId ?? 'classic_card_face',
+    cardBackId: data.equipped.cardBackId ?? 'classic_card_back',
+    arenaId: data.equipped.arenaId ?? 'classic_arena',
+    profileFrameId: data.equipped.profileFrameId ?? 'default_profile_frame',
+    playerTitleId: data.equipped.playerTitleId,
+    laneEffectId: data.equipped.laneEffectId,
   };
+}
+
+export type CosmeticCatalogRow = {
+  id: string;
+  name: string;
+  description: string;
+  cosmeticType: string;
+  rarity: string;
+  unlockMethod: string;
+  blazeCoinCost: number | null;
+  sortOrder: number;
+};
+
+/** Version 1.1B — the real, server-driven catalog (never a hardcoded client list). */
+export async function fetchCosmeticCatalog(): Promise<CosmeticCatalogRow[]> {
+  const { data, error } = await supabase
+    .from('cosmetic_catalog')
+    .select(
+      'id, name, description, cosmetic_type, rarity, unlock_method, blaze_coin_cost, sort_order, is_enabled',
+    )
+    .eq('is_enabled', true)
+    .not('cosmetic_type', 'is', null)
+    // Version 1.1B's Locker surfaces free/coin/streak cosmetics only.
+    // Level-reward achievement cosmetics belong to the still-disabled
+    // progression system (EXPO_PUBLIC_ENABLE_PROGRESSION_BETA) and are
+    // intentionally out of scope for this milestone's catalog.
+    .neq('unlock_method', 'level')
+    .order('sort_order', { ascending: true });
+  if (error || !data) {
+    return [];
+  }
+  return data
+    .filter((row) => row.unlock_method != null)
+    .map((row) => ({
+      id: String(row.id),
+      name: String(row.name),
+      description: String(row.description ?? ''),
+      cosmeticType: String(row.cosmetic_type),
+      rarity: String(row.rarity ?? 'common'),
+      unlockMethod: String(row.unlock_method),
+      blazeCoinCost: row.blaze_coin_cost == null ? null : Number(row.blaze_coin_cost),
+      sortOrder: Number(row.sort_order ?? 0),
+    }));
 }
 
 export async function syncEntitlementsRemote(
@@ -154,7 +248,9 @@ export async function fetchOwnedCosmetics(): Promise<string[]> {
 export async function fetchEquippedCosmetics(): Promise<EquippedCosmetics | null> {
   const { data, error } = await supabase
     .from('equipped_cosmetics')
-    .select('card_theme, arena, profile_frame, player_title, victory_effect')
+    .select(
+      'card_theme, arena, profile_frame, player_title, victory_effect, card_face, card_back, lane_effect',
+    )
     .maybeSingle();
   if (error || !data) {
     return null;
@@ -165,6 +261,9 @@ export async function fetchEquippedCosmetics(): Promise<EquippedCosmetics | null
     profileFrame: String(data.profile_frame),
     playerTitle: data.player_title ? String(data.player_title) : null,
     victoryEffect: data.victory_effect ? String(data.victory_effect) : null,
+    cardFace: data.card_face ? String(data.card_face) : 'classic_card_face',
+    cardBack: data.card_back ? String(data.card_back) : 'classic_card_back',
+    laneEffect: data.lane_effect ? String(data.lane_effect) : null,
   };
 }
 
@@ -177,6 +276,71 @@ export async function fetchServerEntitlements(): Promise<string[]> {
     return [];
   }
   return data.map((row) => String(row.entitlement_key));
+}
+
+export type RewardedAdRequestResult =
+  | { ok: true; requestId: string; rewardAmount: number; dailyRemaining: number }
+  | { ok: false; reason: string; dailyRemaining: number };
+
+/**
+ * Version 1.1C — pre-registers a rewarded-ad reward attempt server-side
+ * (enforcing the daily cap) before the client ever loads an ad.
+ */
+export async function requestRewardedAdGrant(): Promise<RewardedAdRequestResult> {
+  const { data, error } = await withTimeout(
+    supabase.functions.invoke('request-rewarded-ad', { body: {} }),
+    'request-rewarded-ad',
+  );
+  if (error) {
+    throw new MonetizationServiceError(error.message || 'Unable to request rewarded ad.');
+  }
+  const result = data as {
+    ok: boolean;
+    reason?: string;
+    requestId?: string;
+    rewardAmount?: number;
+    dailyRemaining?: number;
+  };
+  if (!result.ok || !result.requestId) {
+    return {
+      ok: false,
+      reason: result.reason ?? 'unavailable',
+      dailyRemaining: result.dailyRemaining ?? 0,
+    };
+  }
+  return {
+    ok: true,
+    requestId: result.requestId,
+    rewardAmount: result.rewardAmount ?? 25,
+    dailyRemaining: result.dailyRemaining ?? 0,
+  };
+}
+
+export type RewardedAdRequestStatus = {
+  status: 'pending' | 'verified' | 'expired' | 'failed';
+  rewardAmount: number;
+};
+
+/**
+ * Polls the server-authoritative status of a rewarded-ad reward request.
+ * The client never decides this value itself — it only reflects whatever
+ * `verify_and_grant_rewarded_ad` has (or has not yet) written.
+ */
+export async function fetchRewardedAdRequestStatus(
+  requestId: string,
+): Promise<RewardedAdRequestStatus | null> {
+  const { data, error } = await supabase
+    .from('rewarded_ad_requests')
+    .select('status, reward_amount')
+    .eq('id', requestId)
+    .maybeSingle();
+  if (error || !data) {
+    return null;
+  }
+  return {
+    status: data.status as RewardedAdRequestStatus['status'],
+    rewardAmount: Number(data.reward_amount),
+  };
 }
 
 export { MonetizationServiceError };

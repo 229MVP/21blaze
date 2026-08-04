@@ -34,12 +34,16 @@ export type RootStackParamList = {
   RankedMatchHistory: undefined;
   HowRankedWorks: undefined;
   BlazeStore: undefined;
+  BlazeLocker: undefined;
   PlayerProgression: undefined;
   DailyReward: undefined;
   DailyMissions: undefined;
   PurchaseDiagnostics: undefined;
+  Feedback: undefined;
   /** Development-only UI kit gallery. Registered only when __DEV__ is true. */
   BlazeUIKitPreview: undefined;
+  /** Development-only theme gallery. Registered only when the dev-preview flag + __DEV__ are both true. */
+  ThemePreview: undefined;
 };
 
 export type HomeScreenProps = NativeStackScreenProps<RootStackParamList, 'Home'>;
@@ -115,6 +119,10 @@ export type BlazeStoreScreenProps = NativeStackScreenProps<
   RootStackParamList,
   'BlazeStore'
 >;
+export type BlazeLockerScreenProps = NativeStackScreenProps<
+  RootStackParamList,
+  'BlazeLocker'
+>;
 export type PlayerProgressionScreenProps = NativeStackScreenProps<
   RootStackParamList,
   'PlayerProgression'
@@ -131,7 +139,12 @@ export type PurchaseDiagnosticsScreenProps = NativeStackScreenProps<
   RootStackParamList,
   'PurchaseDiagnostics'
 >;
+export type FeedbackScreenProps = NativeStackScreenProps<RootStackParamList, 'Feedback'>;
 export type BlazeUIKitPreviewScreenProps = NativeStackScreenProps<
   RootStackParamList,
   'BlazeUIKitPreview'
+>;
+export type ThemePreviewScreenProps = NativeStackScreenProps<
+  RootStackParamList,
+  'ThemePreview'
 >;

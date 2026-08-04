@@ -13,7 +13,9 @@ import { LinearGradient } from 'expo-linear-gradient';
 
 import { blazeAssets } from '../assets/blazeAssets';
 import { FlameIcon } from '../components/branding/FlameIcon';
+import { ProfileFrameBadge } from '../components/cosmetics/ProfileFrameBadge';
 import { BlazeScreenBackground } from '../components/layout/BlazeScreenBackground';
+import { WhatsNewOverlay } from '../components/modals/WhatsNewOverlay';
 import { EditDisplayNameModal } from '../components/Profile/EditDisplayNameModal';
 import { LevelUpOverlay } from '../components/Progression/LevelUpOverlay';
 import { XpProgressBar } from '../components/Progression/XpProgressBar';
@@ -27,8 +29,17 @@ import {
   isProgressionBetaEnabled,
   isRankedBetaEnabled,
   isStorePurchasesEnabled,
+  isV1_1LockerEnabled,
+  isV1_1RewardsEnabled,
 } from '../config/featureFlags';
 import { getCosmetic } from '../cosmetics/catalog';
+import {
+  useActiveProfileFrame,
+  useLockerBadgeVisible,
+  usePreloadEquippedVisualTheme,
+  useTrackLockerAffordability,
+} from '../cosmetics/useLockerCosmetics';
+import { useInterstitialScreenTracking } from '../hooks/useInterstitialScreenTracking';
 import { APP_VERSION } from '../game/constants';
 import type { HomeScreenProps } from '../navigation/navigationTypes';
 import {
@@ -47,6 +58,7 @@ import { useProgressionStore } from '../store/useProgressionStore';
 import { useScoreHistoryStore } from '../store/useScoreHistoryStore';
 import { useSettingsStore } from '../store/useSettingsStore';
 import { useWalletStore } from '../store/useWalletStore';
+import { hasSeenWhatsNew, markWhatsNewSeen } from '../services/whatsNewService';
 import { colors as kitColors, spacing as kitSpacing } from '../theme/uiKit';
 
 const CONTENT_MAX_WIDTH = 410;
@@ -114,6 +126,13 @@ export function HomeScreen({ navigation, route }: HomeScreenProps) {
   const storeEnabled = isMonetizationBetaEnabled();
   const purchasesEnabled = isStorePurchasesEnabled();
   const progressionEnabled = isProgressionBetaEnabled();
+  const v1_1RewardsOn = isV1_1RewardsEnabled();
+  const v1_1LockerOn = isV1_1LockerEnabled();
+  const lockerBadgeVisible = useLockerBadgeVisible();
+  const activeProfileFrame = useActiveProfileFrame();
+  useInterstitialScreenTracking('home');
+  useTrackLockerAffordability();
+  usePreloadEquippedVisualTheme();
   const profile = useAuthStore((state) => state.profile);
   const progression = useProgressionStore((state) => state.progression);
   const dailyRewardStatus = useProgressionStore(
@@ -129,6 +148,7 @@ export function HomeScreen({ navigation, route }: HomeScreenProps) {
   );
 
   const [nameEditorOpen, setNameEditorOpen] = useState(false);
+  const [whatsNewVisible, setWhatsNewVisible] = useState(false);
 
   const dailyReady =
     Boolean(dailyRewardStatus?.isAvailable) ||
@@ -147,7 +167,7 @@ export function HomeScreen({ navigation, route }: HomeScreenProps) {
       await hydrateWallet();
       await hydrateCosmetics();
       await initializePurchases();
-      if (progressionEnabled) {
+      if (progressionEnabled || v1_1RewardsOn) {
         void hydrateProgression();
       }
       if (isMounted) {
@@ -169,7 +189,23 @@ export function HomeScreen({ navigation, route }: HomeScreenProps) {
     initializePurchases,
     progressionEnabled,
     setHighScore,
+    v1_1RewardsOn,
   ]);
+
+  useEffect(() => {
+    if (!v1_1LockerOn || !v1_1RewardsOn) {
+      return;
+    }
+    let cancelled = false;
+    void hasSeenWhatsNew().then((seen) => {
+      if (!cancelled && !seen) {
+        setWhatsNewVisible(true);
+      }
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [v1_1LockerOn, v1_1RewardsOn]);
 
   useEffect(() => {
     const fromSolo = route.params?.fromSoloComplete === true;
@@ -251,6 +287,13 @@ export function HomeScreen({ navigation, route }: HomeScreenProps) {
 
           {progressionEnabled ? (
             <View style={styles.profileRow}>
+              {v1_1LockerOn ? (
+                <ProfileFrameBadge
+                  variant={activeProfileFrame}
+                  initial={profile?.display_name ?? 'P'}
+                  size={40}
+                />
+              ) : null}
               <Pressable
                 accessibilityRole="button"
                 accessibilityLabel={`Level ${progression?.level ?? 1}. Open progression.`}
@@ -337,6 +380,32 @@ export function HomeScreen({ navigation, route }: HomeScreenProps) {
             <View style={styles.coinOnlyRow}>
               <Text style={styles.coinValue}>{balance.toLocaleString()} COINS</Text>
               {hasRemoveAds ? <Text style={styles.adFree}>AD-FREE</Text> : null}
+              {v1_1RewardsOn && (showDailyLink || showMissionsLink) ? (
+                <View style={styles.claimRow}>
+                  {showDailyLink ? (
+                    <Pressable
+                      accessibilityRole="button"
+                      accessibilityLabel="Daily reward available"
+                      onPress={() => navigation.navigate('DailyReward')}
+                      style={({ pressed }) => pressed && styles.pressed}
+                    >
+                      <Text style={styles.claimLink}>DAILY READY</Text>
+                    </Pressable>
+                  ) : null}
+                  {showMissionsLink ? (
+                    <Pressable
+                      accessibilityRole="button"
+                      accessibilityLabel={`${missionClaimable} claimable missions`}
+                      onPress={() => navigation.navigate('DailyMissions')}
+                      style={({ pressed }) => pressed && styles.pressed}
+                    >
+                      <Text style={styles.claimLink}>
+                        MISSIONS · {missionClaimable}
+                      </Text>
+                    </Pressable>
+                  ) : null}
+                </View>
+              ) : null}
             </View>
           ) : null}
 
@@ -365,6 +434,23 @@ export function HomeScreen({ navigation, route }: HomeScreenProps) {
               onPress={() => navigation.navigate('Game')}
               accessibilityLabel="Solo play 21 Blaze"
             />
+            {v1_1LockerOn ? (
+              <View style={styles.lockerButtonWrap}>
+                <BlazeButton
+                  label="BLAZE LOCKER"
+                  variant="secondary"
+                  onPress={() => navigation.navigate('BlazeLocker')}
+                  accessibilityLabel={
+                    lockerBadgeVisible
+                      ? 'Open Blaze Locker. New cosmetics available.'
+                      : 'Open Blaze Locker'
+                  }
+                />
+                {lockerBadgeVisible ? (
+                  <View style={styles.lockerBadge} accessibilityElementsHidden />
+                ) : null}
+              </View>
+            ) : null}
             {isLiveDuelEnabled() ? (
               <BlazeButton
                 label="LIVE DUEL"
@@ -427,6 +513,19 @@ export function HomeScreen({ navigation, route }: HomeScreenProps) {
           onContinue={acknowledgeLevelUp}
         />
       ) : null}
+
+      <WhatsNewOverlay
+        visible={whatsNewVisible}
+        onOpenLocker={() => {
+          setWhatsNewVisible(false);
+          void markWhatsNewSeen();
+          navigation.navigate('BlazeLocker');
+        }}
+        onPlayNow={() => {
+          setWhatsNewVisible(false);
+          void markWhatsNewSeen();
+        }}
+      />
     </BlazeScreenBackground>
   );
 }
@@ -647,6 +746,20 @@ const styles = StyleSheet.create({
     width: '100%',
     gap: kitSpacing.sm,
     marginTop: 2,
+  },
+  lockerButtonWrap: {
+    position: 'relative',
+  },
+  lockerBadge: {
+    position: 'absolute',
+    top: -3,
+    right: -3,
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+    backgroundColor: kitColors.fire.brightOrange,
+    borderWidth: 2,
+    borderColor: kitColors.background.primary,
   },
   secondaryRow: {
     flexDirection: 'row',

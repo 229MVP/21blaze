@@ -1,12 +1,18 @@
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createNavigationContainerRef } from '@react-navigation/native';
 
-import { isPurchaseDiagnosticsEnabled } from '../config/featureFlags';
+import {
+  isPurchaseDiagnosticsEnabled,
+  isThemePreviewDevEnabled,
+  isV1_1LockerEnabled,
+} from '../config/featureFlags';
+import { BlazeLockerScreen } from '../screens/BlazeLockerScreen';
 import { BlazeStoreScreen } from '../screens/BlazeStoreScreen';
 import { CreateLiveRoomScreen } from '../screens/CreateLiveRoomScreen';
 import { DailyMissionsScreen } from '../screens/DailyMissionsScreen';
 import { DailyRewardScreen } from '../screens/DailyRewardScreen';
 import { BlazeUIKitPreviewScreen } from '../screens/dev/BlazeUIKitPreviewScreen';
+import { FeedbackScreen } from '../screens/FeedbackScreen';
 import { GameScreen } from '../screens/GameScreen';
 import { HighScoresScreen } from '../screens/HighScoresScreen';
 import { HomeScreen } from '../screens/HomeScreen';
@@ -29,6 +35,7 @@ import { RankedResultsScreen } from '../screens/RankedResultsScreen';
 import { RankedSearchScreen } from '../screens/RankedSearchScreen';
 import { ResultsScreen } from '../screens/ResultsScreen';
 import { SettingsScreen } from '../screens/SettingsScreen';
+import { ThemePreviewScreen } from '../screens/dev/ThemePreviewScreen';
 import { colors } from '../theme/colors';
 import type { RootStackParamList } from './navigationTypes';
 
@@ -68,9 +75,13 @@ export function AppNavigator() {
       <Stack.Screen name="RankedMatchHistory" component={RankedMatchHistoryScreen} />
       <Stack.Screen name="HowRankedWorks" component={HowRankedWorksScreen} />
       <Stack.Screen name="BlazeStore" component={BlazeStoreScreen} />
+      {isV1_1LockerEnabled() ? (
+        <Stack.Screen name="BlazeLocker" component={BlazeLockerScreen} />
+      ) : null}
       <Stack.Screen name="PlayerProgression" component={PlayerProgressionScreen} />
       <Stack.Screen name="DailyReward" component={DailyRewardScreen} />
       <Stack.Screen name="DailyMissions" component={DailyMissionsScreen} />
+      <Stack.Screen name="Feedback" component={FeedbackScreen} />
       {isPurchaseDiagnosticsEnabled() ? (
         <Stack.Screen
           name="PurchaseDiagnostics"
@@ -82,6 +93,9 @@ export function AppNavigator() {
           name="BlazeUIKitPreview"
           component={BlazeUIKitPreviewScreen}
         />
+      ) : null}
+      {isThemePreviewDevEnabled() ? (
+        <Stack.Screen name="ThemePreview" component={ThemePreviewScreen} />
       ) : null}
     </Stack.Navigator>
   );

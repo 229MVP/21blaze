@@ -30,7 +30,15 @@ import { TimerDisplay } from '../components/GameTimer/TimerDisplay';
 import { BlazeScreenBackground } from '../components/layout/BlazeScreenBackground';
 import { ConfirmationModal } from '../components/modals/ConfirmationModal';
 import { BottomActionBar } from '../components/Navigation/BottomActionBar';
+import { ThemedBoardEffectLayer } from '../components/themes/ThemedBoardEffectLayer';
 import { useActiveCardTheme } from '../cosmetics/useActiveCardTheme';
+import {
+  useActiveCardFaceVariant,
+  useActiveLaneEffect,
+  useResolvedVisualTheme,
+} from '../cosmetics/useLockerCosmetics';
+import { useBoardEffectEventBridge } from '../hooks/useBoardEffectEventBridge';
+import { useInterstitialScreenTracking } from '../hooks/useInterstitialScreenTracking';
 import {
   FINAL_WARNING_SECONDS,
   LANE_IDS,
@@ -55,7 +63,12 @@ export function GameScreen({ navigation }: GameScreenProps) {
   const isCompactWidth = width < 380;
   const isCompactHeight = height < 780;
   const cardStyle = useActiveCardTheme();
+  const laneEffect = useActiveLaneEffect();
+  const laneFaceVariant = useActiveCardFaceVariant();
+  const resolvedVisualTheme = useResolvedVisualTheme();
   useSoloGameFeedback();
+  useInterstitialScreenTracking('gameplay');
+  useBoardEffectEventBridge(resolvedVisualTheme.boardEffectTheme);
 
   const status = useGameStore((state) => state.status);
   const score = useGameStore((state) => state.score);
@@ -328,6 +341,8 @@ export function GameScreen({ navigation }: GameScreenProps) {
           onFinished={handleFeedbackFinished}
         />
 
+        <ThemedBoardEffectLayer />
+
         {isPreparingMatch || status !== 'playing' ? (
           <View style={styles.preparing}>
             <Text style={styles.preparingTitle}>LIGHTING THE DECK</Text>
@@ -429,6 +444,8 @@ export function GameScreen({ navigation }: GameScreenProps) {
                       selected={flags.selected}
                       danger={flags.danger}
                       cleared={flags.cleared}
+                      laneEffect={laneEffect}
+                      faceVariant={laneFaceVariant}
                       feedbackType={
                         isEventLane ? lastMoveEvent?.type ?? null : null
                       }

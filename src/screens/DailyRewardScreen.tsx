@@ -9,12 +9,15 @@ import {
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 
+import { RewardedCoinButton } from '../components/ads/RewardedCoinButton';
 import { BlazeButton } from '../components/buttons/BlazeButton';
 import { FlameIcon } from '../components/branding/FlameIcon';
 import { ScreenHeader } from '../components/Navigation/ScreenHeader';
 import { ScreenContainer } from '../components/ScreenContainer';
 import { DAILY_REWARD_CALENDAR } from '../progression/rewards';
 import { getCosmetic } from '../cosmetics/catalog';
+import { useInterstitialScreenTracking } from '../hooks/useInterstitialScreenTracking';
+import { trackEvent } from '../monetization/analytics';
 import type { DailyRewardScreenProps } from '../navigation/navigationTypes';
 import { useAuthStore } from '../store/useAuthStore';
 import { useProgressionStore } from '../store/useProgressionStore';
@@ -50,10 +53,12 @@ export function DailyRewardScreen({ navigation }: DailyRewardScreenProps) {
   const claimDailyReward = useProgressionStore((state) => state.claimDailyReward);
   const clearError = useProgressionStore((state) => state.clearError);
   const [lastClaimSummary, setLastClaimSummary] = useState<string | null>(null);
+  useInterstitialScreenTracking('dailyReward');
 
   useEffect(() => {
     clearError();
     void loadDailyReward();
+    trackEvent('daily_streak_viewed');
   }, [clearError, loadDailyReward]);
 
   const calendar = status?.calendar?.length
@@ -183,6 +188,8 @@ export function DailyRewardScreen({ navigation }: DailyRewardScreenProps) {
         ) : null}
 
         {error ? <Text style={styles.error}>{error}</Text> : null}
+
+        <RewardedCoinButton placement="dailyReward" />
 
         <View style={styles.actions}>
           <BlazeButton

@@ -18,48 +18,6 @@ function assert(condition: boolean, message: string): void {
   }
 }
 
-/** Pure interstitial eligibility — mirrors interstitialAdService caps. */
-function interstitialEligible(input: {
-  hasRemoveAds: boolean;
-  completedSoloMatches: number;
-  lastShownAt: number | null;
-  sessionShown: number;
-  now: number;
-  enabled: boolean;
-  isFirstAppSession?: boolean;
-  dailyKey?: string | null;
-  dailyCount?: number;
-}): boolean {
-  const MATCHES_PER_AD = 3;
-  const MIN_INTERVAL_MS = 10 * 60 * 1000;
-  const MAX_PER_SESSION = 3;
-  const MAX_PER_UTC_DAY = 3;
-  if (!input.enabled || input.hasRemoveAds) {
-    return false;
-  }
-  if (input.isFirstAppSession) {
-    return false;
-  }
-  if (input.sessionShown >= MAX_PER_SESSION) {
-    return false;
-  }
-  if (input.completedSoloMatches < MATCHES_PER_AD) {
-    return false;
-  }
-  if (
-    input.lastShownAt !== null &&
-    input.now - input.lastShownAt < MIN_INTERVAL_MS
-  ) {
-    return false;
-  }
-  const todayKey = new Date(input.now).toISOString().slice(0, 10);
-  const dailyCountToday = input.dailyKey === todayKey ? (input.dailyCount ?? 0) : 0;
-  if (dailyCountToday >= MAX_PER_UTC_DAY) {
-    return false;
-  }
-  return true;
-}
-
 export function runMonetizationSelfTests(): void {
   assert(calculateSoloMatchCoins(500, false) === 25, 'base solo coins');
   assert(calculateSoloMatchCoins(1000, false) === 35, '1k bonus');
@@ -170,103 +128,12 @@ export function runMonetizationSelfTests(): void {
     'Pro implies remove ads',
   );
 
-  assert(
-    !interstitialEligible({
-      hasRemoveAds: true,
-      completedSoloMatches: 10,
-      lastShownAt: null,
-      sessionShown: 0,
-      now: Date.now(),
-      enabled: true,
-    }),
-    'remove ads disables interstitial',
-  );
-  assert(
-    interstitialEligible({
-      hasRemoveAds: false,
-      completedSoloMatches: 3,
-      lastShownAt: null,
-      sessionShown: 0,
-      now: Date.now(),
-      enabled: true,
-    }),
-    'interstitial after three solo matches',
-  );
-  assert(
-    !interstitialEligible({
-      hasRemoveAds: false,
-      completedSoloMatches: 2,
-      lastShownAt: null,
-      sessionShown: 0,
-      now: Date.now(),
-      enabled: true,
-    }),
-    'interstitial blocked before three matches',
-  );
-  assert(
-    !interstitialEligible({
-      hasRemoveAds: false,
-      completedSoloMatches: 9,
-      lastShownAt: 1_000_000,
-      sessionShown: 0,
-      now: 1_000_000 + 9 * 60 * 1000,
-      enabled: true,
-    }),
-    'interstitial respects ten-minute gap',
-  );
-  assert(
-    !interstitialEligible({
-      hasRemoveAds: false,
-      completedSoloMatches: 9,
-      lastShownAt: null,
-      sessionShown: 3,
-      now: Date.now(),
-      enabled: true,
-    }),
-    'interstitial session cap',
-  );
-  assert(
-    !interstitialEligible({
-      hasRemoveAds: false,
-      completedSoloMatches: 9,
-      lastShownAt: null,
-      sessionShown: 0,
-      now: Date.now(),
-      enabled: true,
-      isFirstAppSession: true,
-    }),
-    'interstitial never on first app session',
-  );
-  {
-    const now = Date.UTC(2026, 0, 15, 12, 0, 0);
-    const todayKey = new Date(now).toISOString().slice(0, 10);
-    assert(
-      !interstitialEligible({
-        hasRemoveAds: false,
-        completedSoloMatches: 9,
-        lastShownAt: null,
-        sessionShown: 0,
-        now,
-        enabled: true,
-        dailyKey: todayKey,
-        dailyCount: 3,
-      }),
-      'interstitial respects three-per-UTC-day cap',
-    );
-    assert(
-      interstitialEligible({
-        hasRemoveAds: false,
-        completedSoloMatches: 9,
-        lastShownAt: null,
-        sessionShown: 0,
-        now,
-        enabled: true,
-        dailyKey: '2026-01-14',
-        dailyCount: 3,
-      }),
-      'interstitial daily cap resets on new UTC day',
-    );
-  }
+  // Interstitial eligibility itself moved to the dedicated, SDK-independent
+  // `src/monetization/interstitialPolicy.ts` (`isInterstitialEligible`),
+  // exercised by `v1_1cAdsSelfTest.ts` — see that file for the current
+  // approved policy (Solo-only, 3 matches, 10-minute cooldown, 3/UTC-day
+  // cap, first-session block, "never during" screen list, and the
+  // post-rewarded-ad buffer). This file no longer duplicates that policy.
 
   const midnight = COSMETIC_CATALOG.find((item) => item.key === 'midnight_cards');
   assert(midnight?.coinPrice === 3000, 'midnight coin price is server-trusted catalog');

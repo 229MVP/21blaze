@@ -29,6 +29,7 @@ async function applySoloProgression(input: {
   moves?: MoveLogEntry[];
   moveLog?: unknown;
   lanesCleared?: number;
+  busts?: number;
 }): Promise<ProgressionPayload | undefined> {
   if (input.gameOverReason === 'quit') {
     return undefined;
@@ -50,6 +51,7 @@ async function applySoloProgression(input: {
         matchMode: 'solo',
         matchCompleted: true,
         validCompletion: true,
+        busts: input.busts,
       });
     } else if (typeof input.seed === 'number' && input.moveLog !== undefined) {
       summary = tryBuildMatchSummaryFromMoveLog(input.seed, input.moveLog, {
@@ -57,6 +59,7 @@ async function applySoloProgression(input: {
         matchCompleted: true,
         validCompletion: true,
         lanesClearedFallback: input.lanesCleared ?? 0,
+        busts: input.busts,
       });
     } else {
       summary = buildMatchSummaryFromVerifiedFields({
@@ -64,6 +67,7 @@ async function applySoloProgression(input: {
         matchMode: 'solo',
         matchCompleted: true,
         validCompletion: true,
+        busts: input.busts,
       });
     }
 
@@ -176,6 +180,7 @@ Deno.serve(async (request) => {
         seed: typeof match.seed === 'number' ? match.seed : undefined,
         moveLog: existingScore.move_log,
         lanesCleared: existingScore.lanes_cleared,
+        busts: existingScore.busts,
       });
 
       return jsonResponse({
@@ -276,6 +281,7 @@ Deno.serve(async (request) => {
             seed: match.seed,
             moves: moveValidation.moves,
             lanesCleared: raced.lanes_cleared,
+            busts: raced.busts,
           });
 
           return jsonResponse({
@@ -304,6 +310,7 @@ Deno.serve(async (request) => {
       seed: match.seed,
       moves: moveValidation.moves,
       lanesCleared: replay.result.lanesCleared,
+      busts: replay.result.busts,
     });
 
     return jsonResponse({

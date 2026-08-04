@@ -1,19 +1,21 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Platform } from 'react-native';
 
+import { getLastRewardedAdAtMs } from './adActivityTracker';
 import { getInterstitialAdUnitId } from './adUnitIds';
+import { canRequestPersonalizedAds } from './adConsentService';
+import { trackEvent } from './analytics';
 import {
-  canRequestPersonalizedAds,
-  requestAdConsentIfNeeded,
-} from './adConsentService';
+  isInterstitialEligible,
+  utcDayKey,
+  type InterstitialEligibilityContext,
+  type InterstitialScreen,
+} from './interstitialPolicy';
 import { isInterstitialAdsEnabled } from '../config/featureFlags';
+import { initializeAdsOnce } from '../services/adService';
 
 const STORAGE_KEY = '21blaze.interstitialCaps.v2';
 const FIRST_SESSION_KEY = '21blaze.hasLaunchedSession.v1';
-const MIN_INTERVAL_MS = 10 * 60 * 1000;
-const MATCHES_PER_AD = 3;
-const MAX_PER_SESSION = 3;
-const MAX_PER_UTC_DAY = 3;
 
 type CapState = {
   completedSoloMatches: number;
@@ -30,14 +32,15 @@ const DEFAULT_CAPS: CapState = {
   dailyCount: 0,
 };
 
-let sessionShown = 0;
 let caps: CapState = { ...DEFAULT_CAPS };
-let mobileAdsReady = false;
 /** True until this process has completed one full hydrate — blocks ads on first launch. */
 let isFirstAppSession = true;
+let currentScreen: InterstitialScreen = 'home';
 
-function utcDayKey(nowMs: number): string {
-  return new Date(nowMs).toISOString().slice(0, 10);
+/** Called by screens as they mount/unmount so the pure policy always has an
+ * accurate "never during" signal without any screen owning ad logic. */
+export function setInterstitialCurrentScreen(screen: InterstitialScreen): void {
+  currentScreen = screen;
 }
 
 export async function hydrateInterstitialCaps(): Promise<void> {
@@ -86,55 +89,26 @@ export function recordSoloMatchCompletedForInterstitial(): void {
   void persistCaps();
 }
 
-export function canShowInterstitial(hasRemoveAds: boolean): boolean {
-  if (!isInterstitialAdsEnabled()) {
-    return false;
-  }
-  if (hasRemoveAds) {
-    return false;
-  }
-  if (Platform.OS === 'web') {
-    return false;
-  }
-  if (isFirstAppSession) {
-    return false;
-  }
-  if (sessionShown >= MAX_PER_SESSION) {
-    return false;
-  }
-  if (caps.completedSoloMatches < MATCHES_PER_AD) {
-    return false;
-  }
-  if (
-    caps.lastShownAt !== null &&
-    Date.now() - caps.lastShownAt < MIN_INTERVAL_MS
-  ) {
-    return false;
-  }
-  const todayKey = utcDayKey(Date.now());
-  const dailyCountToday = caps.dailyKey === todayKey ? caps.dailyCount : 0;
-  if (dailyCountToday >= MAX_PER_UTC_DAY) {
-    return false;
-  }
-  return true;
+function buildEligibilityContext(hasRemoveAds: boolean): InterstitialEligibilityContext {
+  const nowMs = Date.now();
+  return {
+    interstitialAdsEnabled: isInterstitialAdsEnabled(),
+    isWeb: Platform.OS === 'web',
+    hasRemoveAds,
+    isFirstAppSession,
+    completedEligibleMatches: caps.completedSoloMatches,
+    lastShownAtMs: caps.lastShownAt,
+    nowMs,
+    utcDailyCount: caps.dailyCount,
+    utcDailyKey: caps.dailyKey,
+    todayUtcKey: utcDayKey(nowMs),
+    currentScreen,
+    lastRewardedAdAtMs: getLastRewardedAdAtMs(),
+  };
 }
 
-async function ensureMobileAds(): Promise<boolean> {
-  if (Platform.OS === 'web') {
-    return false;
-  }
-  if (mobileAdsReady) {
-    return true;
-  }
-  try {
-    await requestAdConsentIfNeeded();
-    const { default: mobileAds } = await import('react-native-google-mobile-ads');
-    await mobileAds().initialize();
-    mobileAdsReady = true;
-    return true;
-  } catch {
-    return false;
-  }
+export function canShowInterstitial(hasRemoveAds: boolean): boolean {
+  return isInterstitialEligible(buildEligibilityContext(hasRemoveAds)).eligible;
 }
 
 /**
@@ -143,7 +117,13 @@ async function ensureMobileAds(): Promise<boolean> {
 export async function maybeShowInterstitialAfterSoloHome(
   hasRemoveAds: boolean,
 ): Promise<boolean> {
-  if (!canShowInterstitial(hasRemoveAds)) {
+  const context = buildEligibilityContext(hasRemoveAds);
+  const decision = isInterstitialEligible(context);
+  trackEvent('interstitial_eligible', {
+    eligible: decision.eligible,
+    reason: decision.eligible ? undefined : decision.reason,
+  });
+  if (!decision.eligible) {
     return false;
   }
 
@@ -153,7 +133,7 @@ export async function maybeShowInterstitialAfterSoloHome(
   }
 
   try {
-    const ready = await ensureMobileAds();
+    const ready = await initializeAdsOnce();
     if (!ready) {
       return false;
     }
@@ -180,6 +160,7 @@ export async function maybeShowInterstitialAfterSoloHome(
       const loaded = interstitial.addAdEventListener(
         ads.AdEventType.LOADED,
         () => {
+          trackEvent('interstitial_loaded');
           void interstitial.show().then(
             () => done(true),
             () => done(false),
@@ -190,12 +171,14 @@ export async function maybeShowInterstitialAfterSoloHome(
         loaded();
         error();
         closed();
+        trackEvent('interstitial_failed');
         done(false);
       });
       const closed = interstitial.addAdEventListener(ads.AdEventType.CLOSED, () => {
         loaded();
         error();
         closed();
+        trackEvent('interstitial_dismissed');
         done(true);
       });
 
@@ -205,7 +188,7 @@ export async function maybeShowInterstitialAfterSoloHome(
     });
 
     if (shown) {
-      sessionShown += 1;
+      trackEvent('interstitial_shown');
       caps.completedSoloMatches = 0;
       caps.lastShownAt = Date.now();
       const todayKey = utcDayKey(Date.now());
@@ -224,8 +207,7 @@ export async function maybeShowInterstitialAfterSoloHome(
 }
 
 export function __resetInterstitialForTests(): void {
-  sessionShown = 0;
   caps = { ...DEFAULT_CAPS };
-  mobileAdsReady = false;
   isFirstAppSession = false;
+  currentScreen = 'home';
 }

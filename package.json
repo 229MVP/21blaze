@@ -1,6 +1,6 @@
 {
   "name": "21-blaze",
-  "version": "0.9.0",
+  "version": "1.1.0",
   "main": "index.ts",
   "dependencies": {
     "@expo-google-fonts/anton": "^0.4.2",
@@ -15,6 +15,7 @@
     "expo-asset": "~57.0.7",
     "expo-audio": "~57.0.3",
     "expo-build-properties": "~57.0.7",
+    "expo-clipboard": "~57.0.1",
     "expo-dev-client": "~57.0.9",
     "expo-font": "~57.0.1",
     "expo-haptics": "~57.0.1",
@@ -38,6 +39,7 @@
     "zustand": "^5.0.14"
   },
   "devDependencies": {
+    "@types/node": "^26.1.2",
     "@types/react": "~19.2.2",
     "typescript": "~6.0.3"
   },
@@ -49,7 +51,12 @@
     "test:game": "npx tsx src/game/gameEngineSelfTest.ts",
     "test:ranked": "npx tsx src/ranked/rankedSelfTest.ts",
     "test:monetization": "npx tsx src/monetization/monetizationSelfTest.ts",
-    "test:progression": "npx tsx src/progression/progressionSelfTest.ts"
+    "test:progression": "npx tsx src/progression/progressionSelfTest.ts",
+    "test:v1.1-rewards": "npx tsx src/monetization/v1_1RewardsSelfTest.ts",
+    "test:v1.1b-locker": "npx tsx src/monetization/v1_1bLockerSelfTest.ts",
+    "test:v1.1c-ads": "npx tsx src/monetization/v1_1cAdsSelfTest.ts",
+    "test:v1.2a-visual-theme": "npx tsx src/themes/v1_2aVisualThemeSelfTest.ts",
+    "validate:visual-assets": "npx tsx scripts/validate-visual-assets.mjs"
   },
   "private": true
 }
