@@ -35,6 +35,7 @@ import { useActiveCardTheme } from '../cosmetics/useActiveCardTheme';
 import {
   useActiveCardFaceVariant,
   useActiveLaneEffect,
+  usePreloadGameplayCriticalVisualAssets,
   useResolvedVisualTheme,
 } from '../cosmetics/useLockerCosmetics';
 import { useBoardEffectEventBridge } from '../hooks/useBoardEffectEventBridge';
@@ -69,6 +70,7 @@ export function GameScreen({ navigation }: GameScreenProps) {
   useSoloGameFeedback();
   useInterstitialScreenTracking('gameplay');
   useBoardEffectEventBridge(resolvedVisualTheme.boardEffectTheme);
+  usePreloadGameplayCriticalVisualAssets();
 
   const status = useGameStore((state) => state.status);
   const score = useGameStore((state) => state.score);

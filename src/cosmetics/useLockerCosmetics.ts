@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 
 import type { CardBackVariant } from '../components/cards/CardBack';
 import type { CardFaceVariant } from '../components/cards/PlayingCard';
@@ -6,8 +6,17 @@ import { isDailyRewardsEnabled, isV1_1LockerEnabled } from '../config/featureFla
 import { trackEvent } from '../monetization/analytics';
 import { memoizedResolvePlayerVisualTheme } from '../themes/resolvePlayerVisualTheme';
 import type { PlayerVisualLoadout, VisualTheme } from '../themes/types';
-import { FREE_DEFAULT_COSMETIC_IDS } from './lockerCatalog';
-import { preloadThemeAssets } from '../services/visualAssetLoader';
+import { FREE_DEFAULT_COSMETIC_IDS, V1_1B_LOCKER_CATALOG } from './lockerCatalog';
+import {
+  getAssetFailureVersion,
+  getFailedAssetIds,
+  preloadLaunchCriticalThemeAssets,
+  preloadLazyVisualAssets,
+  preloadThemeAssets,
+  subscribeToAssetFailures,
+} from '../services/visualAssetLoader';
+import { findThemeIdsRequiringAnyAsset, resolveThemeDefinition } from '../themes/themeRegistry';
+import type { ThemeCategory } from '../themes/types';
 import { useCosmeticStore } from '../store/useCosmeticStore';
 import { useProgressionStore } from '../store/useProgressionStore';
 import { useWalletStore } from '../store/useWalletStore';
@@ -31,12 +40,25 @@ import { useWalletStore } from '../store/useWalletStore';
 
 const FREE_ID_SET = new Set(FREE_DEFAULT_COSMETIC_IDS);
 
-/** The single resolved theme for the player's current equipped loadout. */
+/**
+ * The single resolved theme for the player's current equipped loadout.
+ *
+ * Version 1.2B: also subscribes to real asset-load failures
+ * (`visualAssetLoader.subscribeToAssetFailures`) so a genuinely broken or
+ * missing bundled asset causes an automatic re-resolution that falls
+ * back to classic for just that category — closing the gap where the
+ * 1.2A `unavailableThemeIds` parameter existed but was never populated
+ * from live load results.
+ */
 export function useResolvedVisualTheme(): VisualTheme {
   const equipped = useCosmeticStore((state) => state.equippedCosmetics);
   const owned = useCosmeticStore((state) => state.ownedCosmetics);
+  const [failureVersion, setFailureVersion] = useState(() => getAssetFailureVersion());
+
+  useEffect(() => subscribeToAssetFailures(() => setFailureVersion(getAssetFailureVersion())), []);
 
   return useMemo(() => {
+    const unavailableThemeIds = findThemeIdsRequiringAnyAsset(new Set(getFailedAssetIds()));
     if (!isV1_1LockerEnabled()) {
       return memoizedResolvePlayerVisualTheme({
         loadout: {
@@ -49,6 +71,7 @@ export function useResolvedVisualTheme(): VisualTheme {
         },
         ownedIds: new Set(),
         freeIds: FREE_ID_SET,
+        unavailableThemeIds,
       });
     }
     const loadout: PlayerVisualLoadout = {
@@ -63,20 +86,60 @@ export function useResolvedVisualTheme(): VisualTheme {
       loadout,
       ownedIds: new Set(owned),
       freeIds: FREE_ID_SET,
+      unavailableThemeIds,
     });
-  }, [equipped, owned]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [equipped, owned, failureVersion]);
 }
 
 /**
- * Preloads only the equipped theme's required assets (never every future
- * theme) — safe to call from any always-mounted screen (e.g. Home);
- * never blocks rendering since it fires-and-forgets.
+ * Version 1.2B — "launch" preload tier. Preloads only the critical/high
+ * priority assets among the equipped theme's requirements (never every
+ * future theme, and never the full set at this stage) — safe to call
+ * from any always-mounted screen (e.g. Home); never blocks rendering
+ * since it fires-and-forgets.
  */
 export function usePreloadEquippedVisualTheme(): void {
   const theme = useResolvedVisualTheme();
   useEffect(() => {
+    void preloadLaunchCriticalThemeAssets(theme.requiredAssets);
+  }, [theme.requiredAssets]);
+}
+
+/**
+ * Version 1.2B — "before gameplay" preload tier. Ensures every remaining
+ * required asset for the equipped theme (including normal/low priority
+ * ones the launch tier skipped) is loaded before the match starts
+ * rendering effects. Ids the launch tier already preloaded are skipped
+ * automatically by the loader's cache, so this never re-downloads
+ * anything. Call once from the gameplay screen's mount.
+ */
+export function usePreloadGameplayCriticalVisualAssets(): void {
+  const theme = useResolvedVisualTheme();
+  useEffect(() => {
     void preloadThemeAssets(theme.requiredAssets);
   }, [theme.requiredAssets]);
+}
+
+/**
+ * Version 1.2B — "lazy" preload tier for the Blaze Locker. Preloads the
+ * required assets for every catalog entry's theme definition (owned or
+ * not) only while the Locker screen itself is mounted, so unowned
+ * preview art / alternate themes are never fetched at app launch or
+ * during gameplay.
+ */
+export function usePreloadLockerPreviewAssets(): void {
+  useEffect(() => {
+    const ids = new Set<string>();
+    for (const entry of V1_1B_LOCKER_CATALOG) {
+      const category = entry.cosmeticType as ThemeCategory;
+      const definition = resolveThemeDefinition(category, entry.id);
+      for (const assetId of definition.requiredAssets) {
+        ids.add(assetId);
+      }
+    }
+    void preloadLazyVisualAssets(Array.from(ids));
+  }, []);
 }
 
 export function useActiveCardFaceVariant(): CardFaceVariant {
