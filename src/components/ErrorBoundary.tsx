@@ -1,6 +1,9 @@
 import { Component, type ErrorInfo, type ReactNode } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
+import { trackEvent } from '../monetization/analytics';
+import { activateClassicVisualsOverride } from '../startup/visualStartupOverride';
+import { getLastStartupStageSync, recordStartupStage } from '../startup/startupDiagnostics';
 import { colors } from '../theme/colors';
 import { radius } from '../theme/radius';
 import { spacing } from '../theme/spacing';
@@ -8,38 +11,74 @@ import { fontFamilies } from '../theme/typography';
 
 type Props = {
   children: ReactNode;
-  onReturnHome?: () => void;
+  /** Called after the internal "try again" reset, e.g. to also reset any
+   * app-level state the caller wants a fresh attempt to start clean. */
+  onRestart?: () => void;
+  /** Called after the internal "start with classic" reset. The classic
+   * override itself is activated internally (see
+   * `src/startup/visualStartupOverride.ts`) before this fires. */
+  onStartWithClassic?: () => void;
 };
 
 type State = {
   hasError: boolean;
+  /** Sanitized category only — never the raw message or stack. */
+  errorCategory: string | null;
+  diagnosticsVisible: boolean;
 };
 
 /**
- * Production-safe root error boundary.
- * Never surfaces secrets, stack traces, or raw server payloads to players.
+ * Version 1.2.0 startup hotfix — production-safe ROOT error boundary.
+ *
+ * Wraps the entire application tree in `App.tsx`, including the pre-
+ * fonts-ready loading phase, so a synchronous render-time throw anywhere
+ * in startup (a bad hook, a corrupt cached value, a theme-resolution
+ * bug, etc.) always produces this visible recovery screen instead of an
+ * unmounted, permanently black native view.
+ *
+ * Never surfaces a raw stack trace, error message, or any secret to the
+ * player — only a sanitized error "category" (the error's `name`,
+ * truncated) is shown, and only inside the local, on-device diagnostics
+ * line, never sent anywhere.
  */
 export class ErrorBoundary extends Component<Props, State> {
-  state: State = { hasError: false };
+  state: State = { hasError: false, errorCategory: null, diagnosticsVisible: false };
 
-  static getDerivedStateFromError(): State {
-    return { hasError: true };
+  static getDerivedStateFromError(error: unknown): Partial<State> {
+    const category =
+      error instanceof Error && error.name ? error.name.slice(0, 60) : 'UnknownError';
+    return { hasError: true, errorCategory: category };
   }
 
   componentDidCatch(error: Error, _info: ErrorInfo): void {
-    // Development-only safe breadcrumb — never include tokens, receipts, or payloads.
+    recordStartupStage('startup_error_boundary_triggered');
+    // Safe: only the error's `name` (a short class-like category string,
+    // e.g. "TypeError") is logged — never the message, stack, or any
+    // payload that could contain user/account data.
+    trackEvent('startup_error_boundary_triggered', {
+      errorCategory: error?.name ? error.name.slice(0, 60) : 'UnknownError',
+    });
     if (typeof __DEV__ !== 'undefined' && __DEV__) {
+      // eslint-disable-next-line no-console
       console.warn('[ErrorBoundary]', error.name, error.message.slice(0, 200));
     }
   }
 
   private handleRetry = (): void => {
-    this.setState({ hasError: false });
+    this.setState({ hasError: false, errorCategory: null, diagnosticsVisible: false });
+    this.props.onRestart?.();
   };
 
-  private handleHome = (): void => {
-    this.setState({ hasError: false });
-    this.props.onReturnHome?.();
+  private handleStartWithClassic = (): void => {
+    // Rendering-only: never touches ownership, wallet, XP, high scores,
+    // rewards, or authentication (see visualStartupOverride.ts's docs).
+    activateClassicVisualsOverride();
+    this.setState({ hasError: false, errorCategory: null, diagnosticsVisible: false });
+    this.props.onStartWithClassic?.();
+  };
+
+  private toggleDiagnostics = (): void => {
+    this.setState((prev) => ({ diagnosticsVisible: !prev.diagnosticsVisible }));
   };
 
   render(): ReactNode {
@@ -47,33 +86,48 @@ export class ErrorBoundary extends Component<Props, State> {
       return this.props.children;
     }
 
+    const lastStage = getLastStartupStageSync();
+
     return (
       <View style={styles.container} accessibilityRole="alert">
-        <Text style={styles.title}>21 BLAZE</Text>
+        <Text style={styles.title}>21 BLAZE COULDN&apos;T START</Text>
         <Text style={styles.body}>
-          21 Blaze hit an unexpected problem. Solo Play usually still works after
-          a retry. No account data is shown here.
+          Something went wrong while starting the app. Your account, wallet, scores, and
+          cosmetics are safe. Try again, or start with the Classic theme.
         </Text>
         <Pressable
           accessibilityRole="button"
-          accessibilityLabel="Retry application"
+          accessibilityLabel="Try again"
           onPress={this.handleRetry}
           style={({ pressed }) => [styles.button, pressed && styles.pressed]}
         >
-          <Text style={styles.buttonText}>RETRY</Text>
+          <Text style={styles.buttonText}>TRY AGAIN</Text>
         </Pressable>
         <Pressable
           accessibilityRole="button"
-          accessibilityLabel="Return to home"
-          onPress={this.handleHome}
-          style={({ pressed }) => [
-            styles.button,
-            styles.secondary,
-            pressed && styles.pressed,
-          ]}
+          accessibilityLabel="Start with Classic theme"
+          onPress={this.handleStartWithClassic}
+          style={({ pressed }) => [styles.button, styles.secondary, pressed && styles.pressed]}
         >
-          <Text style={styles.buttonText}>RETURN HOME</Text>
+          <Text style={styles.buttonText}>START WITH CLASSIC THEME</Text>
         </Pressable>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Toggle startup diagnostics"
+          onPress={this.toggleDiagnostics}
+          style={({ pressed }) => [styles.diagnosticsToggle, pressed && styles.pressed]}
+        >
+          <Text style={styles.diagnosticsToggleText}>
+            {this.state.diagnosticsVisible ? 'HIDE DIAGNOSTICS' : 'SHOW DIAGNOSTICS'}
+          </Text>
+        </Pressable>
+        {this.state.diagnosticsVisible ? (
+          <Text style={styles.diagnosticsText}>
+            LAST STARTUP STEP: {lastStage?.stage ?? 'unknown'}
+            {'\n'}
+            ERROR CATEGORY: {this.state.errorCategory ?? 'unknown'}
+          </Text>
+        ) : null}
       </View>
     );
   }
@@ -90,7 +144,7 @@ const styles = StyleSheet.create({
   },
   title: {
     fontFamily: fontFamilies.display,
-    fontSize: 28,
+    fontSize: 24,
     color: colors.primary,
     letterSpacing: 1,
     textAlign: 'center',
@@ -104,7 +158,7 @@ const styles = StyleSheet.create({
     lineHeight: 22,
   },
   button: {
-    minWidth: 220,
+    minWidth: 260,
     minHeight: 48,
     borderRadius: radius.md,
     backgroundColor: colors.primary,
@@ -121,8 +175,27 @@ const styles = StyleSheet.create({
     fontFamily: fontFamilies.display,
     color: colors.textPrimary,
     letterSpacing: 1,
+    fontSize: 13,
   },
   pressed: {
     opacity: 0.85,
+  },
+  diagnosticsToggle: {
+    marginTop: spacing.md,
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+  },
+  diagnosticsToggleText: {
+    fontFamily: fontFamilies.body,
+    color: colors.textMuted,
+    fontSize: 11,
+    letterSpacing: 0.6,
+  },
+  diagnosticsText: {
+    fontFamily: fontFamilies.body,
+    color: colors.textMuted,
+    fontSize: 11,
+    textAlign: 'center',
+    lineHeight: 16,
   },
 });

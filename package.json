@@ -11,7 +11,7 @@
     "@react-navigation/native-stack": "^7.18.5",
     "@supabase/supabase-js": "^2.109.0",
     "babel-preset-expo": "~57.0.0",
-    "expo": "~57.0.9",
+    "expo": "~57.0.10",
     "expo-asset": "~57.0.7",
     "expo-audio": "~57.0.3",
     "expo-build-properties": "~57.0.8",
@@ -58,6 +58,7 @@
     "test:v1.2a-visual-theme": "npx tsx src/themes/v1_2aVisualThemeSelfTest.ts",
     "test:v1.2b-ember-collection": "npx tsx src/themes/v1_2bEmberCollectionSelfTest.ts",
     "test:v1.2c-release-candidate": "npx tsx src/themes/v1_2cReleaseCandidateSelfTest.ts",
+    "test:v1.2-startup-hotfix": "npx tsx src/startup/v1_2StartupHotfixSelfTest.ts",
     "validate:visual-assets": "npx tsx scripts/validate-visual-assets.mjs"
   },
   "private": true
