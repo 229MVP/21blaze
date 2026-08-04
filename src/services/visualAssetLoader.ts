@@ -4,6 +4,14 @@ import { Asset } from 'expo-asset';
 import { getAssetEntry, VISUAL_ASSET_MANIFEST } from '../assets/manifest/visualAssetManifest';
 import { isAssetSupportedOnPlatform, type VisualAssetEntry } from '../assets/manifest/types';
 import { trackEvent } from '../monetization/analytics';
+import { withTimeout } from '../startup/runOptionalStartupTasks';
+
+/** Version 1.2.0 startup hotfix — a hung native asset download must
+ * eventually resolve to 'failed' rather than leave `loadVisualAsset`'s
+ * promise (and therefore anything awaiting `preloadThemeAssets`)
+ * unresolved forever. Generous enough for a real download on a slow
+ * connection, short enough that nothing ever "hangs indefinitely". */
+const ASSET_DOWNLOAD_TIMEOUT_MS = 5000;
 
 /**
  * Version 1.2A — preloads the assets required by the player's currently
@@ -97,16 +105,21 @@ export async function loadVisualAsset(id: string): Promise<AssetLoadStatus> {
       // `Asset.fromModule(...).downloadAsync()` is the standard Expo way
       // to eagerly decode a bundled image ahead of first render, without
       // any native calls on unsupported web paths (Asset already no-ops
-      // safely on web for bundled modules).
-      await Asset.fromModule(entry.source as number).downloadAsync();
+      // safely on web for bundled modules). Bounded by a finite timeout
+      // so a hung native download can never leave this unresolved.
+      const outcome = await withTimeout(
+        () => Asset.fromModule(entry.source as number).downloadAsync(),
+        ASSET_DOWNLOAD_TIMEOUT_MS,
+      );
+      if (outcome.status !== 'fulfilled') {
+        markFailed(id);
+        if (__DEV__) {
+          console.warn(`[visualAssetLoader] Preload for asset "${id}" ${outcome.status}.`);
+        }
+        return 'failed';
+      }
       statusById.set(id, 'loaded');
       return 'loaded';
-    } catch (error) {
-      markFailed(id);
-      if (__DEV__) {
-        console.warn(`[visualAssetLoader] Failed to preload asset "${id}":`, error);
-      }
-      return 'failed';
     } finally {
       inFlightById.delete(id);
     }

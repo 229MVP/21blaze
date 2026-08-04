@@ -99,6 +99,18 @@ export const V1_2_VISUAL_ANALYTICS_EVENTS = [
 
 export type V1_2VisualAnalyticsEvent = (typeof V1_2_VISUAL_ANALYTICS_EVENTS)[number];
 
+/** Version 1.2.0 startup hotfix — sanitized startup-health events. Never
+ * log access tokens, user ids, wallet/Supabase records, ad identifiers,
+ * raw error messages, or stack traces — only short, safe category
+ * strings (e.g. an `Error.name`) and stage names. */
+export const STARTUP_ANALYTICS_EVENTS = [
+  'startup_watchdog_triggered',
+  'startup_error_boundary_triggered',
+  'startup_classic_override_activated',
+] as const;
+
+export type StartupAnalyticsEvent = (typeof STARTUP_ANALYTICS_EVENTS)[number];
+
 const recent: Array<{ name: string; at: number }> = [];
 
 export function trackEvent(name: string, payload: AnalyticsPayload = {}): void {

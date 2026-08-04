@@ -4,8 +4,10 @@ import type { CardBackVariant } from '../components/cards/CardBack';
 import type { CardFaceVariant } from '../components/cards/PlayingCard';
 import { isDailyRewardsEnabled, isV1_1LockerEnabled } from '../config/featureFlags';
 import { trackEvent } from '../monetization/analytics';
+import { classicTheme } from '../themes/defaultTheme';
 import { memoizedResolvePlayerVisualTheme } from '../themes/resolvePlayerVisualTheme';
 import type { PlayerVisualLoadout, VisualTheme } from '../themes/types';
+import { shouldForceClassicVisuals } from '../startup/visualStartupOverride';
 import { FREE_DEFAULT_COSMETIC_IDS, V1_1B_LOCKER_CATALOG } from './lockerCatalog';
 import {
   getAssetFailureVersion,
@@ -59,6 +61,15 @@ export function useResolvedVisualTheme(): VisualTheme {
   useEffect(() => subscribeToAssetFailures(() => setFailureVersion(getAssetFailureVersion())), []);
 
   const theme = useMemo(() => {
+    // Version 1.2.0 startup hotfix — a hard kill switch, checked first
+    // and unconditionally: with the visual system disabled (the
+    // TestFlight isolation flag) or the in-session "start with classic"
+    // recovery override active, resolution never even attempts to read
+    // equipped/owned cosmetic state or theme-registry data. Ownership is
+    // untouched either way — this only changes what is rendered.
+    if (shouldForceClassicVisuals()) {
+      return classicTheme;
+    }
     const unavailableThemeIds = findThemeIdsRequiringAnyAsset(new Set(getFailedAssetIds()));
     if (!isV1_1LockerEnabled()) {
       return memoizedResolvePlayerVisualTheme({

@@ -160,22 +160,26 @@ export function HomeScreen({ navigation, route }: HomeScreenProps) {
   useEffect(() => {
     let isMounted = true;
 
-    const hydrate = async () => {
-      const savedScore = await loadHighScore();
-      await hydrateSettings();
-      await hydrateScoreHistory();
-      await hydrateWallet();
-      await hydrateCosmetics();
-      await initializePurchases();
-      if (progressionEnabled || v1_1RewardsOn) {
-        void hydrateProgression();
-      }
-      if (isMounted) {
-        setHighScore(savedScore);
-      }
-    };
-
-    void hydrate();
+    // Version 1.2.0 startup hotfix — these are independent optional
+    // refreshes (score, settings, history, wallet, cosmetics, purchases,
+    // progression); none of them gates what HomeScreen renders (every
+    // value read above already has a safe default via `??`/store
+    // defaults). `Promise.allSettled` means one hanging/rejecting task
+    // (e.g. an offline wallet refresh) can never prevent the others from
+    // completing, and nothing here is awaited by any render path.
+    void Promise.allSettled([
+      loadHighScore().then((savedScore) => {
+        if (isMounted) {
+          setHighScore(savedScore);
+        }
+      }),
+      hydrateSettings(),
+      hydrateScoreHistory(),
+      hydrateWallet(),
+      hydrateCosmetics(),
+      initializePurchases(),
+      progressionEnabled || v1_1RewardsOn ? hydrateProgression() : Promise.resolve(),
+    ]);
 
     return () => {
       isMounted = false;

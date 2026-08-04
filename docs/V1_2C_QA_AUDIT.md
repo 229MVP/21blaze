@@ -238,6 +238,15 @@ public catalog/registry id or event-type string.
 
 ## 20. TestFlight environment (`eas.json`, `testflight` profile)
 
+> **Superseded by the Version 1.2.0 startup hotfix.** The table below
+> reflects the configuration at the end of Version 1.2C. Following the
+> TestFlight startup black-screen, `EXPO_PUBLIC_ENABLE_V1_2_VISUAL_SYSTEM`,
+> `EXPO_PUBLIC_ENABLE_BOARD_EFFECTS`, and `EXPO_PUBLIC_ENABLE_VICTORY_EFFECTS`
+> were reverted to `false` in the `testflight` profile as a Classic-theme
+> isolation build — see `docs/V1_2_STARTUP_BLACK_SCREEN_REPORT.md` and
+> `docs/V1_2_STARTUP_HOTFIX_TESTFLIGHT_CHECKLIST.md` for the current state
+> and re-enable plan.
+
 | Required status | Configured value |
 |---|---|
 | Version 1.2 rewards enabled | `EXPO_PUBLIC_ENABLE_V1_1_REWARDS=true`, `EXPO_PUBLIC_ENABLE_DAILY_REWARDS=true`, `EXPO_PUBLIC_ENABLE_DAILY_MISSIONS=true` |
