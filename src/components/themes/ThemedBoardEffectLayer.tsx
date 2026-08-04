@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import Animated, {
   Easing,
@@ -10,7 +10,12 @@ import Animated, {
 
 import { isBoardEffectsEnabled } from '../../config/featureFlags';
 import { useReducedMotionSetting } from '../../hooks/useReducedMotionSetting';
-import { subscribeToVisualEffects, type VisualEffectEvent } from '../../services/visualEventBus';
+import { trackEvent } from '../../monetization/analytics';
+import {
+  enqueueEffectBounded,
+  subscribeToVisualEffects,
+  type VisualEffectEvent,
+} from '../../services/visualEventBus';
 
 const MAX_SIMULTANEOUS_EFFECTS = 3;
 
@@ -115,6 +120,8 @@ function EffectBurst({ event, onDone }: { event: ActiveEffect; onDone: (eventId:
  */
 export function ThemedBoardEffectLayer() {
   const reduceMotion = useReducedMotionSetting();
+  const reduceMotionRef = useRef(reduceMotion);
+  reduceMotionRef.current = reduceMotion;
   const [effects, setEffects] = useState<ActiveEffect[]>([]);
 
   useEffect(() => {
@@ -122,16 +129,13 @@ export function ThemedBoardEffectLayer() {
       return;
     }
     return subscribeToVisualEffects((event) => {
-      setEffects((current) => {
-        if (current.some((existing) => existing.eventId === event.eventId)) {
-          return current;
-        }
-        const next = [...current, event];
-        // Bounded queue — drop the oldest effect rather than growing forever.
-        return next.length > MAX_SIMULTANEOUS_EFFECTS
-          ? next.slice(next.length - MAX_SIMULTANEOUS_EFFECTS)
-          : next;
-      });
+      // Safe: eventType/themeContext are public, non-identifying ids.
+      if (reduceMotionRef.current) {
+        trackEvent('board_effect_suppressed_reduced_motion', { eventType: event.eventType });
+      } else {
+        trackEvent('board_effect_displayed', { eventType: event.eventType, themeContext: event.themeContext });
+      }
+      setEffects((current) => enqueueEffectBounded(current, event, MAX_SIMULTANEOUS_EFFECTS));
     });
   }, []);
 

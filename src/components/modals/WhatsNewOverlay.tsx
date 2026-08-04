@@ -19,15 +19,16 @@ type Props = {
 };
 
 const HIGHLIGHTS = [
-  'Earn Blaze Coins by playing',
-  'Complete Daily Missions',
-  'Build your Daily Streak',
-  'Unlock cosmetics in Blaze Locker',
+  'New visual theme support',
+  'Enhanced cards and arenas',
+  'New lane and board effects',
+  'Improved Blaze Locker previews',
+  'Performance and stability improvements',
 ] as const;
 
 /**
- * Version 1.1C — one-time "What's New" message. Shown at most once per
- * installed Version 1.1 update (see `src/services/whatsNewService.ts`).
+ * Version 1.2C — one-time "What's New" message. Shown at most once per
+ * installed Version 1.2 update (see `src/services/whatsNewService.ts`).
  * Never mentions paid products, purchases, or prices.
  */
 export function WhatsNewOverlay({ visible, onOpenLocker, onPlayNow }: Props) {
@@ -39,7 +40,7 @@ export function WhatsNewOverlay({ visible, onOpenLocker, onPlayNow }: Props) {
     if (!visible) {
       return;
     }
-    trackEvent('version_1_1_whats_new_viewed');
+    trackEvent('version_1_2_whats_new_viewed');
     if (reduceMotion) {
       opacity.value = 1;
       scale.value = 1;
@@ -65,7 +66,7 @@ export function WhatsNewOverlay({ visible, onOpenLocker, onPlayNow }: Props) {
       <View style={styles.root}>
         <Animated.View style={[styles.card, animatedStyle]}>
           <Text style={styles.title} accessibilityRole="header">
-            BLAZE REWARDS ARE HERE
+            EMBER BLAZE HAS ARRIVED
           </Text>
           <View style={styles.list}>
             {HIGHLIGHTS.map((line) => (

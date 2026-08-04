@@ -77,3 +77,21 @@ export function __resetVisualEventBusForTests(): void {
   listeners.clear();
   recentEventIds.clear();
 }
+
+/**
+ * Version 1.2C — pure, shared queue-capping logic used by
+ * `ThemedBoardEffectLayer` to bound simultaneous on-screen effects.
+ * Extracted so the "never grows unbounded" guarantee is directly unit
+ * testable rather than only verifiable by reading the component source.
+ */
+export function enqueueEffectBounded(
+  current: readonly VisualEffectEvent[],
+  event: VisualEffectEvent,
+  maxSize: number,
+): VisualEffectEvent[] {
+  if (current.some((existing) => existing.eventId === event.eventId)) {
+    return current as VisualEffectEvent[];
+  }
+  const next = [...current, event];
+  return next.length > maxSize ? next.slice(next.length - maxSize) : next;
+}

@@ -81,6 +81,24 @@ export const V1_1C_ANALYTICS_EVENTS = [
 
 export type V1_1CAnalyticsEvent = (typeof V1_1C_ANALYTICS_EVENTS)[number];
 
+/** Version 1.2 "Visual Theme System" (1.2A-1.2C) — presentation-only
+ * events. Never log access tokens, raw user ids, wallet rows, full
+ * card/move histories, asset binary data, ad callback payloads, or
+ * secrets. `themeId`/`assetId`/`eventType` values are safe (they are
+ * public catalog/registry ids, never derived from player-identifying
+ * data). */
+export const V1_2_VISUAL_ANALYTICS_EVENTS = [
+  'theme_selected',
+  'theme_asset_load_failed',
+  'visual_fallback_used',
+  'cosmetic_preview_started',
+  'board_effect_displayed',
+  'board_effect_suppressed_reduced_motion',
+  'version_1_2_whats_new_viewed',
+] as const;
+
+export type V1_2VisualAnalyticsEvent = (typeof V1_2_VISUAL_ANALYTICS_EVENTS)[number];
+
 const recent: Array<{ name: string; at: number }> = [];
 
 export function trackEvent(name: string, payload: AnalyticsPayload = {}): void {

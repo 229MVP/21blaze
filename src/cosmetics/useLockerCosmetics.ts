@@ -54,10 +54,11 @@ export function useResolvedVisualTheme(): VisualTheme {
   const equipped = useCosmeticStore((state) => state.equippedCosmetics);
   const owned = useCosmeticStore((state) => state.ownedCosmetics);
   const [failureVersion, setFailureVersion] = useState(() => getAssetFailureVersion());
+  const lastFallbackSignature = useRef<string | null>(null);
 
   useEffect(() => subscribeToAssetFailures(() => setFailureVersion(getAssetFailureVersion())), []);
 
-  return useMemo(() => {
+  const theme = useMemo(() => {
     const unavailableThemeIds = findThemeIdsRequiringAnyAsset(new Set(getFailedAssetIds()));
     if (!isV1_1LockerEnabled()) {
       return memoizedResolvePlayerVisualTheme({
@@ -90,6 +91,38 @@ export function useResolvedVisualTheme(): VisualTheme {
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [equipped, owned, failureVersion]);
+
+  useEffect(() => {
+    // Version 1.2C analytics: a category equipped to a non-classic id
+    // that nonetheless resolved to its classic definition means
+    // ownership/asset-availability forced a fallback (never fired for a
+    // player who genuinely has Classic equipped by choice).
+    const equippedByCategory: Array<[string, string | null, string]> = [
+      ['card_face', equipped.cardFace, theme.cardFaceTheme],
+      ['card_back', equipped.cardBack, theme.cardBackTheme],
+      ['arena', equipped.arena, theme.arenaTheme],
+      ['lane_effect', equipped.laneEffect, theme.laneTheme],
+      ['profile_frame', equipped.profileFrame, theme.profileFrameTheme],
+      ['player_title', equipped.playerTitle, theme.playerTitleTheme],
+    ];
+    const fallbacks = equippedByCategory.filter(
+      ([, equippedId, resolvedId]) => equippedId != null && equippedId !== resolvedId,
+    );
+    if (fallbacks.length === 0) {
+      lastFallbackSignature.current = null;
+      return;
+    }
+    const signature = fallbacks.map(([category, equippedId]) => `${category}:${equippedId}`).join(',');
+    if (signature === lastFallbackSignature.current) {
+      return;
+    }
+    lastFallbackSignature.current = signature;
+    for (const [category, equippedId, resolvedId] of fallbacks) {
+      trackEvent('visual_fallback_used', { category, equippedId: equippedId ?? '', resolvedId });
+    }
+  }, [equipped, theme]);
+
+  return theme;
 }
 
 /**
