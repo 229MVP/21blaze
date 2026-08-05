@@ -10,7 +10,7 @@ import {
 import { BlazeLockerScreen } from '../screens/BlazeLockerScreen';
 import { BlazeStoreScreen } from '../screens/BlazeStoreScreen';
 import { CreateLiveRoomScreen } from '../screens/CreateLiveRoomScreen';
-import { DailyChallengeLeaderboardScreen } from '../screens/DailyChallengeLeaderboardScreen';
+import { DailyLeaderboardScreen } from '../screens/DailyLeaderboardScreen';
 import { DailyChallengeScreen } from '../screens/DailyChallengeScreen';
 import { DailyMissionsScreen } from '../screens/DailyMissionsScreen';
 import { DailyRewardScreen } from '../screens/DailyRewardScreen';
@@ -89,7 +89,7 @@ export function AppNavigator() {
           <Stack.Screen name="DailyChallenge" component={DailyChallengeScreen} />
           <Stack.Screen
             name="DailyChallengeLeaderboard"
-            component={DailyChallengeLeaderboardScreen}
+            component={DailyLeaderboardScreen}
           />
         </>
       ) : null}

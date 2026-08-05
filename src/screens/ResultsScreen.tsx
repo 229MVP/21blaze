@@ -305,17 +305,28 @@ export function ResultsScreen({ navigation, route }: ResultsScreenProps) {
       }
 
       if (challengeVerificationStatus === 'verified' && challengeVerifiedResult) {
-        const rankLine =
-          challengeVerifiedResult.rank != null
-            ? `Daily rank #${challengeVerifiedResult.rank}`
-            : 'Verified for today’s challenge';
+        const parts: string[] = [];
+        if (challengeVerifiedResult.rank != null) {
+          parts.push(`Daily rank #${challengeVerifiedResult.rank}`);
+        }
+        if (challengeVerifiedResult.challengePoints != null) {
+          parts.push(`${challengeVerifiedResult.challengePoints} Challenge Points`);
+        }
+        if (challengeVerifiedResult.weeklyRank != null) {
+          parts.push(`Weekly rank #${challengeVerifiedResult.weeklyRank}`);
+        }
         const percentileLine =
           challengeVerifiedResult.percentile != null
             ? `Top ${challengeVerifiedResult.percentile}%`
             : null;
         return {
           label: 'DAILY CHALLENGE VERIFIED',
-          detail: percentileLine ? `${rankLine} · ${percentileLine}` : rankLine,
+          detail:
+            parts.length > 0
+              ? percentileLine
+                ? `${parts.join(' · ')} · ${percentileLine}`
+                : parts.join(' · ')
+              : 'Verified for today’s challenge',
           tone: 'ok' as const,
         };
       }
@@ -326,8 +337,8 @@ export function ResultsScreen({ navigation, route }: ResultsScreenProps) {
         submissionStatus === 'idle'
       ) {
         return {
-          label: 'VERIFYING RESULT…',
-          detail: 'Checking your ranked attempt with the server…',
+          label: 'RESULT VERIFYING',
+          detail: 'Rank unavailable until verification finishes.',
           tone: 'pending' as const,
         };
       }
@@ -857,10 +868,20 @@ export function ResultsScreen({ navigation, route }: ResultsScreenProps) {
             ) : gameMode === 'dailyChallenge' ? (
               <>
                 <BlazeButton
-                  label="VIEW LEADERBOARD"
+                  label="VIEW DAILY LEADERBOARD"
                   onPress={() => navigation.navigate('DailyChallengeLeaderboard')}
-                  disabled={submissionStatus !== 'verified'}
+                  disabled={challengeVerificationStatus !== 'verified'}
                   accessibilityLabel="View daily challenge leaderboard"
+                />
+                <BlazeButton
+                  label="VIEW WEEKLY LEADERBOARD"
+                  variant="secondary"
+                  onPress={() => navigation.navigate('DailyChallengeLeaderboard')}
+                  disabled={
+                    challengeVerificationStatus !== 'verified' ||
+                    challengeVerifiedResult?.weeklyRank == null
+                  }
+                  accessibilityLabel="View weekly challenge leaderboard"
                 />
                 <BlazeButton
                   label="RETURN TO CHALLENGE"

@@ -93,6 +93,15 @@ export const DAILY_CHALLENGE_ANALYTICS_EVENTS = [
   'daily_challenge_rejected',
   'daily_challenge_result_viewed',
   'daily_challenge_leaderboard_opened',
+  'daily_leaderboard_viewed',
+  'weekly_leaderboard_viewed',
+  'leaderboard_refreshed',
+  'leaderboard_page_loaded',
+  'leaderboard_nearby_viewed',
+  'leaderboard_current_rank_viewed',
+  'leaderboard_offline_cache_viewed',
+  'challenge_points_awarded',
+  'leaderboard_finalized',
 ] as const;
 
 export type DailyChallengeAnalyticsEvent =

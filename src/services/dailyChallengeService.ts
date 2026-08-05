@@ -16,7 +16,7 @@ export class DailyChallengeServiceError extends Error {
   }
 }
 
-function withTimeout<T>(promise: Promise<T>, ms: number, label: string): Promise<T> {
+export function withTimeout<T>(promise: Promise<T>, ms: number, label: string): Promise<T> {
   return new Promise<T>((resolve, reject) => {
     const timer = setTimeout(() => {
       reject(new DailyChallengeServiceError(`${label} timed out.`));

@@ -201,6 +201,11 @@ export const useDailyChallengeStore = create<DailyChallengeStore>((set, get) => 
 
       if (response.verified && response.result) {
         trackEvent('daily_challenge_verified');
+        if (response.result.challengePoints != null) {
+          trackEvent('challenge_points_awarded', {
+            points: response.result.challengePoints,
+          });
+        }
         set({
           verificationStatus: 'verified',
           verifiedResult: response.result,

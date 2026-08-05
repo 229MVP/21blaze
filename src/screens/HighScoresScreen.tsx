@@ -23,6 +23,7 @@ import { BlazeSegmentedControl } from '../components/Navigation/BlazeSegmentedCo
 import { SvgRoot as Svg } from '../components/svg/SvgRoot';
 import { BlazeButton } from '../components/ui/BlazeButton';
 import { BlazePanel } from '../components/ui/BlazePanel';
+import { isFriendsLeaderboardEnabled } from '../config/featureFlags';
 import type { GlobalLeaderboardRow } from '../lib/database.types';
 import type { RootStackParamList } from '../navigation/navigationTypes';
 import { loadGlobalLeaderboard } from '../services/leaderboardService';
@@ -45,7 +46,9 @@ type LeaderboardTab = 'local' | 'global' | 'friends';
 const TAB_OPTIONS: { label: string; value: LeaderboardTab }[] = [
   { label: 'LOCAL', value: 'local' },
   { label: 'GLOBAL', value: 'global' },
-  { label: 'FRIENDS', value: 'friends' },
+  ...(isFriendsLeaderboardEnabled()
+    ? [{ label: 'FRIENDS', value: 'friends' as LeaderboardTab }]
+    : []),
 ];
 
 const GLOBAL_TIMEOUT_MS = 12000;
