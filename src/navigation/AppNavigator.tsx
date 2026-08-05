@@ -2,6 +2,7 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createNavigationContainerRef } from '@react-navigation/native';
 
 import {
+  isDailyChallengeEnabled,
   isPurchaseDiagnosticsEnabled,
   isThemePreviewDevEnabled,
   isV1_1LockerEnabled,
@@ -9,6 +10,8 @@ import {
 import { BlazeLockerScreen } from '../screens/BlazeLockerScreen';
 import { BlazeStoreScreen } from '../screens/BlazeStoreScreen';
 import { CreateLiveRoomScreen } from '../screens/CreateLiveRoomScreen';
+import { DailyChallengeLeaderboardScreen } from '../screens/DailyChallengeLeaderboardScreen';
+import { DailyChallengeScreen } from '../screens/DailyChallengeScreen';
 import { DailyMissionsScreen } from '../screens/DailyMissionsScreen';
 import { DailyRewardScreen } from '../screens/DailyRewardScreen';
 import { BlazeUIKitPreviewScreen } from '../screens/dev/BlazeUIKitPreviewScreen';
@@ -81,6 +84,15 @@ export function AppNavigator() {
       <Stack.Screen name="PlayerProgression" component={PlayerProgressionScreen} />
       <Stack.Screen name="DailyReward" component={DailyRewardScreen} />
       <Stack.Screen name="DailyMissions" component={DailyMissionsScreen} />
+      {isDailyChallengeEnabled() ? (
+        <>
+          <Stack.Screen name="DailyChallenge" component={DailyChallengeScreen} />
+          <Stack.Screen
+            name="DailyChallengeLeaderboard"
+            component={DailyChallengeLeaderboardScreen}
+          />
+        </>
+      ) : null}
       <Stack.Screen name="Feedback" component={FeedbackScreen} />
       {isPurchaseDiagnosticsEnabled() ? (
         <Stack.Screen

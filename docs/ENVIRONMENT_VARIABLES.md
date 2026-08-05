@@ -41,6 +41,10 @@ If either is missing, auth falls to **local mode**. Home exposes **Retry Online*
 | `EXPO_PUBLIC_ENABLE_DAILY_MISSIONS` | `false` | Daily missions (requires progression) |
 | `EXPO_PUBLIC_ENABLE_PURCHASE_DIAGNOSTICS` | `false` | PurchaseDiagnosticsScreen entry — also refused in production **and whenever store purchases are disabled** |
 | `EXPO_PUBLIC_ENABLE_V1_1_LOCKER` | `false` | Version 1.1B Blaze Locker — earnable, code-driven cosmetic unlocks spent with Blaze Coins only. Independent of `EXPO_PUBLIC_ENABLE_STORE_PURCHASES`; never enables paid products or RevenueCat. |
+| `EXPO_PUBLIC_ENABLE_DAILY_CHALLENGE` | `false` | Version 1.3A Daily Challenge master switch |
+| `EXPO_PUBLIC_ENABLE_DAILY_CHALLENGE_RANKED` | `false` | Ranked Daily Challenge attempts (requires master + online auth) |
+| `EXPO_PUBLIC_ENABLE_DAILY_CHALLENGE_PRACTICE` | `false` | Practice Daily Challenge attempts |
+| `EXPO_PUBLIC_ENABLE_DAILY_LEADERBOARD` | `false` | Daily Challenge leaderboard screen |
 
 Flags are **client UX only**, not authorization. Solo Play is never gated.
 

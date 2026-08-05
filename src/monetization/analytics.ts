@@ -81,6 +81,23 @@ export const V1_1C_ANALYTICS_EVENTS = [
 
 export type V1_1CAnalyticsEvent = (typeof V1_1C_ANALYTICS_EVENTS)[number];
 
+export const DAILY_CHALLENGE_ANALYTICS_EVENTS = [
+  'daily_challenge_viewed',
+  'daily_challenge_ranked_started',
+  'daily_challenge_practice_started',
+  'daily_challenge_first_move',
+  'daily_challenge_completed',
+  'daily_challenge_abandoned',
+  'daily_challenge_verification_started',
+  'daily_challenge_verified',
+  'daily_challenge_rejected',
+  'daily_challenge_result_viewed',
+  'daily_challenge_leaderboard_opened',
+] as const;
+
+export type DailyChallengeAnalyticsEvent =
+  (typeof DAILY_CHALLENGE_ANALYTICS_EVENTS)[number];
+
 const recent: Array<{ name: string; at: number }> = [];
 
 export function trackEvent(name: string, payload: AnalyticsPayload = {}): void {
