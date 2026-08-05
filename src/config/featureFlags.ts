@@ -175,3 +175,32 @@ export function isBoardEffectsEnabled(): boolean {
 export function isVictoryEffectsEnabled(): boolean {
   return isV1_2VisualSystemEnabled() && envFlag('EXPO_PUBLIC_ENABLE_VICTORY_EFFECTS', false);
 }
+
+/**
+ * Version 1.3A "Daily Challenge" master switch. When false, Solo Play
+ * remains fully available and no challenge navigation or requests occur.
+ */
+export function isDailyChallengeEnabled(): boolean {
+  return envFlag('EXPO_PUBLIC_ENABLE_DAILY_CHALLENGE', false);
+}
+
+export function isDailyChallengeRankedEnabled(): boolean {
+  return (
+    isDailyChallengeEnabled() &&
+    envFlag('EXPO_PUBLIC_ENABLE_DAILY_CHALLENGE_RANKED', false)
+  );
+}
+
+export function isDailyChallengePracticeEnabled(): boolean {
+  return (
+    isDailyChallengeEnabled() &&
+    envFlag('EXPO_PUBLIC_ENABLE_DAILY_CHALLENGE_PRACTICE', false)
+  );
+}
+
+export function isDailyLeaderboardEnabled(): boolean {
+  return (
+    isDailyChallengeEnabled() &&
+    envFlag('EXPO_PUBLIC_ENABLE_DAILY_LEADERBOARD', false)
+  );
+}

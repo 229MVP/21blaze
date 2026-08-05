@@ -27,6 +27,7 @@ import type {
 } from '../game/types';
 import {
   IDLE_ONLINE_MATCH_STATE,
+  type GameMode,
   type MoveLogEntry,
   type OfficialMatchResult,
   type OnlineMatchState,
@@ -37,12 +38,17 @@ import {
   startOnlineMatch,
   submitOnlineMatch,
 } from '../services/onlineMatchService';
+import type { DailyChallengeSession } from '../game/challenge/types';
+import { useDailyChallengeStore } from './useDailyChallengeStore';
 import { clearHighScore, saveHighScore } from '../storage/highScoreStorage';
 import { createMatchId } from '../utils/createMatchId';
 import { useScoreHistoryStore } from './useScoreHistoryStore';
 
 type GameStore = GameState &
   OnlineMatchState & {
+    gameMode: GameMode;
+    dailyChallengeSession: DailyChallengeSession | null;
+    dailyChallengeFirstMoveRecorded: boolean;
     highScore: number;
     isProcessingMove: boolean;
     lastMoveEvent: MoveEvent | null;
@@ -52,9 +58,11 @@ type GameStore = GameState &
     setHighScore: (score: number) => void;
     resetHighScore: () => Promise<void>;
     prepareAndStartGame: () => Promise<void>;
+    prepareDailyChallengeGame: (session: DailyChallengeSession) => Promise<void>;
     startGame: () => void;
     restartGame: () => void;
     resetGame: () => void;
+    clearDailyChallengeMode: () => void;
     beginStartCountdown: () => void;
     updateStartCountdown: (value: number) => void;
     beginTimedGame: (now: number) => void;
@@ -210,6 +218,9 @@ function resetOnlineFields(): OnlineMatchState & {
 export const useGameStore = create<GameStore>((set, get) => ({
   ...idleGameState,
   ...IDLE_ONLINE_MATCH_STATE,
+  gameMode: 'solo',
+  dailyChallengeSession: null,
+  dailyChallengeFirstMoveRecorded: false,
   highScore: 0,
   isProcessingMove: false,
   lastMoveEvent: null,
@@ -274,11 +285,62 @@ export const useGameStore = create<GameStore>((set, get) => ({
     }
   },
 
+  prepareDailyChallengeGame: async (session) => {
+    if (get().isPreparingMatch) {
+      return;
+    }
+
+    set({
+      ...idleGameState,
+      ...resetOnlineFields(),
+      gameMode: 'dailyChallenge',
+      dailyChallengeSession: session,
+      dailyChallengeFirstMoveRecorded: false,
+      highScore: get().highScore,
+      isPreparingMatch: true,
+      isProcessingMove: false,
+      lastMoveEvent: null,
+      status: 'idle',
+      timerStatus: 'ready',
+    });
+
+    const next = withFreshMatchState(createInitialGameStateFromSeed(session.seed));
+    set({
+      ...next,
+      gameMode: 'dailyChallenge',
+      dailyChallengeSession: session,
+      dailyChallengeFirstMoveRecorded: false,
+      eligibility: session.attemptType === 'ranked' ? 'verified' : 'localOnly',
+      onlineMatchId: session.attemptId,
+      deckSeed: session.seed,
+      startedAtServer: session.serverStartTime,
+      expiresAtServer: session.expiresAt,
+      submissionStatus: 'idle',
+      rejectionReason: null,
+      moveLog: [],
+      officialResult: null,
+      isPreparingMatch: false,
+      isProcessingMove: false,
+      lastMoveEvent: null,
+    });
+  },
+
+  clearDailyChallengeMode: () => {
+    set({
+      gameMode: 'solo',
+      dailyChallengeSession: null,
+      dailyChallengeFirstMoveRecorded: false,
+    });
+  },
+
   startGame: () => {
     void get().prepareAndStartGame();
   },
 
   restartGame: () => {
+    if (get().gameMode === 'dailyChallenge') {
+      return;
+    }
     void get().prepareAndStartGame();
   },
 
@@ -286,6 +348,9 @@ export const useGameStore = create<GameStore>((set, get) => ({
     set({
       ...idleGameState,
       ...resetOnlineFields(),
+      gameMode: 'solo',
+      dailyChallengeSession: null,
+      dailyChallengeFirstMoveRecorded: false,
       highScore: get().highScore,
       isProcessingMove: false,
       lastMoveEvent: null,
@@ -408,7 +473,10 @@ export const useGameStore = create<GameStore>((set, get) => ({
       return;
     }
 
-    const nextHighScore = maybePersistHighScore(current.score, current.highScore);
+    const nextHighScore =
+      current.gameMode === 'dailyChallenge'
+        ? current.highScore
+        : maybePersistHighScore(current.score, current.highScore);
 
     set({
       status: 'finished',
@@ -420,7 +488,8 @@ export const useGameStore = create<GameStore>((set, get) => ({
     });
 
     const shouldRecord =
-      reason === 'timeExpired' || reason === 'busts' || reason === 'deckEmpty';
+      current.gameMode === 'solo' &&
+      (reason === 'timeExpired' || reason === 'busts' || reason === 'deckEmpty');
 
     if (shouldRecord && current.matchId) {
       void useScoreHistoryStore.getState().recordScore({
@@ -443,6 +512,73 @@ export const useGameStore = create<GameStore>((set, get) => ({
 
   submitVerifiedMatchIfNeeded: async () => {
     const current = get();
+
+    if (current.gameMode === 'dailyChallenge') {
+      const session = current.dailyChallengeSession;
+      if (!session || session.attemptType !== 'ranked') {
+        return;
+      }
+
+      const reason = current.gameOverReason;
+      if (
+        reason === null ||
+        reason === 'quit' ||
+        (reason !== 'timeExpired' && reason !== 'busts' && reason !== 'deckEmpty')
+      ) {
+        return;
+      }
+
+      if (
+        current.submissionStatus === 'submitting' ||
+        current.submissionStatus === 'verified'
+      ) {
+        return;
+      }
+
+      set({ submissionStatus: 'submitting', rejectionReason: null });
+
+      try {
+        await useDailyChallengeStore.getState().submitAttempt(get().moveLog);
+        const challengeState = useDailyChallengeStore.getState();
+        if (challengeState.verificationStatus === 'verified' && challengeState.verifiedResult) {
+          const result = challengeState.verifiedResult;
+          set({
+            submissionStatus: 'verified',
+            officialResult: {
+              score: result.score,
+              lanesCleared: result.lanesCleared,
+              cardsPlayed: get().cardsPlayed,
+              busts: result.bustCount,
+              timeRemainingSeconds: Math.max(
+                0,
+                GAME_DURATION_SECONDS - Math.floor(result.elapsedTimeMs / 1000),
+              ),
+              gameOverReason: result.gameOverReason as Exclude<GameOverReason, 'quit'>,
+            },
+            rejectionReason: null,
+            score: result.score,
+            clearedLanes: result.lanesCleared,
+            busts: result.bustCount,
+          });
+          return;
+        }
+
+        set({
+          submissionStatus:
+            challengeState.verificationStatus === 'rejected' ? 'rejected' : 'failed',
+          rejectionReason:
+            challengeState.rejectionReason ?? 'Daily Challenge verification failed.',
+        });
+      } catch (error) {
+        set({
+          submissionStatus: 'failed',
+          rejectionReason:
+            error instanceof Error ? error.message : 'Daily Challenge verification failed.',
+        });
+      }
+      return;
+    }
+
     const matchId = current.onlineMatchId;
     const reason = current.gameOverReason;
 
@@ -524,6 +660,10 @@ export const useGameStore = create<GameStore>((set, get) => ({
 
   quitGame: () => {
     const current = get();
+    if (current.gameMode === 'dailyChallenge' && current.dailyChallengeSession) {
+      void useDailyChallengeStore.getState().abandonActiveAttempt();
+    }
+
     if (current.status === 'playing' && current.gameOverReason === null) {
       set({
         status: 'finished',
@@ -538,6 +678,9 @@ export const useGameStore = create<GameStore>((set, get) => ({
     set({
       ...idleGameState,
       ...resetOnlineFields(),
+      gameMode: 'solo',
+      dailyChallengeSession: null,
+      dailyChallengeFirstMoveRecorded: false,
       highScore,
       isProcessingMove: false,
       lastMoveEvent: null,
@@ -588,6 +731,14 @@ export const useGameStore = create<GameStore>((set, get) => ({
       laneId,
       elapsedMilliseconds,
     };
+
+    if (
+      current.gameMode === 'dailyChallenge' &&
+      !current.dailyChallengeFirstMoveRecorded
+    ) {
+      set({ dailyChallengeFirstMoveRecorded: true });
+      void useDailyChallengeStore.getState().recordFirstMove();
+    }
 
     const lastMoveEvent = createMoveEvent(before, nextState, laneId, cardId);
     const cardsPlayed = current.cardsPlayed + 1;

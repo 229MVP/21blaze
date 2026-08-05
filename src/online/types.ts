@@ -1,6 +1,9 @@
 import type { GameOverReason } from '../game/types';
+import type { DailyChallengeSession } from '../game/challenge/types';
 
 export type OnlineEligibility = 'verified' | 'localOnly';
+
+export type GameMode = 'solo' | 'dailyChallenge';
 
 export type SubmissionStatus =
   | 'idle'

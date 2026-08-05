@@ -22,6 +22,7 @@ import { XpProgressBar } from '../components/Progression/XpProgressBar';
 import { SvgRoot as Svg } from '../components/svg/SvgRoot';
 import { BlazeButton } from '../components/ui/BlazeButton';
 import {
+  isDailyChallengeEnabled,
   isDailyMissionsEnabled,
   isDailyRewardsEnabled,
   isLiveDuelEnabled,
@@ -58,6 +59,7 @@ import { useProgressionStore } from '../store/useProgressionStore';
 import { useScoreHistoryStore } from '../store/useScoreHistoryStore';
 import { useSettingsStore } from '../store/useSettingsStore';
 import { useWalletStore } from '../store/useWalletStore';
+import { useDailyChallengeStore } from '../store/useDailyChallengeStore';
 import { hasSeenWhatsNew, markWhatsNewSeen } from '../services/whatsNewService';
 import { colors as kitColors, spacing as kitSpacing } from '../theme/uiKit';
 
@@ -146,6 +148,9 @@ export function HomeScreen({ navigation, route }: HomeScreenProps) {
   const acknowledgeLevelUp = useProgressionStore(
     (state) => state.acknowledgeLevelUp,
   );
+  const dailyChallengeBadge = useDailyChallengeStore((state) => state.shouldShowBadge());
+  const hydrateDailyChallenge = useDailyChallengeStore((state) => state.hydrateStatus);
+  const dailyChallengeEnabled = isDailyChallengeEnabled();
 
   const [nameEditorOpen, setNameEditorOpen] = useState(false);
   const [whatsNewVisible, setWhatsNewVisible] = useState(false);
@@ -170,6 +175,9 @@ export function HomeScreen({ navigation, route }: HomeScreenProps) {
       if (progressionEnabled || v1_1RewardsOn) {
         void hydrateProgression();
       }
+      if (dailyChallengeEnabled) {
+        void hydrateDailyChallenge();
+      }
       if (isMounted) {
         setHighScore(savedScore);
       }
@@ -188,6 +196,8 @@ export function HomeScreen({ navigation, route }: HomeScreenProps) {
     hydrateWallet,
     initializePurchases,
     progressionEnabled,
+    dailyChallengeEnabled,
+    hydrateDailyChallenge,
     setHighScore,
     v1_1RewardsOn,
   ]);
@@ -434,6 +444,19 @@ export function HomeScreen({ navigation, route }: HomeScreenProps) {
               onPress={() => navigation.navigate('Game')}
               accessibilityLabel="Solo play 21 Blaze"
             />
+            {dailyChallengeEnabled ? (
+              <View style={styles.lockerButtonWrap}>
+                <BlazeButton
+                  label="DAILY CHALLENGE"
+                  variant="secondary"
+                  onPress={() => navigation.navigate('DailyChallenge')}
+                  accessibilityLabel="Open Daily Challenge"
+                />
+                {dailyChallengeBadge ? (
+                  <View style={styles.lockerBadge} accessibilityElementsHidden />
+                ) : null}
+              </View>
+            ) : null}
             {v1_1LockerOn ? (
               <View style={styles.lockerButtonWrap}>
                 <BlazeButton

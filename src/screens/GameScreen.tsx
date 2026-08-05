@@ -47,6 +47,7 @@ import {
 } from '../game/constants';
 import type { Card, LaneId } from '../game/types';
 import { useSoloGameFeedback } from '../hooks/useSoloGameFeedback';
+import { trackEvent } from '../monetization/analytics';
 import type { GameScreenProps } from '../navigation/navigationTypes';
 import { blazeHaptics } from '../services/haptics/blazeHaptics';
 import { useGameStore } from '../store/useGameStore';
@@ -67,7 +68,6 @@ export function GameScreen({ navigation }: GameScreenProps) {
   const laneFaceVariant = useActiveCardFaceVariant();
   const resolvedVisualTheme = useResolvedVisualTheme();
   useSoloGameFeedback();
-  useInterstitialScreenTracking('gameplay');
   useBoardEffectEventBridge(resolvedVisualTheme.boardEffectTheme);
 
   const status = useGameStore((state) => state.status);
@@ -87,6 +87,13 @@ export function GameScreen({ navigation }: GameScreenProps) {
   const startCountdownValue = useGameStore((state) => state.startCountdownValue);
   const gameOverReason = useGameStore((state) => state.gameOverReason);
   const cardsPlayed = useGameStore((state) => state.cardsPlayed);
+  const gameMode = useGameStore((state) => state.gameMode);
+  const dailyChallengeSession = useGameStore((state) => state.dailyChallengeSession);
+  const clearDailyChallengeMode = useGameStore((state) => state.clearDailyChallengeMode);
+
+  useInterstitialScreenTracking(
+    gameMode === 'dailyChallenge' ? 'dailyChallenge' : 'gameplay',
+  );
 
   const isPreparingMatch = useGameStore((state) => state.isPreparingMatch);
   const prepareAndStartGame = useGameStore((state) => state.prepareAndStartGame);
@@ -117,6 +124,9 @@ export function GameScreen({ navigation }: GameScreenProps) {
 
   useEffect(() => {
     const current = useGameStore.getState();
+    if (current.gameMode === 'dailyChallenge') {
+      return;
+    }
     if (
       !current.isPreparingMatch &&
       (current.status !== 'playing' || current.timerStatus === 'ready')
@@ -209,6 +219,11 @@ export function GameScreen({ navigation }: GameScreenProps) {
     }
 
     hasNavigatedToResults.current = true;
+    if (gameMode === 'dailyChallenge') {
+      trackEvent('daily_challenge_completed', {
+        attemptType: dailyChallengeSession?.attemptType ?? 'unknown',
+      });
+    }
     navigation.replace('Results', {
       score,
       highScore,
@@ -230,6 +245,8 @@ export function GameScreen({ navigation }: GameScreenProps) {
     score,
     status,
     timeRemainingSeconds,
+    gameMode,
+    dailyChallengeSession?.attemptType,
   ]);
 
   useEffect(() => {
@@ -303,6 +320,19 @@ export function GameScreen({ navigation }: GameScreenProps) {
     resumeGame(Date.now());
   };
 
+  const isDailyChallenge = gameMode === 'dailyChallenge';
+  const challengeLabel =
+    dailyChallengeSession?.attemptType === 'ranked'
+      ? 'DAILY RANKED'
+      : dailyChallengeSession?.attemptType === 'practice'
+        ? 'DAILY PRACTICE'
+        : null;
+  const countdownTitle = isDailyChallenge ? 'DAILY CHALLENGE' : 'GET READY!';
+  const countdownSubtitle = isDailyChallenge
+    ? dailyChallengeSession?.attemptType === 'ranked'
+      ? 'RANKED ATTEMPT'
+      : 'PRACTICE'
+    : undefined;
   const isCountdown = timerStatus === 'countdown';
   const isPaused = timerStatus === 'paused';
   const canPlay =
@@ -387,6 +417,9 @@ export function GameScreen({ navigation }: GameScreenProps) {
           />
 
           <View style={styles.timerBlock}>
+            {challengeLabel ? (
+              <Text style={styles.challengeLabel}>{challengeLabel}</Text>
+            ) : null}
             {showFinalBlaze ? (
               <Text style={styles.finalBlaze}>FINAL BLAZE</Text>
             ) : null}
@@ -465,6 +498,8 @@ export function GameScreen({ navigation }: GameScreenProps) {
             <GameStartCountdown
               value={startCountdownValue}
               visible={isCountdown}
+              title={countdownTitle}
+              subtitle={countdownSubtitle}
             />
             <PauseOverlay
               visible={isPaused}
@@ -481,6 +516,7 @@ export function GameScreen({ navigation }: GameScreenProps) {
               label: 'RESTART',
               onPress: requestRestartConfirm,
               variant: 'danger',
+              disabled: isDailyChallenge,
               accessibilityLabel: 'Restart game',
             }}
             secondaryAction={{
@@ -605,6 +641,13 @@ const styles = StyleSheet.create({
   timerBlock: {
     alignItems: 'center',
     gap: 4,
+  },
+  challengeLabel: {
+    fontFamily: kitTypography.families.condensed,
+    fontSize: 12,
+    letterSpacing: 1.5,
+    color: kitColors.fire.gold,
+    textAlign: 'center',
   },
   finalBlaze: {
     fontFamily: kitTypography.families.display,

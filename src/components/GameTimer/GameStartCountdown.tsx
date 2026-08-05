@@ -27,6 +27,8 @@ import { CountdownFireRing } from '../game/CountdownFireRing';
 type GameStartCountdownProps = {
   value: number;
   visible: boolean;
+  title?: string;
+  subtitle?: string;
 };
 
 const CONTENT_MAX = 430;
@@ -35,7 +37,12 @@ const CONTENT_MAX = 430;
  * Presentation-only Solo start countdown.
  * Reacts to store-driven `value` / `visible`; does not own match timing.
  */
-export function GameStartCountdown({ value, visible }: GameStartCountdownProps) {
+export function GameStartCountdown({
+  value,
+  visible,
+  title = 'GET READY!',
+  subtitle,
+}: GameStartCountdownProps) {
   const reduceMotion = useReducedMotionSetting();
   const { width } = useWindowDimensions();
   const opacity = useSharedValue(0);
@@ -127,8 +134,9 @@ export function GameStartCountdown({ value, visible }: GameStartCountdownProps) 
 
       <View style={[styles.column, { width: columnWidth, maxWidth: CONTENT_MAX }]}>
         <Text style={styles.getReady} accessibilityRole="header">
-          GET READY!
+          {title}
         </Text>
+        {subtitle ? <Text style={styles.subtitle}>{subtitle}</Text> : null}
 
         <View style={[styles.ringWrap, { width: ringSize, height: ringSize }]}>
           <CountdownFireRing
@@ -188,6 +196,12 @@ const styles = StyleSheet.create({
     textShadowColor: 'rgba(255,101,0,0.45)',
     textShadowOffset: { width: 0, height: 0 },
     textShadowRadius: 10,
+  },
+  subtitle: {
+    color: kitColors.text.secondary,
+    fontSize: 14,
+    letterSpacing: 1,
+    textAlign: 'center',
   },
   ringWrap: {
     alignItems: 'center',
