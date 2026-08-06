@@ -12,7 +12,6 @@ import {
   type InterstitialScreen,
 } from './interstitialPolicy';
 import { isInterstitialAdsEnabled } from '../config/featureFlags';
-import { isBasicStartupModeActive } from '../startup/basicStartupMode';
 import { initializeAdsOnce } from '../services/adService';
 
 const STORAGE_KEY = '21blaze.interstitialCaps.v2';
@@ -109,9 +108,6 @@ function buildEligibilityContext(hasRemoveAds: boolean): InterstitialEligibility
 }
 
 export function canShowInterstitial(hasRemoveAds: boolean): boolean {
-  if (isBasicStartupModeActive()) {
-    return false;
-  }
   return isInterstitialEligible(buildEligibilityContext(hasRemoveAds)).eligible;
 }
 
@@ -121,9 +117,6 @@ export function canShowInterstitial(hasRemoveAds: boolean): boolean {
 export async function maybeShowInterstitialAfterSoloHome(
   hasRemoveAds: boolean,
 ): Promise<boolean> {
-  if (isBasicStartupModeActive()) {
-    return false;
-  }
   const context = buildEligibilityContext(hasRemoveAds);
   const decision = isInterstitialEligible(context);
   trackEvent('interstitial_eligible', {

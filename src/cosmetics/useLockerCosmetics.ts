@@ -1,25 +1,13 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef } from 'react';
 
 import type { CardBackVariant } from '../components/cards/CardBack';
 import type { CardFaceVariant } from '../components/cards/PlayingCard';
-import { isDailyRewardsEnabled, isStartupVisualPreloadDisabled, isV1_1LockerEnabled } from '../config/featureFlags';
+import { isDailyRewardsEnabled, isV1_1LockerEnabled } from '../config/featureFlags';
 import { trackEvent } from '../monetization/analytics';
-import { classicTheme } from '../themes/defaultTheme';
 import { memoizedResolvePlayerVisualTheme } from '../themes/resolvePlayerVisualTheme';
 import type { PlayerVisualLoadout, VisualTheme } from '../themes/types';
-import { isBasicStartupModeActive } from '../startup/basicStartupMode';
-import { shouldForceClassicVisuals } from '../startup/visualStartupOverride';
-import { FREE_DEFAULT_COSMETIC_IDS, V1_1B_LOCKER_CATALOG } from './lockerCatalog';
-import {
-  getAssetFailureVersion,
-  getFailedAssetIds,
-  preloadLaunchCriticalThemeAssets,
-  preloadLazyVisualAssets,
-  preloadThemeAssets,
-  subscribeToAssetFailures,
-} from '../services/visualAssetLoader';
-import { findThemeIdsRequiringAnyAsset, resolveThemeDefinition } from '../themes/themeRegistry';
-import type { ThemeCategory } from '../themes/types';
+import { FREE_DEFAULT_COSMETIC_IDS } from './lockerCatalog';
+import { preloadThemeAssets } from '../services/visualAssetLoader';
 import { useCosmeticStore } from '../store/useCosmeticStore';
 import { useProgressionStore } from '../store/useProgressionStore';
 import { useWalletStore } from '../store/useWalletStore';
@@ -43,35 +31,12 @@ import { useWalletStore } from '../store/useWalletStore';
 
 const FREE_ID_SET = new Set(FREE_DEFAULT_COSMETIC_IDS);
 
-/**
- * The single resolved theme for the player's current equipped loadout.
- *
- * Version 1.2B: also subscribes to real asset-load failures
- * (`visualAssetLoader.subscribeToAssetFailures`) so a genuinely broken or
- * missing bundled asset causes an automatic re-resolution that falls
- * back to classic for just that category — closing the gap where the
- * 1.2A `unavailableThemeIds` parameter existed but was never populated
- * from live load results.
- */
+/** The single resolved theme for the player's current equipped loadout. */
 export function useResolvedVisualTheme(): VisualTheme {
   const equipped = useCosmeticStore((state) => state.equippedCosmetics);
   const owned = useCosmeticStore((state) => state.ownedCosmetics);
-  const [failureVersion, setFailureVersion] = useState(() => getAssetFailureVersion());
-  const lastFallbackSignature = useRef<string | null>(null);
 
-  useEffect(() => subscribeToAssetFailures(() => setFailureVersion(getAssetFailureVersion())), []);
-
-  const theme = useMemo(() => {
-    // Version 1.2.0 startup hotfix — a hard kill switch, checked first
-    // and unconditionally: with the visual system disabled (the
-    // TestFlight isolation flag) or the in-session "start with classic"
-    // recovery override active, resolution never even attempts to read
-    // equipped/owned cosmetic state or theme-registry data. Ownership is
-    // untouched either way — this only changes what is rendered.
-    if (shouldForceClassicVisuals()) {
-      return classicTheme;
-    }
-    const unavailableThemeIds = findThemeIdsRequiringAnyAsset(new Set(getFailedAssetIds()));
+  return useMemo(() => {
     if (!isV1_1LockerEnabled()) {
       return memoizedResolvePlayerVisualTheme({
         loadout: {
@@ -84,7 +49,6 @@ export function useResolvedVisualTheme(): VisualTheme {
         },
         ownedIds: new Set(),
         freeIds: FREE_ID_SET,
-        unavailableThemeIds,
       });
     }
     const loadout: PlayerVisualLoadout = {
@@ -99,95 +63,20 @@ export function useResolvedVisualTheme(): VisualTheme {
       loadout,
       ownedIds: new Set(owned),
       freeIds: FREE_ID_SET,
-      unavailableThemeIds,
     });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [equipped, owned, failureVersion]);
-
-  useEffect(() => {
-    // Version 1.2C analytics: a category equipped to a non-classic id
-    // that nonetheless resolved to its classic definition means
-    // ownership/asset-availability forced a fallback (never fired for a
-    // player who genuinely has Classic equipped by choice).
-    const equippedByCategory: Array<[string, string | null, string]> = [
-      ['card_face', equipped.cardFace, theme.cardFaceTheme],
-      ['card_back', equipped.cardBack, theme.cardBackTheme],
-      ['arena', equipped.arena, theme.arenaTheme],
-      ['lane_effect', equipped.laneEffect, theme.laneTheme],
-      ['profile_frame', equipped.profileFrame, theme.profileFrameTheme],
-      ['player_title', equipped.playerTitle, theme.playerTitleTheme],
-    ];
-    const fallbacks = equippedByCategory.filter(
-      ([, equippedId, resolvedId]) => equippedId != null && equippedId !== resolvedId,
-    );
-    if (fallbacks.length === 0) {
-      lastFallbackSignature.current = null;
-      return;
-    }
-    const signature = fallbacks.map(([category, equippedId]) => `${category}:${equippedId}`).join(',');
-    if (signature === lastFallbackSignature.current) {
-      return;
-    }
-    lastFallbackSignature.current = signature;
-    for (const [category, equippedId, resolvedId] of fallbacks) {
-      trackEvent('visual_fallback_used', { category, equippedId: equippedId ?? '', resolvedId });
-    }
-  }, [equipped, theme]);
-
-  return theme;
+  }, [equipped, owned]);
 }
 
 /**
- * Version 1.2B — "launch" preload tier. Preloads only the critical/high
- * priority assets among the equipped theme's requirements (never every
- * future theme, and never the full set at this stage) — safe to call
- * from any always-mounted screen (e.g. Home); never blocks rendering
- * since it fires-and-forgets.
+ * Preloads only the equipped theme's required assets (never every future
+ * theme) — safe to call from any always-mounted screen (e.g. Home);
+ * never blocks rendering since it fires-and-forgets.
  */
 export function usePreloadEquippedVisualTheme(): void {
   const theme = useResolvedVisualTheme();
   useEffect(() => {
-    if (isStartupVisualPreloadDisabled() || isBasicStartupModeActive()) {
-      return;
-    }
-    void preloadLaunchCriticalThemeAssets(theme.requiredAssets);
-  }, [theme.requiredAssets]);
-}
-
-/**
- * Version 1.2B — "before gameplay" preload tier. Ensures every remaining
- * required asset for the equipped theme (including normal/low priority
- * ones the launch tier skipped) is loaded before the match starts
- * rendering effects. Ids the launch tier already preloaded are skipped
- * automatically by the loader's cache, so this never re-downloads
- * anything. Call once from the gameplay screen's mount.
- */
-export function usePreloadGameplayCriticalVisualAssets(): void {
-  const theme = useResolvedVisualTheme();
-  useEffect(() => {
     void preloadThemeAssets(theme.requiredAssets);
   }, [theme.requiredAssets]);
-}
-
-/**
- * Version 1.2B — "lazy" preload tier for the Blaze Locker. Preloads the
- * required assets for every catalog entry's theme definition (owned or
- * not) only while the Locker screen itself is mounted, so unowned
- * preview art / alternate themes are never fetched at app launch or
- * during gameplay.
- */
-export function usePreloadLockerPreviewAssets(): void {
-  useEffect(() => {
-    const ids = new Set<string>();
-    for (const entry of V1_1B_LOCKER_CATALOG) {
-      const category = entry.cosmeticType as ThemeCategory;
-      const definition = resolveThemeDefinition(category, entry.id);
-      for (const assetId of definition.requiredAssets) {
-        ids.add(assetId);
-      }
-    }
-    void preloadLazyVisualAssets(Array.from(ids));
-  }, []);
 }
 
 export function useActiveCardFaceVariant(): CardFaceVariant {

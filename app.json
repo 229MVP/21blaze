@@ -2,7 +2,7 @@
   "expo": {
     "name": "21 Blaze",
     "slug": "21-blaze",
-    "version": "1.2.0",
+    "version": "1.3.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "scheme": "twentyoneblaze",
@@ -10,12 +10,15 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.twentyoneblaze.app",
-      "buildNumber": "908",
+      "buildNumber": "904",
       "deploymentTarget": "16.4",
       "infoPlist": {
         "GADApplicationIdentifier": "ca-app-pub-3940256099942544~1458002511",
         "NSUserTrackingUsageDescription": "This identifier is used to deliver personalized ads when you allow tracking. Declining does not block Solo Play.",
         "SKAdNetworkItems": [
+          {
+            "SKAdNetworkIdentifier": "cstr6suwn9.skadnetwork"
+          },
           {
             "SKAdNetworkIdentifier": "cstr6suwn9.skadnetwork"
           }
@@ -34,6 +37,10 @@
       },
       "predictiveBackGestureEnabled": false,
       "permissions": [
+        "android.permission.RECORD_AUDIO",
+        "android.permission.MODIFY_AUDIO_SETTINGS",
+        "android.permission.FOREGROUND_SERVICE",
+        "android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK",
         "android.permission.RECORD_AUDIO",
         "android.permission.MODIFY_AUDIO_SETTINGS",
         "android.permission.FOREGROUND_SERVICE",
@@ -67,15 +74,11 @@
       ],
       "expo-audio",
       "expo-asset",
-      "./plugins/withAndroidKotlinGradle.js",
       [
         "expo-build-properties",
         {
           "ios": {
             "deploymentTarget": "16.4"
-          },
-          "android": {
-            "kotlinVersion": "2.3.0"
           }
         }
       ]
@@ -87,6 +90,12 @@
         "projectId": "0c5db163-a4c0-4a17-9a8a-e12eed3bf511"
       }
     },
-    "owner": "229mvp"
+    "owner": "229mvp",
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/0c5db163-a4c0-4a17-9a8a-e12eed3bf511"
+    }
   }
 }

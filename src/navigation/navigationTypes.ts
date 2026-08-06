@@ -38,6 +38,8 @@ export type RootStackParamList = {
   PlayerProgression: undefined;
   DailyReward: undefined;
   DailyMissions: undefined;
+  DailyChallenge: undefined;
+  DailyChallengeLeaderboard: undefined;
   PurchaseDiagnostics: undefined;
   Feedback: undefined;
   /** Development-only UI kit gallery. Registered only when __DEV__ is true. */
@@ -134,6 +136,14 @@ export type DailyRewardScreenProps = NativeStackScreenProps<
 export type DailyMissionsScreenProps = NativeStackScreenProps<
   RootStackParamList,
   'DailyMissions'
+>;
+export type DailyChallengeScreenProps = NativeStackScreenProps<
+  RootStackParamList,
+  'DailyChallenge'
+>;
+export type DailyChallengeLeaderboardScreenProps = NativeStackScreenProps<
+  RootStackParamList,
+  'DailyChallengeLeaderboard'
 >;
 export type PurchaseDiagnosticsScreenProps = NativeStackScreenProps<
   RootStackParamList,

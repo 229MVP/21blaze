@@ -1,40 +1,133 @@
-import { Suspense, lazy, useEffect } from 'react';
+import 'react-native-gesture-handler';
 
-import { recordStartupStage } from './src/startup/startupDiagnostics';
-import { StartupFallbackView } from './src/startup/StartupFallbackView';
-import { hideSplashOnce, preventSplashAutoHideOnce } from './src/startup/splashControl';
+import { useEffect, useState } from 'react';
+import { AppState, View } from 'react-native';
+import { DarkTheme, NavigationContainer } from '@react-navigation/native';
+import { Anton_400Regular, useFonts } from '@expo-google-fonts/anton';
+import {
+  RobotoCondensed_400Regular,
+  RobotoCondensed_600SemiBold,
+  RobotoCondensed_700Bold,
+} from '@expo-google-fonts/roboto-condensed';
+import * as SplashScreen from 'expo-splash-screen';
+import { StatusBar } from 'expo-status-bar';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 
-recordStartupStage('native_entry');
-preventSplashAutoHideOnce();
+import { ErrorBoundary } from './src/components/ErrorBoundary';
+import { hydrateInterstitialCaps } from './src/monetization/interstitialAdService';
+import { AppNavigator, navigationRef } from './src/navigation/AppNavigator';
+import { blazeAudio } from './src/services/audio/blazeAudio';
+import { useAuthStore } from './src/store/useAuthStore';
+import { useScoreHistoryStore } from './src/store/useScoreHistoryStore';
+import { useSettingsStore } from './src/store/useSettingsStore';
+import { colors } from './src/theme/colors';
 
-const AppShell = lazy(() => import('./AppShell'));
+SplashScreen.preventAutoHideAsync().catch(() => undefined);
 
-/**
- * Version 1.2.0 iOS black-screen hotfix — minimal root entry.
- *
- * This file intentionally imports ONLY React, the synchronous rescue view,
- * splash helpers, and in-memory diagnostics. Heavy providers, fonts,
- * navigation, ads, and stores load inside `AppShell.tsx` after the first
- * visible rescue frame (via `React.lazy` + `Suspense`).
- */
+const FONT_LOAD_TIMEOUT_MS = 4000;
+
+const navigationTheme = {
+  ...DarkTheme,
+  colors: {
+    ...DarkTheme.colors,
+    background: colors.background,
+    card: colors.backgroundSecondary,
+    primary: colors.primary,
+    text: colors.textPrimary,
+    border: colors.border,
+    notification: colors.secondary,
+  },
+};
+
 export default function App() {
+  const [fontsLoaded, fontError] = useFonts({
+    Anton_400Regular,
+    RobotoCondensed_400Regular,
+    RobotoCondensed_600SemiBold,
+    RobotoCondensed_700Bold,
+  });
+  const [timedOut, setTimedOut] = useState(false);
+
   useEffect(() => {
-    recordStartupStage('react_registered');
+    const timeoutId = setTimeout(() => {
+      setTimedOut(true);
+    }, FONT_LOAD_TIMEOUT_MS);
+
+    return () => {
+      clearTimeout(timeoutId);
+    };
   }, []);
 
-  return (
-    <Suspense
-      fallback={
-        <StartupFallbackView
-          stage="starting"
-          onFirstLayout={() => {
-            recordStartupStage('rescue_root_rendered');
-            hideSplashOnce();
-          }}
-        />
+  const fontsReady = fontsLoaded || Boolean(fontError) || timedOut;
+
+  useEffect(() => {
+    if (fontsReady) {
+      SplashScreen.hideAsync().catch(() => undefined);
+    }
+  }, [fontsReady]);
+
+  useEffect(() => {
+    void useSettingsStore.getState().hydrateSettings();
+    void useScoreHistoryStore.getState().hydrateScoreHistory();
+    void useAuthStore.getState().initializeAuth();
+    void hydrateInterstitialCaps();
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    void (async () => {
+      await useSettingsStore.getState().hydrateSettings();
+      if (cancelled) {
+        return;
       }
-    >
-      <AppShell />
-    </Suspense>
+      blazeAudio.setEnabled(
+        useSettingsStore.getState().settings.soundEffectsEnabled,
+      );
+      void blazeAudio.initialize();
+    })();
+
+    const appStateSub = AppState.addEventListener('change', (next) => {
+      blazeAudio.handleAppStateChange(next);
+    });
+
+    let previousSoundEnabled =
+      useSettingsStore.getState().settings.soundEffectsEnabled;
+    const unsubscribeSettings = useSettingsStore.subscribe((state) => {
+      const enabled = state.settings.soundEffectsEnabled;
+      if (enabled !== previousSoundEnabled) {
+        previousSoundEnabled = enabled;
+        blazeAudio.setEnabled(enabled);
+      }
+    });
+
+    return () => {
+      cancelled = true;
+      appStateSub.remove();
+      unsubscribeSettings();
+      blazeAudio.dispose();
+    };
+  }, []);
+
+  // Proceed with system-font fallbacks if custom fonts fail or stall.
+  if (!fontsReady) {
+    return <View style={{ flex: 1, backgroundColor: colors.background }} />;
+  }
+
+  return (
+    <SafeAreaProvider>
+      <ErrorBoundary
+        onReturnHome={() => {
+          if (navigationRef.isReady()) {
+            navigationRef.navigate('Home');
+          }
+        }}
+      >
+        <NavigationContainer ref={navigationRef} theme={navigationTheme}>
+          <StatusBar style="light" />
+          <AppNavigator />
+        </NavigationContainer>
+      </ErrorBoundary>
+    </SafeAreaProvider>
   );
 }

@@ -15,10 +15,7 @@ import { ScreenContainer } from '../../components/ScreenContainer';
 import { ThemedLaneEffect, type LaneEffectState } from '../../components/themes/ThemedLaneEffect';
 import { ThemedVictoryEffect } from '../../components/themes/ThemedVictoryEffect';
 import type { RootStackParamList } from '../../navigation/navigationTypes';
-import { getAssetLoadStatus } from '../../services/visualAssetLoader';
 import { selectReducedMotionEnabled, useSettingsStore } from '../../store/useSettingsStore';
-import { emberBlazeTheme } from '../../themes/emberBlazeTheme';
-import { classicTheme } from '../../themes/defaultTheme';
 import { getAllThemeDefinitions, getThemeDefinitionsByCategory } from '../../themes/themeRegistry';
 import type { ThemeCategory } from '../../themes/types';
 import { colors } from '../../theme/colors';
@@ -101,51 +98,13 @@ export function ThemePreviewScreen({ navigation }: Props) {
   const [titleThemeId, setTitleThemeId] = useState('no_title');
   const [overlayMode, setOverlayMode] = useState<'dark' | 'light'>('dark');
   const [victoryTrigger, setVictoryTrigger] = useState<'standardWin' | 'newHighScore' | null>(null);
-  const [simulateMissingAsset, setSimulateMissingAsset] = useState(false);
 
   const globalReducedMotion = useSettingsStore(selectReducedMotionEnabled);
   const setReducedMotionEnabled = useSettingsStore((state) => state.setReducedMotionEnabled);
   const allThemes = useMemo(() => getAllThemeDefinitions(), []);
 
-  // Version 1.2B — "Simulate asset failure" forces every picker back to
-  // its classic fallback, exactly what `resolvePlayerVisualTheme` does
-  // for a real player when `unavailableThemeIds` marks the equipped id's
-  // required asset as failed to load. Never mutates real ownership.
-  const effectiveCardBack = simulateMissingAsset ? classicTheme.cardBackTheme : cardBackThemeId;
-  const effectiveArena = simulateMissingAsset ? classicTheme.arenaTheme : arenaThemeId;
-  const effectiveLane = simulateMissingAsset ? classicTheme.laneTheme : laneThemeId;
-  const effectiveProfile = simulateMissingAsset ? classicTheme.profileFrameTheme : profileThemeId;
-
   const faceVariant = cardFaceThemeId === 'midnight_card_style' ? 'midnight' : 'classic';
-  const isFlameFrame = effectiveProfile === 'flame_profile_frame';
-
-  const loadEmberCollection = () => {
-    setCardBackThemeId(emberBlazeTheme.cardBackTheme);
-    setArenaThemeId(emberBlazeTheme.arenaTheme);
-    setLaneThemeId(emberBlazeTheme.laneTheme);
-    setProfileThemeId(emberBlazeTheme.profileFrameTheme);
-    setTitleThemeId(emberBlazeTheme.playerTitleTheme);
-  };
-  const loadClassicCollection = () => {
-    setCardBackThemeId(classicTheme.cardBackTheme);
-    setArenaThemeId(classicTheme.arenaTheme);
-    setLaneThemeId(classicTheme.laneTheme);
-    setProfileThemeId(classicTheme.profileFrameTheme);
-    setTitleThemeId(classicTheme.playerTitleTheme);
-  };
-
-  const emberAssetIds = useMemo(
-    () =>
-      Array.from(
-        new Set([
-          ...emberBlazeTheme.requiredAssets,
-          'classic_card_back_asset',
-          'classic_arena_home_asset',
-          'classic_arena_gameplay_asset',
-        ]),
-      ),
-    [],
-  );
+  const isFlameFrame = profileThemeId === 'flame_profile_frame';
 
   return (
     <ScreenContainer style={styles.container} intensity="normal" padded={false}>
@@ -176,14 +135,14 @@ export function ThemePreviewScreen({ navigation }: Props) {
         <Section title="CARD BACK">
           <ThemePicker category="card_back" selectedThemeId={cardBackThemeId} onSelect={setCardBackThemeId} />
           <View style={styles.row}>
-            <ThemedCardBack themeId={effectiveCardBack} width={44} height={64} />
-            <ThemedCardBack themeId={effectiveCardBack} width={118} height={166} />
+            <ThemedCardBack themeId={cardBackThemeId} width={44} height={64} />
+            <ThemedCardBack themeId={cardBackThemeId} width={118} height={166} />
           </View>
         </Section>
 
         <Section title="ARENA BACKGROUND">
           <ThemePicker category="arena" selectedThemeId={arenaThemeId} onSelect={setArenaThemeId} />
-          <ArenaPreviewPanel arenaId={effectiveArena} width={220} height={140} />
+          <ArenaPreviewPanel arenaId={arenaThemeId} width={220} height={140} />
         </Section>
 
         <Section title="LANE STATES">
@@ -202,54 +161,11 @@ export function ThemePreviewScreen({ navigation }: Props) {
                     danger={state === 'bust'}
                     cleared={state === 'exact21' || state === 'fiveCardClear'}
                   />
-                  <ThemedLaneEffect laneThemeId={effectiveLane} state={state} eventKey={state} />
+                  <ThemedLaneEffect laneThemeId={laneThemeId} state={state} eventKey={state} />
                 </View>
               </View>
             ))}
           </View>
-        </Section>
-
-        <Section title="EMBER COLLECTION (1.2B)">
-          <Text style={styles.disclosure}>
-            Ember Blaze bundles card back, arena, lane, board/victory effects, profile frame, and
-            player title into one coordinated preset. Card face has no dedicated Ember cosmetic yet
-            (see docs/V1_2B_MISSING_ASSET_REPORT.md) — it stays Classic in this preset.
-          </Text>
-          <View style={styles.row}>
-            <BlazeButton title="LOAD EMBER BLAZE" onPress={loadEmberCollection} variant="primary" />
-            <BlazeButton title="LOAD CLASSIC" onPress={loadClassicCollection} variant="outline" />
-          </View>
-          <View style={styles.comparisonRow}>
-            <View style={styles.comparisonColumn}>
-              <Text style={styles.laneLabel}>CLASSIC</Text>
-              <ThemedCardBack themeId="classic_card_back" width={60} height={86} />
-              <ProfileFrameBadge variant="default" initial="P" size={48} />
-            </View>
-            <View style={styles.comparisonColumn}>
-              <Text style={styles.laneLabel}>EMBER BLAZE</Text>
-              <ThemedCardBack themeId="ember_card_back" width={60} height={86} />
-              <ProfileFrameBadge variant="flame" initial="P" size={48} />
-            </View>
-          </View>
-        </Section>
-
-        <Section title="ASSET STATUS (DEV)">
-          <View style={styles.toggleRow}>
-            <Text style={styles.toggleLabel}>Simulate missing/failed asset (forces classic fallback)</Text>
-            <Switch
-              value={simulateMissingAsset}
-              onValueChange={setSimulateMissingAsset}
-              accessibilityLabel="Toggle missing-asset fallback simulation"
-            />
-          </View>
-          {emberAssetIds.map((id) => (
-            <View key={id} style={styles.assetStatusRow}>
-              <Text style={styles.assetStatusId} numberOfLines={1}>
-                {id}
-              </Text>
-              <Text style={styles.assetStatusValue}>{getAssetLoadStatus(id).toUpperCase()}</Text>
-            </View>
-          ))}
         </Section>
 
         <Section title="BOARD & VICTORY EFFECTS">
@@ -358,27 +274,6 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   laneWrap: { height: 120 },
-  comparisonRow: { flexDirection: 'row', gap: spacing.lg, justifyContent: 'center' },
-  comparisonColumn: { alignItems: 'center', gap: spacing.xs },
-  assetStatusRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: colors.blazeSubtle,
-    paddingVertical: 4,
-  },
-  assetStatusId: {
-    ...typography.body,
-    fontSize: 11,
-    color: colors.textSecondary,
-    flexShrink: 1,
-    marginRight: spacing.sm,
-  },
-  assetStatusValue: {
-    ...typography.label,
-    fontSize: 10,
-    color: colors.gold,
-  },
   victoryPreview: {
     height: 100,
     borderRadius: radius.md,

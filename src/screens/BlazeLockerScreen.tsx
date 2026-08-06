@@ -5,7 +5,6 @@ import { RewardedCoinButton } from '../components/ads/RewardedCoinButton';
 import { BlazeButton } from '../components/buttons/BlazeButton';
 import { CosmeticPreview } from '../components/cosmetics/CosmeticPreview';
 import { CosmeticUnlockOverlay } from '../components/cosmetics/CosmeticUnlockOverlay';
-import { EmberCollectionPreview } from '../components/cosmetics/EmberCollectionPreview';
 import { ConfirmationModal } from '../components/modals/ConfirmationModal';
 import { ScreenHeader } from '../components/Navigation/ScreenHeader';
 import { ScreenContainer } from '../components/ScreenContainer';
@@ -19,7 +18,6 @@ import {
   type LockerCatalogEntry,
   type LockerTab,
 } from '../cosmetics/lockerCatalog';
-import { usePreloadLockerPreviewAssets } from '../cosmetics/useLockerCosmetics';
 import { useInterstitialScreenTracking } from '../hooks/useInterstitialScreenTracking';
 import { trackEvent } from '../monetization/analytics';
 import type { BlazeLockerScreenProps } from '../navigation/navigationTypes';
@@ -95,7 +93,6 @@ export function BlazeLockerScreen({ navigation }: BlazeLockerScreenProps) {
   const [tab, setTab] = useState<LockerTab>('FEATURED');
   const [confirmTarget, setConfirmTarget] = useState<LockerCatalogEntry | null>(null);
   useInterstitialScreenTracking('cosmeticUnlock');
-  usePreloadLockerPreviewAssets();
 
   useEffect(() => {
     trackEvent('blaze_locker_viewed');
@@ -152,7 +149,6 @@ export function BlazeLockerScreen({ navigation }: BlazeLockerScreenProps) {
   const onPreview = (entry: LockerCatalogEntry) => {
     selectPreview(entry.id);
     trackEvent('cosmetic_previewed', { cosmeticId: entry.id, cosmeticType: entry.cosmeticType });
-    trackEvent('cosmetic_preview_started', { cosmeticId: entry.id, cosmeticType: entry.cosmeticType });
   };
 
   const onCardButtonPress = (entry: LockerCatalogEntry) => {
@@ -214,8 +210,6 @@ export function BlazeLockerScreen({ navigation }: BlazeLockerScreenProps) {
         ) : null}
 
         {hasUnaffordableItem ? <RewardedCoinButton placement="locker" /> : null}
-
-        {tab === 'FEATURED' ? <EmberCollectionPreview onSelectTab={setTab} /> : null}
 
         <ScrollView
           horizontal

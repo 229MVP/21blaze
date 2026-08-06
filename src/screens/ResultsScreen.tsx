@@ -50,6 +50,7 @@ import {
   useScoreHistoryStore,
 } from '../store/useScoreHistoryStore';
 import { useGameStore } from '../store/useGameStore';
+import { useDailyChallengeStore } from '../store/useDailyChallengeStore';
 import { useProgressionStore } from '../store/useProgressionStore';
 import { useWalletStore } from '../store/useWalletStore';
 import {
@@ -102,6 +103,19 @@ export function ResultsScreen({ navigation, route }: ResultsScreenProps) {
   const officialResult = useGameStore((state) => state.officialResult);
   const submitVerifiedMatchIfNeeded = useGameStore(
     (state) => state.submitVerifiedMatchIfNeeded,
+  );
+  const gameMode = useGameStore((state) => state.gameMode);
+  const dailyChallengeSession = useGameStore((state) => state.dailyChallengeSession);
+  const clearDailyChallengeMode = useGameStore((state) => state.clearDailyChallengeMode);
+  const challengeVerifiedResult = useDailyChallengeStore((state) => state.verifiedResult);
+  const challengeVerificationStatus = useDailyChallengeStore(
+    (state) => state.verificationStatus,
+  );
+  const challengeRejectionReason = useDailyChallengeStore(
+    (state) => state.rejectionReason,
+  );
+  const rankedAttemptScore = useDailyChallengeStore(
+    (state) => state.rankedAttempt?.verifiedScore,
   );
 
   const routeScore = resolveParam(route.params?.score);
@@ -174,6 +188,14 @@ export function ResultsScreen({ navigation, route }: ResultsScreenProps) {
   useEffect(() => {
     void submitVerifiedMatchIfNeeded();
   }, [submitVerifiedMatchIfNeeded]);
+
+  useEffect(() => {
+    if (gameMode === 'dailyChallenge') {
+      trackEvent('daily_challenge_result_viewed', {
+        attemptType: dailyChallengeSession?.attemptType ?? 'unknown',
+      });
+    }
+  }, [dailyChallengeSession?.attemptType, gameMode]);
 
   useEffect(() => {
     // Version 1.1A supersedes the flat 1.0 solo-coin formula with its own
@@ -273,6 +295,73 @@ export function ResultsScreen({ navigation, route }: ResultsScreenProps) {
         : `LOCAL RANK #${localRank}`;
 
   const verification = useMemo(() => {
+    if (gameMode === 'dailyChallenge') {
+      if (dailyChallengeSession?.attemptType === 'practice') {
+        return {
+          label: 'PRACTICE RESULT',
+          detail: 'Practice never enters the daily leaderboard.',
+          tone: 'local' as const,
+        };
+      }
+
+      if (challengeVerificationStatus === 'verified' && challengeVerifiedResult) {
+        const rankLine =
+          challengeVerifiedResult.rank != null
+            ? `Daily rank #${challengeVerifiedResult.rank}`
+            : 'Verified for today’s challenge';
+        const percentileLine =
+          challengeVerifiedResult.percentile != null
+            ? `Top ${challengeVerifiedResult.percentile}%`
+            : null;
+        return {
+          label: 'DAILY CHALLENGE VERIFIED',
+          detail: percentileLine ? `${rankLine} · ${percentileLine}` : rankLine,
+          tone: 'ok' as const,
+        };
+      }
+
+      if (
+        challengeVerificationStatus === 'submitting' ||
+        submissionStatus === 'submitting' ||
+        submissionStatus === 'idle'
+      ) {
+        return {
+          label: 'VERIFYING RESULT…',
+          detail: 'Checking your ranked attempt with the server…',
+          tone: 'pending' as const,
+        };
+      }
+
+      if (
+        challengeVerificationStatus === 'rejected' ||
+        submissionStatus === 'rejected'
+      ) {
+        return {
+          label: 'RANKED ATTEMPT REJECTED',
+          detail:
+            challengeRejectionReason ?? 'Verification failed. No leaderboard score was stored.',
+          tone: 'warn' as const,
+        };
+      }
+
+      if (
+        challengeVerificationStatus === 'failed' ||
+        submissionStatus === 'failed'
+      ) {
+        return {
+          label: 'VERIFICATION FAILED',
+          detail: challengeRejectionReason ?? 'Connection lost. Retry when online.',
+          tone: 'warn' as const,
+        };
+      }
+
+      return {
+        label: 'DAILY CHALLENGE RESULT',
+        detail: 'Awaiting server confirmation.',
+        tone: 'pending' as const,
+      };
+    }
+
     if (eligibility === 'localOnly') {
       return {
         label: 'LOCAL SCORE',
@@ -313,7 +402,15 @@ export function ResultsScreen({ navigation, route }: ResultsScreenProps) {
       detail: 'Saved locally. Online rewards were not granted.',
       tone: 'local' as const,
     };
-  }, [eligibility, submissionStatus]);
+  }, [
+    challengeRejectionReason,
+    challengeVerificationStatus,
+    challengeVerifiedResult,
+    dailyChallengeSession?.attemptType,
+    eligibility,
+    gameMode,
+    submissionStatus,
+  ]);
 
   const xpSummary = useMemo(() => {
     if (!progressionEnabled) {
@@ -420,11 +517,19 @@ export function ResultsScreen({ navigation, route }: ResultsScreenProps) {
   );
 
   const playAgain = () => {
+    if (gameMode === 'dailyChallenge') {
+      clearDailyChallengeMode();
+      navigation.navigate('DailyChallenge');
+      return;
+    }
     restartGame();
     navigation.replace('Game');
   };
 
   const returnHome = () => {
+    if (gameMode === 'dailyChallenge') {
+      clearDailyChallengeMode();
+    }
     navigation.reset({
       index: 0,
       routes: [{ name: 'Home', params: { fromSoloComplete: true } }],
@@ -730,25 +835,62 @@ export function ResultsScreen({ navigation, route }: ResultsScreenProps) {
           ) : null}
 
           <View style={styles.actions}>
-            <BlazeButton
-              label="PLAY AGAIN"
-              onPress={playAgain}
-              accessibilityLabel="Play again"
-            />
-            <BlazeButton
-              label={
-                submissionStatus === 'verified'
-                  ? 'VIEW GLOBAL RANKING'
-                  : 'VIEW HIGH SCORES'
-              }
-              variant="secondary"
-              onPress={() => navigation.navigate('HighScores')}
-              accessibilityLabel={
-                submissionStatus === 'verified'
-                  ? 'View global ranking'
-                  : 'View high scores'
-              }
-            />
+            {gameMode === 'dailyChallenge' &&
+            dailyChallengeSession?.attemptType === 'practice' ? (
+              <>
+                {rankedAttemptScore != null ? (
+                  <Text style={styles.challengeCompare}>
+                    Your ranked score today: {rankedAttemptScore}
+                  </Text>
+                ) : null}
+                <BlazeButton
+                  label="TRY PRACTICE AGAIN"
+                  onPress={playAgain}
+                  accessibilityLabel="Try practice again"
+                />
+                <BlazeButton
+                  label="RETURN TO CHALLENGE"
+                  variant="secondary"
+                  onPress={playAgain}
+                />
+              </>
+            ) : gameMode === 'dailyChallenge' ? (
+              <>
+                <BlazeButton
+                  label="VIEW LEADERBOARD"
+                  onPress={() => navigation.navigate('DailyChallengeLeaderboard')}
+                  disabled={submissionStatus !== 'verified'}
+                  accessibilityLabel="View daily challenge leaderboard"
+                />
+                <BlazeButton
+                  label="RETURN TO CHALLENGE"
+                  variant="secondary"
+                  onPress={playAgain}
+                />
+              </>
+            ) : (
+              <>
+                <BlazeButton
+                  label="PLAY AGAIN"
+                  onPress={playAgain}
+                  accessibilityLabel="Play again"
+                />
+                <BlazeButton
+                  label={
+                    submissionStatus === 'verified'
+                      ? 'VIEW GLOBAL RANKING'
+                      : 'VIEW HIGH SCORES'
+                  }
+                  variant="secondary"
+                  onPress={() => navigation.navigate('HighScores')}
+                  accessibilityLabel={
+                    submissionStatus === 'verified'
+                      ? 'View global ranking'
+                      : 'View high scores'
+                  }
+                />
+              </>
+            )}
             <BlazeButton
               label="RETURN HOME"
               variant="ghost"
@@ -929,6 +1071,12 @@ const styles = StyleSheet.create({
     width: '100%',
     gap: 10,
     marginTop: 4,
+  },
+  challengeCompare: {
+    color: kitColors.text.secondary,
+    textAlign: 'center',
+    fontSize: 14,
+    marginBottom: 4,
   },
   pressed: {
     opacity: 0.88,

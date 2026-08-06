@@ -54,3 +54,6 @@ verify_jwt = true
 
 [functions.daily-missions]
 verify_jwt = true
+
+[functions.daily-challenge]
+verify_jwt = true

@@ -26,6 +26,8 @@ import { CountdownFireRing } from '../game/CountdownFireRing';
 type GameStartCountdownProps = {
   value: number;
   visible: boolean;
+  title?: string;
+  subtitle?: string;
 };
 
 /** Fixed ring size — centering uses flex layout inside the board wrapper, not screen width. */
@@ -36,7 +38,12 @@ const RING_SIZE = 280;
  * Reacts to store-driven `value` / `visible`; does not own match timing.
  * Must render inside the four-lane board wrapper so overlay center matches the board.
  */
-export function GameStartCountdown({ value, visible }: GameStartCountdownProps) {
+export function GameStartCountdown({
+  value,
+  visible,
+  title = 'GET READY!',
+  subtitle,
+}: GameStartCountdownProps) {
   const reduceMotion = useReducedMotionSetting();
   const opacity = useSharedValue(0);
   const scale = useSharedValue(0.75);
@@ -125,8 +132,9 @@ export function GameStartCountdown({ value, visible }: GameStartCountdownProps) 
 
       <View style={styles.countdownContent}>
         <Text style={styles.getReady} accessibilityRole="header">
-          GET READY!
+          {title}
         </Text>
+        {subtitle ? <Text style={styles.subtitle}>{subtitle}</Text> : null}
 
         <View style={styles.countdownCenter}>
           <View style={styles.rotatingRing}>
@@ -197,6 +205,12 @@ const styles = StyleSheet.create({
     textShadowColor: 'rgba(255,101,0,0.45)',
     textShadowOffset: { width: 0, height: 0 },
     textShadowRadius: 10,
+  },
+  subtitle: {
+    color: kitColors.text.secondary,
+    fontSize: 14,
+    letterSpacing: 1,
+    textAlign: 'center',
   },
   countdownCenter: {
     width: RING_SIZE,

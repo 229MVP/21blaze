@@ -166,44 +166,6 @@ export function isThemePreviewDevEnabled(): boolean {
   return isDev && envFlag('EXPO_PUBLIC_ENABLE_THEME_PREVIEW_DEV', false);
 }
 
-/** Version 1.2.0 rescue TestFlight profile — disables risky startup native init. */
-export function isRescueStartupProfile(): boolean {
-  return envFlag('EXPO_PUBLIC_RESCUE_STARTUP_PROFILE', false);
-}
-
-/** Whether expo-updates OTA is enabled for this binary (diagnostics only). */
-export function isExpoUpdatesEnabled(): boolean {
-  return envFlag('EXPO_PUBLIC_EXPO_UPDATES_ENABLED', false);
-}
-
-export function isStartupAdsDisabled(): boolean {
-  return (
-    isRescueStartupProfile() ||
-    envFlag('EXPO_PUBLIC_DISABLE_STARTUP_ADS', false)
-  );
-}
-
-export function isStartupUmpDisabled(): boolean {
-  return (
-    isRescueStartupProfile() ||
-    envFlag('EXPO_PUBLIC_DISABLE_STARTUP_UMP', false)
-  );
-}
-
-export function isStartupNotificationsDisabled(): boolean {
-  return (
-    isRescueStartupProfile() ||
-    envFlag('EXPO_PUBLIC_DISABLE_STARTUP_NOTIFICATIONS', false)
-  );
-}
-
-export function isStartupVisualPreloadDisabled(): boolean {
-  return (
-    isRescueStartupProfile() ||
-    envFlag('EXPO_PUBLIC_DISABLE_STARTUP_VISUAL_PRELOAD', false)
-  );
-}
-
 /** Board-effect overlay (card_placed/exact_21/five_card_clear/bust/etc. visual queue). */
 export function isBoardEffectsEnabled(): boolean {
   return isV1_2VisualSystemEnabled() && envFlag('EXPO_PUBLIC_ENABLE_BOARD_EFFECTS', false);
@@ -212,4 +174,33 @@ export function isBoardEffectsEnabled(): boolean {
 /** Victory-effect overlay (standard win / new high score celebration). */
 export function isVictoryEffectsEnabled(): boolean {
   return isV1_2VisualSystemEnabled() && envFlag('EXPO_PUBLIC_ENABLE_VICTORY_EFFECTS', false);
+}
+
+/**
+ * Version 1.3A "Daily Challenge" master switch. When false, Solo Play
+ * remains fully available and no challenge navigation or requests occur.
+ */
+export function isDailyChallengeEnabled(): boolean {
+  return envFlag('EXPO_PUBLIC_ENABLE_DAILY_CHALLENGE', false);
+}
+
+export function isDailyChallengeRankedEnabled(): boolean {
+  return (
+    isDailyChallengeEnabled() &&
+    envFlag('EXPO_PUBLIC_ENABLE_DAILY_CHALLENGE_RANKED', false)
+  );
+}
+
+export function isDailyChallengePracticeEnabled(): boolean {
+  return (
+    isDailyChallengeEnabled() &&
+    envFlag('EXPO_PUBLIC_ENABLE_DAILY_CHALLENGE_PRACTICE', false)
+  );
+}
+
+export function isDailyLeaderboardEnabled(): boolean {
+  return (
+    isDailyChallengeEnabled() &&
+    envFlag('EXPO_PUBLIC_ENABLE_DAILY_LEADERBOARD', false)
+  );
 }

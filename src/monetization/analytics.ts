@@ -81,35 +81,22 @@ export const V1_1C_ANALYTICS_EVENTS = [
 
 export type V1_1CAnalyticsEvent = (typeof V1_1C_ANALYTICS_EVENTS)[number];
 
-/** Version 1.2 "Visual Theme System" (1.2A-1.2C) — presentation-only
- * events. Never log access tokens, raw user ids, wallet rows, full
- * card/move histories, asset binary data, ad callback payloads, or
- * secrets. `themeId`/`assetId`/`eventType` values are safe (they are
- * public catalog/registry ids, never derived from player-identifying
- * data). */
-export const V1_2_VISUAL_ANALYTICS_EVENTS = [
-  'theme_selected',
-  'theme_asset_load_failed',
-  'visual_fallback_used',
-  'cosmetic_preview_started',
-  'board_effect_displayed',
-  'board_effect_suppressed_reduced_motion',
-  'version_1_2_whats_new_viewed',
+export const DAILY_CHALLENGE_ANALYTICS_EVENTS = [
+  'daily_challenge_viewed',
+  'daily_challenge_ranked_started',
+  'daily_challenge_practice_started',
+  'daily_challenge_first_move',
+  'daily_challenge_completed',
+  'daily_challenge_abandoned',
+  'daily_challenge_verification_started',
+  'daily_challenge_verified',
+  'daily_challenge_rejected',
+  'daily_challenge_result_viewed',
+  'daily_challenge_leaderboard_opened',
 ] as const;
 
-export type V1_2VisualAnalyticsEvent = (typeof V1_2_VISUAL_ANALYTICS_EVENTS)[number];
-
-/** Version 1.2.0 startup hotfix — sanitized startup-health events. Never
- * log access tokens, user ids, wallet/Supabase records, ad identifiers,
- * raw error messages, or stack traces — only short, safe category
- * strings (e.g. an `Error.name`) and stage names. */
-export const STARTUP_ANALYTICS_EVENTS = [
-  'startup_watchdog_triggered',
-  'startup_error_boundary_triggered',
-  'startup_classic_override_activated',
-] as const;
-
-export type StartupAnalyticsEvent = (typeof STARTUP_ANALYTICS_EVENTS)[number];
+export type DailyChallengeAnalyticsEvent =
+  (typeof DAILY_CHALLENGE_ANALYTICS_EVENTS)[number];
 
 const recent: Array<{ name: string; at: number }> = [];
 

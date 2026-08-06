@@ -33,6 +33,10 @@
         "EXPO_PUBLIC_ENABLE_THEME_PREVIEW_DEV": "false",
         "EXPO_PUBLIC_ENABLE_BOARD_EFFECTS": "false",
         "EXPO_PUBLIC_ENABLE_VICTORY_EFFECTS": "false",
+        "EXPO_PUBLIC_ENABLE_DAILY_CHALLENGE": "false",
+        "EXPO_PUBLIC_ENABLE_DAILY_CHALLENGE_RANKED": "false",
+        "EXPO_PUBLIC_ENABLE_DAILY_CHALLENGE_PRACTICE": "false",
+        "EXPO_PUBLIC_ENABLE_DAILY_LEADERBOARD": "false",
         "EXPO_PUBLIC_ENABLE_PURCHASE_DIAGNOSTICS": "true",
         "EXPO_PUBLIC_ADMOB_USE_TEST_ADS": "true"
       }
@@ -65,6 +69,10 @@
         "EXPO_PUBLIC_ENABLE_THEME_PREVIEW_DEV": "false",
         "EXPO_PUBLIC_ENABLE_BOARD_EFFECTS": "false",
         "EXPO_PUBLIC_ENABLE_VICTORY_EFFECTS": "false",
+        "EXPO_PUBLIC_ENABLE_DAILY_CHALLENGE": "false",
+        "EXPO_PUBLIC_ENABLE_DAILY_CHALLENGE_RANKED": "false",
+        "EXPO_PUBLIC_ENABLE_DAILY_CHALLENGE_PRACTICE": "false",
+        "EXPO_PUBLIC_ENABLE_DAILY_LEADERBOARD": "false",
         "EXPO_PUBLIC_ENABLE_PURCHASE_DIAGNOSTICS": "true",
         "EXPO_PUBLIC_ADMOB_USE_TEST_ADS": "true"
       }
@@ -87,51 +95,18 @@
         "EXPO_PUBLIC_ENABLE_INTERSTITIAL_ADS": "true",
         "EXPO_PUBLIC_ENABLE_STORE_PURCHASES": "false",
         "EXPO_PUBLIC_ENABLE_PROGRESSION_BETA": "false",
-        "EXPO_PUBLIC_ENABLE_V1_1_REWARDS": "true",
-        "EXPO_PUBLIC_ENABLE_DAILY_REWARDS": "true",
-        "EXPO_PUBLIC_ENABLE_DAILY_MISSIONS": "true",
-        "EXPO_PUBLIC_ENABLE_V1_1_LOCKER": "true",
+        "EXPO_PUBLIC_ENABLE_V1_1_REWARDS": "false",
+        "EXPO_PUBLIC_ENABLE_DAILY_REWARDS": "false",
+        "EXPO_PUBLIC_ENABLE_DAILY_MISSIONS": "false",
+        "EXPO_PUBLIC_ENABLE_V1_1_LOCKER": "false",
         "EXPO_PUBLIC_ENABLE_V1_2_VISUAL_SYSTEM": "false",
         "EXPO_PUBLIC_ENABLE_THEME_PREVIEW_DEV": "false",
         "EXPO_PUBLIC_ENABLE_BOARD_EFFECTS": "false",
         "EXPO_PUBLIC_ENABLE_VICTORY_EFFECTS": "false",
-        "EXPO_PUBLIC_ENABLE_PURCHASE_DIAGNOSTICS": "false",
-        "EXPO_PUBLIC_ADMOB_USE_TEST_ADS": "true"
-      }
-    },
-    "testflight-rescue": {
-      "distribution": "store",
-      "environment": "preview",
-      "autoIncrement": true,
-      "ios": {
-        "simulator": false
-      },
-      "env": {
-        "EAS_BUILD_PROFILE": "testflight-rescue",
-        "EXPO_PUBLIC_APP_ENV": "preview",
-        "EXPO_PUBLIC_RESCUE_STARTUP_PROFILE": "true",
-        "EXPO_PUBLIC_EXPO_UPDATES_ENABLED": "false",
-        "EXPO_PUBLIC_ENABLE_LIVE_DUEL": "false",
-        "EXPO_PUBLIC_ENABLE_QUICK_MATCH": "false",
-        "EXPO_PUBLIC_ENABLE_RANKED_BETA": "false",
-        "EXPO_PUBLIC_ENABLE_MONETIZATION_BETA": "true",
-        "EXPO_PUBLIC_ENABLE_REWARDED_ADS": "false",
-        "EXPO_PUBLIC_ENABLE_REWARDED_CURRENCY": "false",
-        "EXPO_PUBLIC_ENABLE_INTERSTITIAL_ADS": "false",
-        "EXPO_PUBLIC_ENABLE_STORE_PURCHASES": "false",
-        "EXPO_PUBLIC_DISABLE_STARTUP_ADS": "true",
-        "EXPO_PUBLIC_DISABLE_STARTUP_UMP": "true",
-        "EXPO_PUBLIC_DISABLE_STARTUP_NOTIFICATIONS": "true",
-        "EXPO_PUBLIC_DISABLE_STARTUP_VISUAL_PRELOAD": "true",
-        "EXPO_PUBLIC_ENABLE_PROGRESSION_BETA": "false",
-        "EXPO_PUBLIC_ENABLE_V1_1_REWARDS": "true",
-        "EXPO_PUBLIC_ENABLE_DAILY_REWARDS": "true",
-        "EXPO_PUBLIC_ENABLE_DAILY_MISSIONS": "true",
-        "EXPO_PUBLIC_ENABLE_V1_1_LOCKER": "true",
-        "EXPO_PUBLIC_ENABLE_V1_2_VISUAL_SYSTEM": "false",
-        "EXPO_PUBLIC_ENABLE_THEME_PREVIEW_DEV": "false",
-        "EXPO_PUBLIC_ENABLE_BOARD_EFFECTS": "false",
-        "EXPO_PUBLIC_ENABLE_VICTORY_EFFECTS": "false",
+        "EXPO_PUBLIC_ENABLE_DAILY_CHALLENGE": "false",
+        "EXPO_PUBLIC_ENABLE_DAILY_CHALLENGE_RANKED": "false",
+        "EXPO_PUBLIC_ENABLE_DAILY_CHALLENGE_PRACTICE": "false",
+        "EXPO_PUBLIC_ENABLE_DAILY_LEADERBOARD": "false",
         "EXPO_PUBLIC_ENABLE_PURCHASE_DIAGNOSTICS": "false",
         "EXPO_PUBLIC_ADMOB_USE_TEST_ADS": "true"
       }
@@ -157,37 +132,24 @@
         "EXPO_PUBLIC_ENABLE_INTERSTITIAL_ADS": "true",
         "EXPO_PUBLIC_ENABLE_STORE_PURCHASES": "false",
         "EXPO_PUBLIC_ENABLE_PROGRESSION_BETA": "false",
-        "EXPO_PUBLIC_ENABLE_V1_1_REWARDS": "true",
-        "EXPO_PUBLIC_ENABLE_DAILY_REWARDS": "true",
-        "EXPO_PUBLIC_ENABLE_DAILY_MISSIONS": "true",
-        "EXPO_PUBLIC_ENABLE_V1_1_LOCKER": "true",
-        "EXPO_PUBLIC_ENABLE_V1_2_VISUAL_SYSTEM": "true",
+        "EXPO_PUBLIC_ENABLE_V1_1_REWARDS": "false",
+        "EXPO_PUBLIC_ENABLE_DAILY_REWARDS": "false",
+        "EXPO_PUBLIC_ENABLE_DAILY_MISSIONS": "false",
+        "EXPO_PUBLIC_ENABLE_V1_1_LOCKER": "false",
+        "EXPO_PUBLIC_ENABLE_V1_2_VISUAL_SYSTEM": "false",
         "EXPO_PUBLIC_ENABLE_THEME_PREVIEW_DEV": "false",
-        "EXPO_PUBLIC_ENABLE_BOARD_EFFECTS": "true",
-        "EXPO_PUBLIC_ENABLE_VICTORY_EFFECTS": "true",
+        "EXPO_PUBLIC_ENABLE_BOARD_EFFECTS": "false",
+        "EXPO_PUBLIC_ENABLE_VICTORY_EFFECTS": "false",
+        "EXPO_PUBLIC_ENABLE_DAILY_CHALLENGE": "false",
+        "EXPO_PUBLIC_ENABLE_DAILY_CHALLENGE_RANKED": "false",
+        "EXPO_PUBLIC_ENABLE_DAILY_CHALLENGE_PRACTICE": "false",
+        "EXPO_PUBLIC_ENABLE_DAILY_LEADERBOARD": "false",
         "EXPO_PUBLIC_ENABLE_PURCHASE_DIAGNOSTICS": "false",
         "EXPO_PUBLIC_ADMOB_USE_TEST_ADS": "false"
       }
     }
   },
   "submit": {
-    "production": {
-      "ios": {
-        "ascAppId": "6797273226",
-        "appleTeamId": "9C5LBWL2HS"
-      }
-    },
-    "testflight": {
-      "ios": {
-        "ascAppId": "6797273226",
-        "appleTeamId": "9C5LBWL2HS"
-      }
-    },
-    "testflight-rescue": {
-      "ios": {
-        "ascAppId": "6797273226",
-        "appleTeamId": "9C5LBWL2HS"
-      }
-    }
+    "production": {}
   }
 }

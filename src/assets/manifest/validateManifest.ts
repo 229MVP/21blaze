@@ -33,31 +33,3 @@ export function findMissingFallbackReferences(
   }
   return missing;
 }
-
-export type MissingThemeAssetReference = { themeId: string; category: string; missingAssetId: string };
-
-/**
- * Version 1.2B — shared by `scripts/validate-visual-assets.mjs` and the
- * unit tests: an enabled theme definition whose `requiredAssets` lists an
- * id that does not exist in the manifest at all (a broken reference the
- * asset validator must fail loudly on, per the Version 1.2C release
- * gate — never silently ignored).
- */
-export function findThemesRequiringMissingAssets(
-  themeDefs: readonly { themeId: string; category: string; isEnabled: boolean; requiredAssets: readonly string[] }[],
-  assetEntries: readonly Pick<VisualAssetMetadata, 'id'>[],
-): MissingThemeAssetReference[] {
-  const idSet = new Set(assetEntries.map((entry) => entry.id));
-  const missing: MissingThemeAssetReference[] = [];
-  for (const def of themeDefs) {
-    if (!def.isEnabled) {
-      continue;
-    }
-    for (const assetId of def.requiredAssets) {
-      if (!idSet.has(assetId)) {
-        missing.push({ themeId: def.themeId, category: def.category, missingAssetId: assetId });
-      }
-    }
-  }
-  return missing;
-}

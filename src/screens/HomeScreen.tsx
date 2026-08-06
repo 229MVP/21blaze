@@ -22,13 +22,13 @@ import { XpProgressBar } from '../components/Progression/XpProgressBar';
 import { SvgRoot as Svg } from '../components/svg/SvgRoot';
 import { BlazeButton } from '../components/ui/BlazeButton';
 import {
+  isDailyChallengeEnabled,
   isDailyMissionsEnabled,
   isDailyRewardsEnabled,
   isLiveDuelEnabled,
   isMonetizationBetaEnabled,
   isProgressionBetaEnabled,
   isRankedBetaEnabled,
-  isRescueStartupProfile,
   isStorePurchasesEnabled,
   isV1_1LockerEnabled,
   isV1_1RewardsEnabled,
@@ -43,7 +43,6 @@ import {
 import { useInterstitialScreenTracking } from '../hooks/useInterstitialScreenTracking';
 import { APP_VERSION } from '../game/constants';
 import type { HomeScreenProps } from '../navigation/navigationTypes';
-import { isBasicStartupModeActive } from '../startup/basicStartupMode';
 import {
   maybeShowInterstitialAfterSoloHome,
   recordSoloMatchCompletedForInterstitial,
@@ -60,6 +59,7 @@ import { useProgressionStore } from '../store/useProgressionStore';
 import { useScoreHistoryStore } from '../store/useScoreHistoryStore';
 import { useSettingsStore } from '../store/useSettingsStore';
 import { useWalletStore } from '../store/useWalletStore';
+import { useDailyChallengeStore } from '../store/useDailyChallengeStore';
 import { hasSeenWhatsNew, markWhatsNewSeen } from '../services/whatsNewService';
 import { colors as kitColors, spacing as kitSpacing } from '../theme/uiKit';
 
@@ -148,6 +148,9 @@ export function HomeScreen({ navigation, route }: HomeScreenProps) {
   const acknowledgeLevelUp = useProgressionStore(
     (state) => state.acknowledgeLevelUp,
   );
+  const dailyChallengeBadge = useDailyChallengeStore((state) => state.shouldShowBadge());
+  const hydrateDailyChallenge = useDailyChallengeStore((state) => state.hydrateStatus);
+  const dailyChallengeEnabled = isDailyChallengeEnabled();
 
   const [nameEditorOpen, setNameEditorOpen] = useState(false);
   const [whatsNewVisible, setWhatsNewVisible] = useState(false);
@@ -162,28 +165,25 @@ export function HomeScreen({ navigation, route }: HomeScreenProps) {
   useEffect(() => {
     let isMounted = true;
 
-    // Version 1.2.0 startup hotfix — these are independent optional
-    // refreshes (score, settings, history, wallet, cosmetics, purchases,
-    // progression); none of them gates what HomeScreen renders (every
-    // value read above already has a safe default via `??`/store
-    // defaults). `Promise.allSettled` means one hanging/rejecting task
-    // (e.g. an offline wallet refresh) can never prevent the others from
-    // completing, and nothing here is awaited by any render path.
-    void Promise.allSettled([
-      loadHighScore().then((savedScore) => {
-        if (isMounted) {
-          setHighScore(savedScore);
-        }
-      }),
-      hydrateSettings(),
-      hydrateScoreHistory(),
-      hydrateWallet(),
-      hydrateCosmetics(),
-      isBasicStartupModeActive() || isRescueStartupProfile()
-        ? Promise.resolve()
-        : initializePurchases(),
-      progressionEnabled || v1_1RewardsOn ? hydrateProgression() : Promise.resolve(),
-    ]);
+    const hydrate = async () => {
+      const savedScore = await loadHighScore();
+      await hydrateSettings();
+      await hydrateScoreHistory();
+      await hydrateWallet();
+      await hydrateCosmetics();
+      await initializePurchases();
+      if (progressionEnabled || v1_1RewardsOn) {
+        void hydrateProgression();
+      }
+      if (dailyChallengeEnabled) {
+        void hydrateDailyChallenge();
+      }
+      if (isMounted) {
+        setHighScore(savedScore);
+      }
+    };
+
+    void hydrate();
 
     return () => {
       isMounted = false;
@@ -196,6 +196,8 @@ export function HomeScreen({ navigation, route }: HomeScreenProps) {
     hydrateWallet,
     initializePurchases,
     progressionEnabled,
+    dailyChallengeEnabled,
+    hydrateDailyChallenge,
     setHighScore,
     v1_1RewardsOn,
   ]);
@@ -442,6 +444,19 @@ export function HomeScreen({ navigation, route }: HomeScreenProps) {
               onPress={() => navigation.navigate('Game')}
               accessibilityLabel="Solo play 21 Blaze"
             />
+            {dailyChallengeEnabled ? (
+              <View style={styles.lockerButtonWrap}>
+                <BlazeButton
+                  label="DAILY CHALLENGE"
+                  variant="secondary"
+                  onPress={() => navigation.navigate('DailyChallenge')}
+                  accessibilityLabel="Open Daily Challenge"
+                />
+                {dailyChallengeBadge ? (
+                  <View style={styles.lockerBadge} accessibilityElementsHidden />
+                ) : null}
+              </View>
+            ) : null}
             {v1_1LockerOn ? (
               <View style={styles.lockerButtonWrap}>
                 <BlazeButton
