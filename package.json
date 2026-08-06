@@ -58,6 +58,7 @@
     "test:v1.1c-ads": "npx tsx src/monetization/v1_1cAdsSelfTest.ts",
     "test:v1.2a-visual-theme": "npx tsx src/themes/v1_2aVisualThemeSelfTest.ts",
     "test:daily-challenge": "npx tsx src/challenge/v1_3aDailyChallengeSelfTest.ts",
+    "test:leaderboards": "npx tsx src/leaderboards/v1_3bLeaderboardSelfTest.ts",
     "validate:visual-assets": "npx tsx scripts/validate-visual-assets.mjs"
   },
   "private": true

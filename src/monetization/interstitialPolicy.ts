@@ -22,6 +22,7 @@ export type InterstitialScreen =
   | 'liveDuel'
   | 'ranked'
   | 'dailyChallenge'
+  | 'leaderboard'
   | 'adShowing'
   | 'other';
 
@@ -75,6 +76,7 @@ const NEVER_DURING_SCREENS: ReadonlySet<InterstitialScreen> = new Set([
   'liveDuel',
   'ranked',
   'dailyChallenge',
+  'leaderboard',
   'adShowing',
 ]);
 

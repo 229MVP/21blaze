@@ -15,6 +15,7 @@ import {
   isDailyChallengePracticeEnabled,
   isDailyChallengeRankedEnabled,
   isDailyLeaderboardEnabled,
+  isWeeklyLeaderboardEnabled,
 } from '../config/featureFlags';
 import { getUtcChallengeDate } from '../game/challenge/createDailyChallenge';
 import type { DailyChallengeScreenProps } from '../navigation/navigationTypes';
@@ -22,6 +23,7 @@ import { trackEvent } from '../monetization/analytics';
 import { useAuthStore } from '../store/useAuthStore';
 import { useDailyChallengeStore } from '../store/useDailyChallengeStore';
 import { useGameStore } from '../store/useGameStore';
+import { useLeaderboardStore } from '../store/useLeaderboardStore';
 import {
   colors as kitColors,
   spacing as kitSpacing,
@@ -114,7 +116,21 @@ export function DailyChallengeScreen({ navigation }: DailyChallengeScreenProps) 
   const rankedEnabled = isDailyChallengeRankedEnabled();
   const practiceEnabled = isDailyChallengePracticeEnabled();
   const leaderboardEnabled = isDailyLeaderboardEnabled();
+  const weeklyLeaderboardEnabled = isWeeklyLeaderboardEnabled();
+  const dailyParticipantCount = useLeaderboardStore((state) => state.dailyParticipantCount);
+  const loadDailyLeaderboard = useLeaderboardStore((state) => state.loadDailyLeaderboard);
+  const leaderboardDailyRank = useLeaderboardStore((state) => state.currentDailyRank);
+  const leaderboardWeeklyRank = useLeaderboardStore((state) => state.currentWeeklyRank);
   const online = authStatus === 'online';
+
+  useEffect(() => {
+    if (leaderboardEnabled && online) {
+      void loadDailyLeaderboard(challenge?.challengeDate);
+    }
+  }, [challenge?.challengeDate, leaderboardEnabled, loadDailyLeaderboard, online]);
+
+  const endsSoon =
+    timeRemainingMs > 0 && timeRemainingMs <= 2 * 60 * 60 * 1000;
 
   const canStartRanked = useMemo(() => {
     if (!online || !rankedEnabled || busy) {
@@ -189,6 +205,28 @@ export function DailyChallengeScreen({ navigation }: DailyChallengeScreenProps) 
           {verifiedResult?.rank ? (
             <Text style={styles.scoreLine}>Daily rank: #{verifiedResult.rank}</Text>
           ) : null}
+          {verifiedResult?.challengePoints != null ? (
+            <Text style={styles.scoreLine}>
+              Challenge Points: {verifiedResult.challengePoints}
+            </Text>
+          ) : null}
+          {verifiedResult?.weeklyRank != null ? (
+            <Text style={styles.scoreLine}>Weekly rank: #{verifiedResult.weeklyRank}</Text>
+          ) : null}
+          {leaderboardEnabled && uiStatus === 'available' ? (
+            <Text style={styles.scoreLine}>
+              {dailyParticipantCount} verified participants today
+            </Text>
+          ) : null}
+          {leaderboardDailyRank != null && uiStatus === 'completed' ? (
+            <Text style={styles.scoreLine}>Leaderboard rank: #{leaderboardDailyRank}</Text>
+          ) : null}
+          {weeklyLeaderboardEnabled && leaderboardWeeklyRank != null ? (
+            <Text style={styles.scoreLine}>Weekly rank: #{leaderboardWeeklyRank}</Text>
+          ) : null}
+          {endsSoon ? (
+            <Text style={styles.scoreLine}>Challenge ends soon</Text>
+          ) : null}
         </BlazePanel>
 
         <BlazePanel style={styles.panel}>
@@ -237,6 +275,14 @@ export function DailyChallengeScreen({ navigation }: DailyChallengeScreenProps) 
               variant="ghost"
               onPress={() => navigation.navigate('DailyChallengeLeaderboard')}
               accessibilityLabel="View daily challenge leaderboard"
+            />
+          ) : null}
+          {weeklyLeaderboardEnabled ? (
+            <BlazeButton
+              label="VIEW WEEKLY LEADERBOARD"
+              variant="ghost"
+              onPress={() => navigation.navigate('DailyChallengeLeaderboard')}
+              accessibilityLabel="View weekly challenge leaderboard"
             />
           ) : null}
           {!online ? (

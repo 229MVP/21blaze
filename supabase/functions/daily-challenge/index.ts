@@ -5,10 +5,15 @@ import { corsHeaders, errorResponse, jsonResponse } from '../_shared/cors.ts';
 import {
   attemptExpiresAt,
   computeRankForAttempt,
+  computeWeeklyRankForUser,
+  finalizeExpiredDailyChallenges,
   ensureDailyChallenge,
   getUtcChallengeDate,
+  isPastVerificationGrace,
   mapChallengeConfig,
+  persistDailyRanksForChallenge,
   updateChallengeStreak,
+  utcWeekStartForDate,
 } from '../_shared/dailyChallenge.ts';
 import { replayMatch, validateMoveLog } from '../_shared/game/replayMatch.ts';
 import type { MoveLogEntry } from '../_shared/game/types.ts';
@@ -19,7 +24,11 @@ type DailyChallengeAction =
   | 'record_first_move'
   | 'complete_attempt'
   | 'abandon_attempt'
-  | 'get_leaderboard';
+  | 'get_leaderboard'
+  | 'get_daily_leaderboard'
+  | 'get_weekly_leaderboard'
+  | 'get_nearby_daily_ranks'
+  | 'get_nearby_weekly_ranks';
 
 function isAction(value: unknown): value is DailyChallengeAction {
   return (
@@ -28,7 +37,11 @@ function isAction(value: unknown): value is DailyChallengeAction {
     value === 'record_first_move' ||
     value === 'complete_attempt' ||
     value === 'abandon_attempt' ||
-    value === 'get_leaderboard'
+    value === 'get_leaderboard' ||
+    value === 'get_daily_leaderboard' ||
+    value === 'get_weekly_leaderboard' ||
+    value === 'get_nearby_daily_ranks' ||
+    value === 'get_nearby_weekly_ranks'
   );
 }
 
@@ -71,6 +84,7 @@ async function handleGetStatus(
   admin: ReturnType<typeof import('../_shared/supabaseAdmin.ts').createServiceClient>,
   userId: string,
 ) {
+  await finalizeExpiredDailyChallenges(admin);
   const nowMs = Date.now();
   const challengeDate = getUtcChallengeDate(nowMs);
   const challenge = await ensureDailyChallenge(admin, challengeDate);
@@ -100,10 +114,15 @@ async function handleStartAttempt(
   userId: string,
   attemptType: 'ranked' | 'practice',
 ) {
+  await finalizeExpiredDailyChallenges(admin);
   const nowMs = Date.now();
   const nowIso = new Date(nowMs).toISOString();
   const challengeDate = getUtcChallengeDate(nowMs);
   const challenge = await ensureDailyChallenge(admin, challengeDate);
+
+  if (attemptType === 'ranked' && isPastVerificationGrace(challenge.ends_at, nowMs)) {
+    return errorResponse('Daily Challenge ranked attempts are closed for today.', 409);
+  }
 
   if (attemptType === 'ranked') {
     const existing = await loadRankedAttempt(admin, challenge.id, userId);
@@ -260,7 +279,7 @@ async function handleCompleteAttempt(
 ) {
   const { data: attempt, error } = await admin
     .from('daily_challenge_attempts')
-    .select('*, daily_challenges!inner(challenge_date, seed, scoring_version, duration_seconds)')
+    .select('*, daily_challenges!inner(challenge_date, seed, scoring_version, duration_seconds, ends_at, status, finalized_at)')
     .eq('id', attemptId)
     .maybeSingle();
 
@@ -281,7 +300,11 @@ async function handleCompleteAttempt(
       admin,
       attempt.challenge_id,
       attemptId,
-      attempt.verified_score ?? 0,
+    );
+    const weeklyRank = await computeWeeklyRankForUser(
+      admin,
+      userId,
+      challenge.challenge_date,
     );
 
     return jsonResponse({
@@ -297,6 +320,8 @@ async function handleCompleteAttempt(
         elapsedTimeMs: attempt.elapsed_time_ms,
         gameOverReason: attempt.game_over_reason,
         rank: rankInfo.rank,
+        challengePoints: rankInfo.challengePoints,
+        weeklyRank,
         percentile: rankInfo.percentile,
         totalPlayers: rankInfo.totalPlayers,
       },
@@ -314,7 +339,17 @@ async function handleCompleteAttempt(
     challenge_date: string;
     seed: number;
     scoring_version: number;
+    ends_at: string;
+    status: string;
+    finalized_at: string | null;
   };
+
+  if (isPastVerificationGrace(challenge.ends_at, Date.now())) {
+    return jsonResponse(
+      { verified: false, rejectionReason: 'Challenge submission grace period has ended.' },
+      409,
+    );
+  }
 
   const moveValidation = validateMoveLog(moves);
   if (!moveValidation.ok) {
@@ -390,7 +425,11 @@ async function handleCompleteAttempt(
           admin,
           raced.challenge_id,
           attemptId,
-          raced.verified_score ?? 0,
+        );
+        const weeklyRank = await computeWeeklyRankForUser(
+          admin,
+          userId,
+          challenge.challenge_date,
         );
         return jsonResponse({
           verified: true,
@@ -405,6 +444,8 @@ async function handleCompleteAttempt(
             elapsedTimeMs: raced.elapsed_time_ms,
             gameOverReason: raced.game_over_reason,
             rank: rankInfo.rank,
+            challengePoints: rankInfo.challengePoints,
+            weeklyRank,
             percentile: rankInfo.percentile,
             totalPlayers: rankInfo.totalPlayers,
           },
@@ -413,6 +454,8 @@ async function handleCompleteAttempt(
     }
     return errorResponse('Unable to store verified result.', 500);
   }
+
+  await persistDailyRanksForChallenge(admin, updated.challenge_id);
 
   const streak = await updateChallengeStreak(
     admin,
@@ -424,7 +467,11 @@ async function handleCompleteAttempt(
     admin,
     updated.challenge_id,
     attemptId,
-    replay.result.score,
+  );
+  const weeklyRank = await computeWeeklyRankForUser(
+    admin,
+    userId,
+    challenge.challenge_date,
   );
 
   return jsonResponse({
@@ -440,6 +487,8 @@ async function handleCompleteAttempt(
       elapsedTimeMs,
       gameOverReason: replay.result.gameOverReason,
       rank: rankInfo.rank,
+      challengePoints: rankInfo.challengePoints,
+      weeklyRank,
       percentile: rankInfo.percentile,
       totalPlayers: rankInfo.totalPlayers,
     },
@@ -497,38 +546,346 @@ async function handleGetLeaderboard(
   userId: string,
   challengeDate?: string,
 ) {
-  const date = challengeDate ?? getUtcChallengeDate(Date.now());
-  const challenge = await ensureDailyChallenge(admin, date);
+  return await handleGetDailyLeaderboard(admin, userId, challengeDate);
+}
 
-  const { data: rows, error } = await admin
-    .from('daily_challenge_leaderboard')
-    .select('*')
-    .eq('challenge_id', challenge.id)
-    .order('rank', { ascending: true })
-    .limit(100);
-
-  if (error) {
-    return errorResponse('Unable to load leaderboard.', 500);
-  }
-
-  const entries = (rows ?? []).map((row: Record<string, unknown>) => ({
+function mapDailyLeaderboardEntry(
+  row: Record<string, unknown>,
+  userId: string,
+) {
+  return {
     rank: row.rank,
     playerName: row.player_name,
     score: row.score,
-    lanesCleared: row.lanes_cleared,
     exact21Count: row.exact_21_count,
     fiveCardClears: row.five_card_clears,
     bustCount: row.bust_count,
     bestMultiplier: row.best_multiplier,
     elapsedTimeMs: row.elapsed_time_ms,
+    challengePoints: row.challenge_points,
+    profileFrameId: row.profile_frame_id,
+    playerTitleId: row.player_title_id,
     isCurrentPlayer: row.user_id === userId,
-  }));
+  };
+}
+
+async function handleGetDailyLeaderboard(
+  admin: ReturnType<typeof import('../_shared/supabaseAdmin.ts').createServiceClient>,
+  userId: string,
+  challengeDate?: string,
+  afterRank = 0,
+  limit = 100,
+) {
+  await finalizeExpiredDailyChallenges(admin);
+  const date = challengeDate ?? getUtcChallengeDate(Date.now());
+  const challenge = await ensureDailyChallenge(admin, date);
+  const boundedLimit = Math.min(Math.max(limit, 1), 100);
+  const boundedAfter = Math.max(afterRank, 0);
+
+  const { count: totalParticipants } = await admin
+    .from('daily_challenge_leaderboard')
+    .select('user_id', { count: 'exact', head: true })
+    .eq('challenge_id', challenge.id);
+
+  const { data: rows, error } = await admin
+    .from('daily_challenge_leaderboard')
+    .select('*')
+    .eq('challenge_id', challenge.id)
+    .gt('rank', boundedAfter)
+    .order('rank', { ascending: true })
+    .limit(boundedLimit);
+
+  if (error) {
+    return errorResponse('Unable to load leaderboard.', 500);
+  }
+
+  const entries = (rows ?? []).map((row: Record<string, unknown>) =>
+    mapDailyLeaderboardEntry(row, userId),
+  );
+
+  const { data: playerRow } = await admin
+    .from('daily_challenge_leaderboard')
+    .select('*')
+    .eq('challenge_id', challenge.id)
+    .eq('user_id', userId)
+    .maybeSingle();
+
+  const finalized =
+    challenge.status === 'closed' ||
+  Boolean((challenge as { finalized_at?: string | null }).finalized_at);
 
   return jsonResponse({
     challengeDate: date,
     challengeId: challenge.id,
+    endsAt: challenge.ends_at,
+    finalized,
+    totalParticipants: totalParticipants ?? 0,
     entries,
+    playerRank: playerRow
+      ? {
+          rank: playerRow.rank,
+          score: playerRow.score,
+          challengePoints: playerRow.challenge_points,
+          verificationStatus: 'verified',
+        }
+      : null,
+    serverTime: new Date().toISOString(),
   });
+}
+
+async function handleGetNearbyDailyRanks(
+  admin: ReturnType<typeof import('../_shared/supabaseAdmin.ts').createServiceClient>,
+  userId: string,
+  challengeDate?: string,
+  window = 2,
+) {
+  const date = challengeDate ?? getUtcChallengeDate(Date.now());
+  const challenge = await ensureDailyChallenge(admin, date);
+  const boundedWindow = Math.min(Math.max(window, 1), 10);
+
+  const { data: playerRow } = await admin
+    .from('daily_challenge_leaderboard')
+    .select('rank')
+    .eq('challenge_id', challenge.id)
+    .eq('user_id', userId)
+    .maybeSingle();
+
+  if (!playerRow?.rank) {
+    return jsonResponse({ entries: [] });
+  }
+
+  const minRank = Math.max(1, playerRow.rank - boundedWindow);
+  const maxRank = playerRow.rank + boundedWindow;
+
+  const { data: rows } = await admin
+    .from('daily_challenge_leaderboard')
+    .select('*')
+    .eq('challenge_id', challenge.id)
+    .gte('rank', minRank)
+    .lte('rank', maxRank)
+    .order('rank', { ascending: true });
+
+  const entries = (rows ?? []).map((row: Record<string, unknown>) => ({
+    rank: row.rank,
+    playerName: row.player_name,
+    score: row.score,
+    challengePoints: row.challenge_points,
+    isCurrentPlayer: row.user_id === userId,
+  }));
+
+  return jsonResponse({ entries });
+}
+
+async function handleGetWeeklyLeaderboard(
+  admin: ReturnType<typeof import('../_shared/supabaseAdmin.ts').createServiceClient>,
+  userId: string,
+  weekStart?: string,
+  afterRank = 0,
+  limit = 100,
+) {
+  const start =
+    weekStart ?? utcWeekStartForDate(getUtcChallengeDate(Date.now()));
+  const startMs = Date.parse(`${start}T00:00:00.000Z`);
+  const endMs = startMs + 7 * 24 * 60 * 60 * 1000;
+  const boundedLimit = Math.min(Math.max(limit, 1), 100);
+  const boundedAfter = Math.max(afterRank, 0);
+
+  const { data: dailyRows, error } = await admin
+    .from('daily_challenge_leaderboard')
+    .select('*')
+    .gte('challenge_date', start);
+
+  if (error) {
+    return errorResponse('Unable to load weekly leaderboard.', 500);
+  }
+
+  const inWeek = (dailyRows ?? []).filter((row: { challenge_date: string }) => {
+    const dateMs = Date.parse(`${row.challenge_date}T00:00:00.000Z`);
+    return dateMs >= startMs && dateMs < endMs;
+  });
+
+  type WeeklyAgg = {
+    user_id: string;
+    player_name: string;
+    profile_frame_id: string;
+    player_title_id: string | null;
+    challenge_points: number;
+    verified_days_completed: number;
+    best_daily_rank: number;
+    total_verified_score: number;
+    total_exact_21_count: number;
+    total_five_card_clears: number;
+    total_bust_count: number;
+    last_contributed_at: string;
+  };
+
+  const aggregates = new Map<string, WeeklyAgg>();
+  for (const row of inWeek as Array<Record<string, unknown>>) {
+    const userKey = String(row.user_id);
+    const existing = aggregates.get(userKey);
+    if (!existing) {
+      aggregates.set(userKey, {
+        user_id: userKey,
+        player_name: String(row.player_name),
+        profile_frame_id: String(row.profile_frame_id ?? 'default_profile_frame'),
+        player_title_id: row.player_title_id ? String(row.player_title_id) : null,
+        challenge_points: Number(row.challenge_points ?? 0),
+        verified_days_completed: 1,
+        best_daily_rank: Number(row.rank),
+        total_verified_score: Number(row.score ?? 0),
+        total_exact_21_count: Number(row.exact_21_count ?? 0),
+        total_five_card_clears: Number(row.five_card_clears ?? 0),
+        total_bust_count: Number(row.bust_count ?? 0),
+        last_contributed_at: String(row.completed_at),
+      });
+      continue;
+    }
+    existing.challenge_points += Number(row.challenge_points ?? 0);
+    existing.verified_days_completed += 1;
+    existing.best_daily_rank = Math.min(existing.best_daily_rank, Number(row.rank));
+    existing.total_verified_score += Number(row.score ?? 0);
+    existing.total_exact_21_count += Number(row.exact_21_count ?? 0);
+    existing.total_five_card_clears += Number(row.five_card_clears ?? 0);
+    existing.total_bust_count += Number(row.bust_count ?? 0);
+    const completedAt = String(row.completed_at);
+    if (Date.parse(completedAt) > Date.parse(existing.last_contributed_at)) {
+      existing.last_contributed_at = completedAt;
+    }
+  }
+
+  const sorted = [...aggregates.values()].sort((a, b) => {
+    if (a.challenge_points !== b.challenge_points) {
+      return b.challenge_points - a.challenge_points;
+    }
+    if (a.verified_days_completed !== b.verified_days_completed) {
+      return b.verified_days_completed - a.verified_days_completed;
+    }
+    if (a.best_daily_rank !== b.best_daily_rank) {
+      return a.best_daily_rank - b.best_daily_rank;
+    }
+    if (a.total_verified_score !== b.total_verified_score) {
+      return b.total_verified_score - a.total_verified_score;
+    }
+    if (a.total_exact_21_count !== b.total_exact_21_count) {
+      return b.total_exact_21_count - a.total_exact_21_count;
+    }
+    if (a.total_five_card_clears !== b.total_five_card_clears) {
+      return b.total_five_card_clears - a.total_five_card_clears;
+    }
+    if (a.total_bust_count !== b.total_bust_count) {
+      return a.total_bust_count - b.total_bust_count;
+    }
+    return Date.parse(a.last_contributed_at) - Date.parse(b.last_contributed_at);
+  });
+
+  const ranked = sorted.map((row, index) => ({ ...row, rank: index + 1 }));
+  const totalParticipants = ranked.length;
+  const entries = ranked
+    .filter((row) => row.rank > boundedAfter)
+    .slice(0, boundedLimit)
+    .map((row) => ({
+      rank: row.rank,
+      playerName: row.player_name,
+      challengePoints: row.challenge_points,
+      verifiedDaysCompleted: row.verified_days_completed,
+      bestDailyRank: row.best_daily_rank,
+      totalVerifiedScore: row.total_verified_score,
+      totalExact21Count: row.total_exact_21_count,
+      totalFiveCardClears: row.total_five_card_clears,
+      totalBustCount: row.total_bust_count,
+      profileFrameId: row.profile_frame_id,
+      playerTitleId: row.player_title_id,
+      isCurrentPlayer: row.user_id === userId,
+    }));
+
+  const player = ranked.find((row) => row.user_id === userId);
+  const weekEndDate = new Date(endMs - 1).toISOString().slice(0, 10);
+
+  return jsonResponse({
+    weekStart: start,
+    weekEnd: weekEndDate,
+    totalParticipants,
+    entries,
+    playerRank: player
+      ? {
+          rank: player.rank,
+          challengePoints: player.challenge_points,
+          verifiedDaysCompleted: player.verified_days_completed,
+        }
+      : null,
+    serverTime: new Date().toISOString(),
+  });
+}
+
+async function handleGetNearbyWeeklyRanks(
+  admin: ReturnType<typeof import('../_shared/supabaseAdmin.ts').createServiceClient>,
+  userId: string,
+  weekStart?: string,
+  window = 2,
+) {
+  const start =
+    weekStart ?? utcWeekStartForDate(getUtcChallengeDate(Date.now()));
+  const startMs = Date.parse(`${start}T00:00:00.000Z`);
+  const endMs = startMs + 7 * 24 * 60 * 60 * 1000;
+  const boundedWindow = Math.min(Math.max(window, 1), 10);
+
+  const { data: dailyRows } = await admin
+    .from('daily_challenge_leaderboard')
+    .select('user_id, player_name, rank, challenge_points, challenge_date')
+    .gte('challenge_date', start);
+
+  const inWeek = (dailyRows ?? []).filter((row: { challenge_date: string }) => {
+    const dateMs = Date.parse(`${row.challenge_date}T00:00:00.000Z`);
+    return dateMs >= startMs && dateMs < endMs;
+  });
+
+  const aggregates = new Map<
+    string,
+    { user_id: string; player_name: string; challenge_points: number; best_daily_rank: number }
+  >();
+
+  for (const row of inWeek as Array<Record<string, unknown>>) {
+    const userKey = String(row.user_id);
+    const existing = aggregates.get(userKey);
+    if (!existing) {
+      aggregates.set(userKey, {
+        user_id: userKey,
+        player_name: String(row.player_name),
+        challenge_points: Number(row.challenge_points ?? 0),
+        best_daily_rank: Number(row.rank),
+      });
+      continue;
+    }
+    existing.challenge_points += Number(row.challenge_points ?? 0);
+    existing.best_daily_rank = Math.min(existing.best_daily_rank, Number(row.rank));
+  }
+
+  const sorted = [...aggregates.values()].sort((a, b) => {
+    if (a.challenge_points !== b.challenge_points) {
+      return b.challenge_points - a.challenge_points;
+    }
+    return a.best_daily_rank - b.best_daily_rank;
+  });
+
+  const ranked = sorted.map((row, index) => ({ ...row, rank: index + 1 }));
+  const playerRank = ranked.find((row) => row.user_id === userId)?.rank;
+  if (!playerRank) {
+    return jsonResponse({ entries: [] });
+  }
+
+  const entries = ranked
+    .filter(
+      (row) =>
+        row.rank >= playerRank - boundedWindow && row.rank <= playerRank + boundedWindow,
+    )
+    .map((row) => ({
+      rank: row.rank,
+      playerName: row.player_name,
+      challengePoints: row.challenge_points,
+      isCurrentPlayer: row.user_id === userId,
+    }));
+
+  return jsonResponse({ entries });
 }
 
 Deno.serve(async (request) => {
@@ -605,6 +962,60 @@ Deno.serve(async (request) => {
         const challengeDate =
           typeof body.challengeDate === 'string' ? body.challengeDate : undefined;
         return await handleGetLeaderboard(auth.admin, auth.userId, challengeDate);
+      }
+
+      case 'get_daily_leaderboard': {
+        const challengeDate =
+          typeof body.challengeDate === 'string' ? body.challengeDate : undefined;
+        const afterRank =
+          typeof body.afterRank === 'number' ? body.afterRank : 0;
+        const limit = typeof body.limit === 'number' ? body.limit : 100;
+        return await handleGetDailyLeaderboard(
+          auth.admin,
+          auth.userId,
+          challengeDate,
+          afterRank,
+          limit,
+        );
+      }
+
+      case 'get_weekly_leaderboard': {
+        const weekStart =
+          typeof body.weekStart === 'string' ? body.weekStart : undefined;
+        const afterRank =
+          typeof body.afterRank === 'number' ? body.afterRank : 0;
+        const limit = typeof body.limit === 'number' ? body.limit : 100;
+        return await handleGetWeeklyLeaderboard(
+          auth.admin,
+          auth.userId,
+          weekStart,
+          afterRank,
+          limit,
+        );
+      }
+
+      case 'get_nearby_daily_ranks': {
+        const challengeDate =
+          typeof body.challengeDate === 'string' ? body.challengeDate : undefined;
+        const window = typeof body.window === 'number' ? body.window : 2;
+        return await handleGetNearbyDailyRanks(
+          auth.admin,
+          auth.userId,
+          challengeDate,
+          window,
+        );
+      }
+
+      case 'get_nearby_weekly_ranks': {
+        const weekStart =
+          typeof body.weekStart === 'string' ? body.weekStart : undefined;
+        const window = typeof body.window === 'number' ? body.window : 2;
+        return await handleGetNearbyWeeklyRanks(
+          auth.admin,
+          auth.userId,
+          weekStart,
+          window,
+        );
       }
 
       default:

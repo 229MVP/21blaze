@@ -204,3 +204,25 @@ export function isDailyLeaderboardEnabled(): boolean {
     envFlag('EXPO_PUBLIC_ENABLE_DAILY_LEADERBOARD', false)
   );
 }
+
+export function isWeeklyLeaderboardEnabled(): boolean {
+  return (
+    isDailyChallengeEnabled() &&
+    envFlag('EXPO_PUBLIC_ENABLE_WEEKLY_LEADERBOARD', false)
+  );
+}
+
+export function isLeaderboardNearbyEnabled(): boolean {
+  return (
+    isDailyLeaderboardEnabled() &&
+    envFlag('EXPO_PUBLIC_ENABLE_LEADERBOARD_NEARBY', false)
+  );
+}
+
+export function isPublicPlayerProfilesEnabled(): boolean {
+  return envFlag('EXPO_PUBLIC_ENABLE_PUBLIC_PLAYER_PROFILES', false);
+}
+
+export function isFriendsLeaderboardEnabled(): boolean {
+  return envFlag('EXPO_PUBLIC_ENABLE_FRIENDS_LEADERBOARD', false);
+}

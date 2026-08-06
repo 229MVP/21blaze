@@ -45,6 +45,10 @@ If either is missing, auth falls to **local mode**. Home exposes **Retry Online*
 | `EXPO_PUBLIC_ENABLE_DAILY_CHALLENGE_RANKED` | `false` | Ranked Daily Challenge attempts (requires master + online auth) |
 | `EXPO_PUBLIC_ENABLE_DAILY_CHALLENGE_PRACTICE` | `false` | Practice Daily Challenge attempts |
 | `EXPO_PUBLIC_ENABLE_DAILY_LEADERBOARD` | `false` | Daily Challenge leaderboard screen |
+| `EXPO_PUBLIC_ENABLE_WEEKLY_LEADERBOARD` | `false` | Weekly Challenge Points leaderboard |
+| `EXPO_PUBLIC_ENABLE_LEADERBOARD_NEARBY` | `false` | Nearby rank sections |
+| `EXPO_PUBLIC_ENABLE_PUBLIC_PLAYER_PROFILES` | `false` | Public profile drill-down (future) |
+| `EXPO_PUBLIC_ENABLE_FRIENDS_LEADERBOARD` | `false` | Friends tab on High Scores — keep false until friends backend exists |
 
 Flags are **client UX only**, not authorization. Solo Play is never gated.
 

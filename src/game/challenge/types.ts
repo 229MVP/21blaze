@@ -52,6 +52,8 @@ export type DailyChallengeVerifiedResult = {
   elapsedTimeMs: number;
   gameOverReason: string;
   rank: number | null;
+  challengePoints: number | null;
+  weeklyRank: number | null;
   percentile: number | null;
   totalPlayers: number;
 };

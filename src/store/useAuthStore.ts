@@ -5,7 +5,11 @@ import { isSupabaseConfigured, supabase } from '../lib/supabase';
 import type { ProfileRow } from '../lib/database.types';
 import { safeReleaseLog } from '../monetization/safeLog';
 
-const DISPLAY_NAME_PATTERN = /^[A-Za-z0-9_]{3,16}$/;
+import { validatePublicDisplayName } from '../leaderboards/displayNameSafety';
+
+function validateDisplayName(raw: string): { ok: true; value: string } | { ok: false; message: string } {
+  return validatePublicDisplayName(raw);
+}
 
 export type AuthStatus = 'connecting' | 'online' | 'local';
 
@@ -29,17 +33,6 @@ let authSubscription: { unsubscribe: () => void } | null = null;
 let initializePromise: Promise<void> | null = null;
 /** After a settled local fallback, skip automatic re-init until explicit retry. */
 let authSettledLocal = false;
-
-function validateDisplayName(raw: string): { ok: true; value: string } | { ok: false; message: string } {
-  const value = raw.trim();
-  if (value.length < 3 || value.length > 16) {
-    return { ok: false, message: 'Name must be 3–16 characters.' };
-  }
-  if (!DISPLAY_NAME_PATTERN.test(value)) {
-    return { ok: false, message: 'Use letters, numbers, and underscores only.' };
-  }
-  return { ok: true, value };
-}
 
 function authErrorMessage(error: unknown): string {
   if (error && typeof error === 'object' && 'message' in error) {
