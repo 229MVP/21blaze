@@ -45,7 +45,6 @@ type LeaderboardTab = 'local' | 'global' | 'friends';
 const TAB_OPTIONS: { label: string; value: LeaderboardTab }[] = [
   { label: 'LOCAL', value: 'local' },
   { label: 'GLOBAL', value: 'global' },
-  { label: 'FRIENDS', value: 'friends' },
 ];
 
 const GLOBAL_TIMEOUT_MS = 12000;

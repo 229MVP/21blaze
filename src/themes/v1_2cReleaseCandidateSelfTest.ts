@@ -300,14 +300,11 @@ export function runV1_2CReleaseCandidateSelfTests(): void {
     const easConfig = JSON.parse(readFileSync(path.join(REPO_ROOT, 'eas.json'), 'utf8'));
     const testflightEnv = easConfig.build.testflight.env;
     assert(testflightEnv.EXPO_PUBLIC_ADMOB_USE_TEST_ADS === 'true', 'the testflight EAS profile forces AdMob test mode');
-    // Version 1.2.0 startup hotfix (see docs/V1_2_STARTUP_BLACK_SCREEN_REPORT.md)
-    // deliberately disabled these three for the Classic-isolation
-    // TestFlight build while the startup black-screen was investigated —
-    // see docs/V1_2_STARTUP_HOTFIX_TESTFLIGHT_CHECKLIST.md for the
-    // re-enable plan once root-caused and fixed.
-    assert(testflightEnv.EXPO_PUBLIC_ENABLE_V1_2_VISUAL_SYSTEM === 'false', 'the testflight EAS profile isolates the visual system off for the startup hotfix build');
-    assert(testflightEnv.EXPO_PUBLIC_ENABLE_BOARD_EFFECTS === 'false', 'the testflight EAS profile isolates board effects off for the startup hotfix build');
-    assert(testflightEnv.EXPO_PUBLIC_ENABLE_VICTORY_EFFECTS === 'false', 'the testflight EAS profile isolates victory effects off for the startup hotfix build');
+    // Version 1.2.0 final release enables the visual system on TestFlight after
+    // startup hardening and countdown alignment fixes landed.
+    assert(testflightEnv.EXPO_PUBLIC_ENABLE_V1_2_VISUAL_SYSTEM === 'true', 'the testflight EAS profile enables the visual system for 1.2.0');
+    assert(testflightEnv.EXPO_PUBLIC_ENABLE_BOARD_EFFECTS === 'true', 'the testflight EAS profile enables board effects for 1.2.0');
+    assert(testflightEnv.EXPO_PUBLIC_ENABLE_VICTORY_EFFECTS === 'true', 'the testflight EAS profile enables victory effects for 1.2.0');
     assert(testflightEnv.EXPO_PUBLIC_ENABLE_THEME_PREVIEW_DEV === 'false', 'the testflight EAS profile keeps the dev theme preview off for testers');
     assert(easConfig.build.testflight.distribution === 'store', 'testflight profile remains store distribution');
     assert(easConfig.build.testflight.autoIncrement === true, 'testflight profile keeps EAS autoIncrement for the build number');
