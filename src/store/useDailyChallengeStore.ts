@@ -34,6 +34,8 @@ import {
   loadCachedDailyChallenge,
   saveCachedDailyChallenge,
 } from '../storage/dailyChallengeStorage';
+import { useProgressionStore } from './useProgressionStore';
+import { useWalletStore } from './useWalletStore';
 
 type DailyChallengeStore = {
   challenge: DailyChallengeConfig | null;
@@ -206,15 +208,31 @@ export const useDailyChallengeStore = create<DailyChallengeStore>((set, get) => 
             points: response.result.challengePoints,
           });
         }
+        if (response.participationReward?.granted || response.result.participationCoins) {
+          trackEvent('challenge_participation_reward_granted', {
+            coins: response.participationReward?.blazeCoins ?? response.result.participationCoins ?? 20,
+            xp: response.participationReward?.xp ?? response.result.participationXp ?? 75,
+          });
+        }
         set({
           verificationStatus: 'verified',
-          verifiedResult: response.result,
+          verifiedResult: {
+            ...response.result,
+            participationCoins:
+              response.participationReward?.blazeCoins ??
+              response.result.participationCoins ??
+              20,
+            participationXp:
+              response.participationReward?.xp ?? response.result.participationXp ?? 75,
+          },
           rankedAttempt: response.attempt ?? get().rankedAttempt,
           activeSession: null,
           streakCurrent: response.streak?.currentStreak ?? get().streakCurrent,
           streakLongest: response.streak?.longestStreak ?? get().streakLongest,
           uiStatus: 'completed',
         });
+        void useWalletStore.getState().refreshWallet();
+        void useProgressionStore.getState().refreshProgression();
         return;
       }
 

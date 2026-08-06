@@ -14,6 +14,7 @@ import { BlazePanel } from '../components/ui/BlazePanel';
 import {
   isDailyChallengePracticeEnabled,
   isDailyChallengeRankedEnabled,
+  isChallengeRewardsEnabled,
   isDailyLeaderboardEnabled,
   isWeeklyLeaderboardEnabled,
 } from '../config/featureFlags';
@@ -277,12 +278,12 @@ export function DailyChallengeScreen({ navigation }: DailyChallengeScreenProps) 
               accessibilityLabel="View daily challenge leaderboard"
             />
           ) : null}
-          {weeklyLeaderboardEnabled ? (
+          {isChallengeRewardsEnabled() ? (
             <BlazeButton
-              label="VIEW WEEKLY LEADERBOARD"
+              label="CHALLENGE REWARDS"
               variant="ghost"
-              onPress={() => navigation.navigate('DailyChallengeLeaderboard')}
-              accessibilityLabel="View weekly challenge leaderboard"
+              onPress={() => navigation.navigate('ChallengeRewards')}
+              accessibilityLabel="View challenge rewards"
             />
           ) : null}
           {!online ? (

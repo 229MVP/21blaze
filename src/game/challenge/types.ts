@@ -54,6 +54,8 @@ export type DailyChallengeVerifiedResult = {
   rank: number | null;
   challengePoints: number | null;
   weeklyRank: number | null;
+  participationCoins: number | null;
+  participationXp: number | null;
   percentile: number | null;
   totalPlayers: number;
 };

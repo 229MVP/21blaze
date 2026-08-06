@@ -102,6 +102,18 @@ export const DAILY_CHALLENGE_ANALYTICS_EVENTS = [
   'leaderboard_offline_cache_viewed',
   'challenge_points_awarded',
   'leaderboard_finalized',
+  'challenge_participation_reward_granted',
+  'daily_placement_reward_pending',
+  'daily_placement_reward_granted',
+  'weekly_reward_progress_viewed',
+  'weekly_reward_claim_started',
+  'weekly_reward_claimed',
+  'weekly_reward_claim_failed',
+  'challenge_streak_increased',
+  'challenge_streak_reset',
+  'challenge_streak_milestone_granted',
+  'challenge_badge_equipped',
+  'challenge_title_equipped',
 ] as const;
 
 export type DailyChallengeAnalyticsEvent =

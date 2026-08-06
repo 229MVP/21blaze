@@ -3,6 +3,7 @@ import { createNavigationContainerRef } from '@react-navigation/native';
 
 import {
   isDailyChallengeEnabled,
+  isChallengeRewardsEnabled,
   isPurchaseDiagnosticsEnabled,
   isThemePreviewDevEnabled,
   isV1_1LockerEnabled,
@@ -10,6 +11,7 @@ import {
 import { BlazeLockerScreen } from '../screens/BlazeLockerScreen';
 import { BlazeStoreScreen } from '../screens/BlazeStoreScreen';
 import { CreateLiveRoomScreen } from '../screens/CreateLiveRoomScreen';
+import { ChallengeRewardsScreen } from '../screens/ChallengeRewardsScreen';
 import { DailyLeaderboardScreen } from '../screens/DailyLeaderboardScreen';
 import { DailyChallengeScreen } from '../screens/DailyChallengeScreen';
 import { DailyMissionsScreen } from '../screens/DailyMissionsScreen';
@@ -91,6 +93,9 @@ export function AppNavigator() {
             name="DailyChallengeLeaderboard"
             component={DailyLeaderboardScreen}
           />
+          {isChallengeRewardsEnabled() ? (
+            <Stack.Screen name="ChallengeRewards" component={ChallengeRewardsScreen} />
+          ) : null}
         </>
       ) : null}
       <Stack.Screen name="Feedback" component={FeedbackScreen} />

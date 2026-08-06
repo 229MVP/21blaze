@@ -3,7 +3,10 @@ import 'jsr:@supabase/functions-js/edge-runtime.d.ts';
 import { parseJsonBody, requireAuthedUser } from '../_shared/auth.ts';
 import { corsHeaders, errorResponse, jsonResponse } from '../_shared/cors.ts';
 import {
-  attemptExpiresAt,
+  grantParticipationReward,
+  grantStreakMilestones,
+} from '../_shared/challengeRewards.ts';
+import {
   computeRankForAttempt,
   computeWeeklyRankForUser,
   finalizeExpiredDailyChallenges,
@@ -28,7 +31,9 @@ type DailyChallengeAction =
   | 'get_daily_leaderboard'
   | 'get_weekly_leaderboard'
   | 'get_nearby_daily_ranks'
-  | 'get_nearby_weekly_ranks';
+  | 'get_nearby_weekly_ranks'
+  | 'get_reward_status'
+  | 'claim_weekly_reward';
 
 function isAction(value: unknown): value is DailyChallengeAction {
   return (
@@ -41,7 +46,9 @@ function isAction(value: unknown): value is DailyChallengeAction {
     value === 'get_daily_leaderboard' ||
     value === 'get_weekly_leaderboard' ||
     value === 'get_nearby_daily_ranks' ||
-    value === 'get_nearby_weekly_ranks'
+    value === 'get_nearby_weekly_ranks' ||
+    value === 'get_reward_status' ||
+    value === 'claim_weekly_reward'
   );
 }
 
@@ -457,11 +464,19 @@ async function handleCompleteAttempt(
 
   await persistDailyRanksForChallenge(admin, updated.challenge_id);
 
+  const participationReward = await grantParticipationReward(
+    admin,
+    userId,
+    updated.challenge_id,
+  );
+
   const streak = await updateChallengeStreak(
     admin,
     userId,
     challenge.challenge_date,
   );
+
+  await grantStreakMilestones(admin, userId, streak.currentStreak);
 
   const rankInfo = await computeRankForAttempt(
     admin,
@@ -491,8 +506,11 @@ async function handleCompleteAttempt(
       weeklyRank,
       percentile: rankInfo.percentile,
       totalPlayers: rankInfo.totalPlayers,
+      participationCoins: participationReward.blazeCoins,
+      participationXp: participationReward.xp,
     },
     streak,
+    participationReward,
   });
 }
 
@@ -1016,6 +1034,32 @@ Deno.serve(async (request) => {
           weekStart,
           window,
         );
+      }
+
+      case 'get_reward_status': {
+        const challengeDate =
+          typeof body.challengeDate === 'string' ? body.challengeDate : undefined;
+        const { data, error } = await auth.admin.rpc('get_challenge_reward_status', {
+          p_challenge_date: challengeDate ?? null,
+          p_user_id: auth.userId,
+        });
+        if (error) {
+          return errorResponse('Unable to load reward status.', 500);
+        }
+        return jsonResponse(data);
+      }
+
+      case 'claim_weekly_reward': {
+        const weekStart =
+          typeof body.weekStart === 'string' ? body.weekStart : undefined;
+        const { data, error } = await auth.admin.rpc('claim_weekly_challenge_reward', {
+          p_week_start: weekStart ?? null,
+          p_user_id: auth.userId,
+        });
+        if (error) {
+          return errorResponse(error.message ?? 'Unable to claim weekly reward.', 400);
+        }
+        return jsonResponse(data);
       }
 
       default:

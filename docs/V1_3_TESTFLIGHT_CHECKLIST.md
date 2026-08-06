@@ -1,0 +1,21 @@
+# Version 1.3.0 — TestFlight Checklist
+
+- [ ] Fresh install / upgrade from 1.2
+- [ ] Startup — no black screen
+- [ ] Solo Play unaffected
+- [ ] Daily Challenge ranked + practice
+- [ ] Deterministic deck
+- [ ] One ranked attempt per UTC day
+- [ ] Ranked verification
+- [ ] Daily + Weekly leaderboards
+- [ ] Participation +75 XP / +20 coins
+- [ ] Placement pending before finalize
+- [ ] Placement coins after finalize
+- [ ] Weekly progress + claim
+- [ ] Challenge Streak + milestone
+- [ ] Badge/title unlock (locker flag)
+- [ ] Offline — cached status, no local grants
+- [ ] Reduced Motion
+- [ ] Test ads only; no ads during Challenge/Results claim
+- [ ] No purchase UI / RevenueCat off
+- [ ] Data preservation (wallet, XP, cosmetics)

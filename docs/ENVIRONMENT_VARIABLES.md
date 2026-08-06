@@ -49,6 +49,11 @@ If either is missing, auth falls to **local mode**. Home exposes **Retry Online*
 | `EXPO_PUBLIC_ENABLE_LEADERBOARD_NEARBY` | `false` | Nearby rank sections |
 | `EXPO_PUBLIC_ENABLE_PUBLIC_PLAYER_PROFILES` | `false` | Public profile drill-down (future) |
 | `EXPO_PUBLIC_ENABLE_FRIENDS_LEADERBOARD` | `false` | Friends tab on High Scores — keep false until friends backend exists |
+| `EXPO_PUBLIC_ENABLE_CHALLENGE_REWARDS` | `false` | Challenge rewards master switch |
+| `EXPO_PUBLIC_ENABLE_CHALLENGE_STREAKS` | `false` | Challenge streak rewards display |
+| `EXPO_PUBLIC_ENABLE_DAILY_PLACEMENT_REWARDS` | `false` | Daily placement reward UI |
+| `EXPO_PUBLIC_ENABLE_WEEKLY_CHALLENGE_REWARDS` | `false` | Weekly tier claim UI |
+| `EXPO_PUBLIC_ENABLE_CHALLENGE_BADGES` | `false` | Challenge badge cosmetics display |
 
 Flags are **client UX only**, not authorization. Solo Play is never gated.
 

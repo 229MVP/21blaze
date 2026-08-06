@@ -226,3 +226,38 @@ export function isPublicPlayerProfilesEnabled(): boolean {
 export function isFriendsLeaderboardEnabled(): boolean {
   return envFlag('EXPO_PUBLIC_ENABLE_FRIENDS_LEADERBOARD', false);
 }
+
+export function isChallengeRewardsEnabled(): boolean {
+  return (
+    isDailyChallengeEnabled() &&
+    envFlag('EXPO_PUBLIC_ENABLE_CHALLENGE_REWARDS', false)
+  );
+}
+
+export function isChallengeStreaksEnabled(): boolean {
+  return (
+    isDailyChallengeEnabled() &&
+    envFlag('EXPO_PUBLIC_ENABLE_CHALLENGE_STREAKS', false)
+  );
+}
+
+export function isDailyPlacementRewardsEnabled(): boolean {
+  return (
+    isChallengeRewardsEnabled() &&
+    envFlag('EXPO_PUBLIC_ENABLE_DAILY_PLACEMENT_REWARDS', false)
+  );
+}
+
+export function isWeeklyChallengeRewardsEnabled(): boolean {
+  return (
+    isChallengeRewardsEnabled() &&
+    envFlag('EXPO_PUBLIC_ENABLE_WEEKLY_CHALLENGE_REWARDS', false)
+  );
+}
+
+export function isChallengeBadgesEnabled(): boolean {
+  return (
+    isChallengeRewardsEnabled() &&
+    envFlag('EXPO_PUBLIC_ENABLE_CHALLENGE_BADGES', false)
+  );
+}

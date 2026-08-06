@@ -71,6 +71,7 @@ export type CompleteDailyChallengeResponse = {
   result?: DailyChallengeVerifiedResult;
   rejectionReason?: string;
   streak?: { currentStreak: number; longestStreak: number };
+  participationReward?: { granted: boolean; blazeCoins: number; xp: number };
 };
 
 export type DailyChallengeLeaderboardEntry = {

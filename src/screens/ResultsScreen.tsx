@@ -312,6 +312,8 @@ export function ResultsScreen({ navigation, route }: ResultsScreenProps) {
         if (challengeVerifiedResult.challengePoints != null) {
           parts.push(`${challengeVerifiedResult.challengePoints} Challenge Points`);
         }
+        parts.push('+20 PARTICIPATION COINS');
+        parts.push('+75 XP');
         if (challengeVerifiedResult.weeklyRank != null) {
           parts.push(`Weekly rank #${challengeVerifiedResult.weeklyRank}`);
         }

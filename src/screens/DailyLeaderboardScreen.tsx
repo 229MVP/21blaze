@@ -190,8 +190,17 @@ export function DailyLeaderboardScreen({ navigation }: DailyChallengeLeaderboard
             : 'UTC week'}
         </Text>
         {selectedTab === 'daily' ? (
-          <Text style={styles.timeMeta}>
-            {timeLabel} · {dailyParticipantCount} verified
+          <>
+            <Text style={styles.timeMeta}>
+              {timeLabel} · {dailyParticipantCount} verified
+            </Text>
+            <Text style={styles.rewardGuide}>
+              Placement: 1st 200 · Top 3 125 · Top 10 75 · Top 25 50 · Top 100 25
+            </Text>
+          </>
+        ) : weeklyEnabled ? (
+          <Text style={styles.rewardGuide}>
+            Weekly tiers: Bronze 75 PTS · Silver 175 · Gold 300 · Elite 450 · Inferno 600
           </Text>
         ) : null}
 
@@ -305,6 +314,11 @@ const styles = StyleSheet.create({
   timeMeta: {
     color: kitColors.text.muted,
     fontSize: 12,
+  },
+  rewardGuide: {
+    color: kitColors.text.muted,
+    fontSize: 11,
+    lineHeight: 16,
   },
   panel: {
     overflow: 'hidden',
