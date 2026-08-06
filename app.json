@@ -67,6 +67,7 @@
       ],
       "expo-audio",
       "expo-asset",
+      "./plugins/withAndroidKotlinGradle.js",
       [
         "expo-build-properties",
         {
