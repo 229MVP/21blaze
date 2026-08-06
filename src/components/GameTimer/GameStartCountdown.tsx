@@ -4,7 +4,6 @@ import {
   StyleSheet,
   Text,
   View,
-  useWindowDimensions,
 } from 'react-native';
 import Animated, {
   Easing,
@@ -31,11 +30,13 @@ type GameStartCountdownProps = {
   subtitle?: string;
 };
 
-const CONTENT_MAX = 430;
+/** Fixed ring size — centering uses flex layout inside the board wrapper, not screen width. */
+const RING_SIZE = 280;
 
 /**
  * Presentation-only Solo start countdown.
  * Reacts to store-driven `value` / `visible`; does not own match timing.
+ * Must render inside the four-lane board wrapper so overlay center matches the board.
  */
 export function GameStartCountdown({
   value,
@@ -44,15 +45,12 @@ export function GameStartCountdown({
   subtitle,
 }: GameStartCountdownProps) {
   const reduceMotion = useReducedMotionSetting();
-  const { width } = useWindowDimensions();
   const opacity = useSharedValue(0);
   const scale = useSharedValue(0.75);
   const glow = useSharedValue(0.35);
 
   const isBlaze = value === 0;
   const label = isBlaze ? 'BLAZE!' : String(value);
-  const ringSize = Math.min(300, Math.max(200, Math.round(width * 0.72)));
-  const columnWidth = Math.min(CONTENT_MAX, width);
 
   useEffect(() => {
     if (!visible) {
@@ -107,8 +105,8 @@ export function GameStartCountdown({
 
   return (
     <View
-      style={styles.overlay}
-      pointerEvents="auto"
+      style={styles.countdownOverlay}
+      pointerEvents="none"
       accessibilityViewIsModal
       accessibilityLabel={`Countdown. Get ready. ${label}`}
     >
@@ -132,31 +130,39 @@ export function GameStartCountdown({
         style={styles.lavaGlow}
       />
 
-      <View style={[styles.column, { width: columnWidth, maxWidth: CONTENT_MAX }]}>
+      <View style={styles.countdownContent}>
         <Text style={styles.getReady} accessibilityRole="header">
           {title}
         </Text>
         {subtitle ? <Text style={styles.subtitle}>{subtitle}</Text> : null}
 
-        <View style={[styles.ringWrap, { width: ringSize, height: ringSize }]}>
-          <CountdownFireRing
-            size={ringSize}
-            visible={visible}
-            animated={!reduceMotion}
-            reducedMotion={reduceMotion}
-          />
-          <Animated.Text
-            accessibilityLiveRegion="polite"
-            accessibilityRole="text"
-            style={[
-              styles.value,
-              isBlaze && styles.valueBlaze,
-              { fontSize: isBlaze ? Math.min(64, ringSize * 0.28) : Math.min(110, ringSize * 0.4) },
-              valueStyle,
-            ]}
-          >
-            {label}
-          </Animated.Text>
+        <View style={styles.countdownCenter}>
+          <View style={styles.rotatingRing}>
+            <CountdownFireRing
+              size={RING_SIZE}
+              visible={visible}
+              animated={!reduceMotion}
+              reducedMotion={reduceMotion}
+            />
+          </View>
+          <View style={styles.countdownNumberLayer}>
+            <Animated.Text
+              accessibilityLiveRegion="polite"
+              accessibilityRole="text"
+              style={[
+                styles.value,
+                isBlaze && styles.valueBlaze,
+                {
+                  fontSize: isBlaze
+                    ? Math.min(64, RING_SIZE * 0.28)
+                    : Math.min(110, RING_SIZE * 0.4),
+                },
+                valueStyle,
+              ]}
+            >
+              {label}
+            </Animated.Text>
+          </View>
         </View>
       </View>
     </View>
@@ -164,11 +170,13 @@ export function GameStartCountdown({
 }
 
 const styles = StyleSheet.create({
-  overlay: {
+  countdownOverlay: {
     ...StyleSheet.absoluteFill,
-    zIndex: 50,
     alignItems: 'center',
     justifyContent: 'center',
+    pointerEvents: 'none',
+    zIndex: 50,
+    elevation: 50,
   },
   dim: {
     ...StyleSheet.absoluteFill,
@@ -181,11 +189,12 @@ const styles = StyleSheet.create({
   lavaGlow: {
     ...StyleSheet.absoluteFill,
   },
-  column: {
+  countdownContent: {
     alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: kitSpacing.lg,
     gap: kitSpacing.md,
+    paddingHorizontal: kitSpacing.lg,
+    maxWidth: '100%',
   },
   getReady: {
     fontFamily: kitTypography.families.display,
@@ -203,12 +212,22 @@ const styles = StyleSheet.create({
     letterSpacing: 1,
     textAlign: 'center',
   },
-  ringWrap: {
+  countdownCenter: {
+    width: RING_SIZE,
+    height: RING_SIZE,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  rotatingRing: {
+    width: RING_SIZE,
+    height: RING_SIZE,
+  },
+  countdownNumberLayer: {
+    ...StyleSheet.absoluteFill,
     alignItems: 'center',
     justifyContent: 'center',
   },
   value: {
-    position: 'absolute',
     fontFamily: kitTypography.families.display,
     color: kitColors.fire.pale,
     textAlign: 'center',

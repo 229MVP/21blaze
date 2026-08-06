@@ -5,27 +5,15 @@ import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import { Platform } from 'react-native';
 
 import type { Database } from './database.types';
+import { getSupabaseConfiguredEnv, isSupabaseConfigured } from './supabaseConfig';
 
-function readEnv(
-  name: 'EXPO_PUBLIC_SUPABASE_URL' | 'EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY',
-): string {
-  const value = process.env[name];
-  return value?.trim() ?? '';
-}
-
-export function isSupabaseConfigured(): boolean {
-  return (
-    readEnv('EXPO_PUBLIC_SUPABASE_URL').length > 0 &&
-    readEnv('EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY').length > 0
-  );
-}
+export { isSupabaseConfigured };
 
 function requireConfiguredEnv(): {
   url: string;
   publishableKey: string;
 } {
-  const url = readEnv('EXPO_PUBLIC_SUPABASE_URL');
-  const publishableKey = readEnv('EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY');
+  const { url, publishableKey } = getSupabaseConfiguredEnv();
 
   if (!url || !publishableKey) {
     throw new Error(
