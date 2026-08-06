@@ -10,7 +10,7 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.twentyoneblaze.app",
-      "buildNumber": "905",
+      "buildNumber": "906",
       "deploymentTarget": "16.4",
       "infoPlist": {
         "GADApplicationIdentifier": "ca-app-pub-3940256099942544~1458002511",

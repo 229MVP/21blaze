@@ -171,6 +171,23 @@
     }
   },
   "submit": {
-    "production": {}
+    "production": {
+      "ios": {
+        "ascAppId": "6797273226",
+        "appleTeamId": "9C5LBWL2HS"
+      }
+    },
+    "testflight": {
+      "ios": {
+        "ascAppId": "6797273226",
+        "appleTeamId": "9C5LBWL2HS"
+      }
+    },
+    "testflight-rescue": {
+      "ios": {
+        "ascAppId": "6797273226",
+        "appleTeamId": "9C5LBWL2HS"
+      }
+    }
   }
 }
