@@ -426,48 +426,50 @@ export function GameScreen({ navigation }: GameScreenProps) {
               <Text style={styles.chooseLabel}>CHOOSE A LANE</Text>
             </View>
 
-            <View style={styles.lanesGrid}>
-              {laneData.map((lane) => {
-                const laneId = lane.laneNumber as LaneId;
-                const flags = laneVisualFlags(
-                  laneId,
-                  lastMoveEvent?.laneId,
-                  lastMoveEvent?.type,
-                );
-                const isEventLane = lastMoveEvent?.laneId === laneId;
+            <View style={styles.boardWrapper}>
+              <View style={styles.lanesGrid}>
+                {laneData.map((lane) => {
+                  const laneId = lane.laneNumber as LaneId;
+                  const flags = laneVisualFlags(
+                    laneId,
+                    lastMoveEvent?.laneId,
+                    lastMoveEvent?.type,
+                  );
+                  const isEventLane = lastMoveEvent?.laneId === laneId;
 
-                return (
-                  <View key={laneId} style={styles.laneCell}>
-                    <LaneBox
-                      laneNumber={lane.laneNumber}
-                      total={lane.total}
-                      cards={lane.cards}
-                      disabled={!canPlay}
-                      selected={flags.selected}
-                      danger={flags.danger}
-                      cleared={flags.cleared}
-                      laneEffect={laneEffect}
-                      faceVariant={laneFaceVariant}
-                      feedbackType={
-                        isEventLane ? lastMoveEvent?.type ?? null : null
-                      }
-                      feedbackEventId={
-                        isEventLane ? lastMoveEvent?.id ?? null : null
-                      }
-                      onPress={() => {
-                        blazeHaptics.laneSelected(`lane:${laneId}`);
-                        playCardToLane(laneId);
-                      }}
-                    />
-                  </View>
-                );
-              })}
+                  return (
+                    <View key={laneId} style={styles.laneCell}>
+                      <LaneBox
+                        laneNumber={lane.laneNumber}
+                        total={lane.total}
+                        cards={lane.cards}
+                        disabled={!canPlay}
+                        selected={flags.selected}
+                        danger={flags.danger}
+                        cleared={flags.cleared}
+                        laneEffect={laneEffect}
+                        faceVariant={laneFaceVariant}
+                        feedbackType={
+                          isEventLane ? lastMoveEvent?.type ?? null : null
+                        }
+                        feedbackEventId={
+                          isEventLane ? lastMoveEvent?.id ?? null : null
+                        }
+                        onPress={() => {
+                          blazeHaptics.laneSelected(`lane:${laneId}`);
+                          playCardToLane(laneId);
+                        }}
+                      />
+                    </View>
+                  );
+                })}
+              </View>
+
+              <GameStartCountdown
+                value={startCountdownValue}
+                visible={isCountdown}
+              />
             </View>
-
-            <GameStartCountdown
-              value={startCountdownValue}
-              visible={isCountdown}
-            />
             <PauseOverlay
               visible={isPaused}
               onResume={handleResume}
@@ -672,12 +674,16 @@ const styles = StyleSheet.create({
     color: kitColors.text.muted,
     fontSize: 12,
   },
+  boardWrapper: {
+    flex: 1,
+    position: 'relative',
+    minHeight: 170,
+  },
   lanesGrid: {
     flex: 1,
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 6,
-    minHeight: 170,
   },
   laneCell: {
     width: '48%',
