@@ -108,9 +108,44 @@ fix strategy therefore matches the hotfix brief's own framing: harden
 every layer of the startup path to fail open, rather than chase one
 unconfirmed line.
 
+## Native entry architecture (hotfix branch)
+
+```
+index.ts
+  import 'react-native-gesture-handler'
+  registerRootComponent(App)
+  recordStartupStage on global ErrorUtils (best-effort)
+
+App.tsx  (minimal — no fonts, navigation, ads, or stores at module scope)
+  recordStartupStage('native_entry')
+  preventSplashAutoHideOnce()
+  React.lazy(() => import('./AppShell'))
+  Suspense fallback → StartupFallbackView ("21 BLAZE" / "STARTING GAME…")
+  onFirstLayout → recordStartupStage('rescue_root_rendered') + hideSplashOnce()
+
+AppShell.tsx  (heavy providers load only after lazy import resolves)
+  ErrorBoundary → AppContent
+  useFonts + 4s font timeout + 8s watchdog
+  StartupFallbackView while fonts load (never null / blank View)
+  SafeAreaProvider → NavigationContainer → AppNavigator
+```
+
+Classic `registerRootComponent` — **not** Expo Router. Single root path via `package.json` `"main": "index.ts"`.
+
+## Expo Updates / OTA
+
+- `expo-updates` is **not** a direct dependency on this hotfix branch.
+- `app.json` has no `runtimeVersion` or `updates` URL.
+- Installed TestFlight binaries from this branch embed JS only — no OTA override path unless a future build adds `expo-updates`.
+- `testflight-rescue` EAS profile sets `updates.enabled = false` via `app.config.js` when `EAS_BUILD_PROFILE=testflight-rescue`.
+
+## Splash-screen risk (previous release)
+
+Previous `App.tsx` called `SplashScreen.preventAutoHideAsync()` at module scope and only hid the splash after fonts loaded, while showing a bare `#070707` View — visually identical to a black screen. If fonts or an uncaught error stalled startup, the native splash could remain visible over an empty dark view indefinitely. Hotfix: idempotent `hideSplashOnce()` from rescue `onLayout`, fonts-ready, navigation `onReady`, and watchdog paths.
+
 ## Fix summary
 
-See `App.tsx`, `src/components/ErrorBoundary.tsx`,
+See `App.tsx`, `AppShell.tsx`, `src/components/ErrorBoundary.tsx`,
 `src/startup/StartupFallbackView.tsx`, `src/startup/startupDiagnostics.ts`,
 `src/startup/visualStartupOverride.ts`,
 `src/startup/runOptionalStartupTasks.ts`,

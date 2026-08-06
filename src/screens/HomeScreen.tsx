@@ -28,6 +28,7 @@ import {
   isMonetizationBetaEnabled,
   isProgressionBetaEnabled,
   isRankedBetaEnabled,
+  isRescueStartupProfile,
   isStorePurchasesEnabled,
   isV1_1LockerEnabled,
   isV1_1RewardsEnabled,
@@ -42,6 +43,7 @@ import {
 import { useInterstitialScreenTracking } from '../hooks/useInterstitialScreenTracking';
 import { APP_VERSION } from '../game/constants';
 import type { HomeScreenProps } from '../navigation/navigationTypes';
+import { isBasicStartupModeActive } from '../startup/basicStartupMode';
 import {
   maybeShowInterstitialAfterSoloHome,
   recordSoloMatchCompletedForInterstitial,
@@ -177,7 +179,9 @@ export function HomeScreen({ navigation, route }: HomeScreenProps) {
       hydrateScoreHistory(),
       hydrateWallet(),
       hydrateCosmetics(),
-      initializePurchases(),
+      isBasicStartupModeActive() || isRescueStartupProfile()
+        ? Promise.resolve()
+        : initializePurchases(),
       progressionEnabled || v1_1RewardsOn ? hydrateProgression() : Promise.resolve(),
     ]);
 

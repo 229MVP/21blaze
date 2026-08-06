@@ -2,6 +2,7 @@ import { Component, type ErrorInfo, type ReactNode } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { trackEvent } from '../monetization/analytics';
+import { activateBasicStartupMode } from '../startup/basicStartupMode';
 import { activateClassicVisualsOverride } from '../startup/visualStartupOverride';
 import { getLastStartupStageSync, recordStartupStage } from '../startup/startupDiagnostics';
 import { colors } from '../theme/colors';
@@ -18,6 +19,8 @@ type Props = {
    * override itself is activated internally (see
    * `src/startup/visualStartupOverride.ts`) before this fires. */
   onStartWithClassic?: () => void;
+  /** Called after Basic Mode is activated (Classic visuals + deferred optional services). */
+  onStartBasicMode?: () => void;
 };
 
 type State = {
@@ -77,6 +80,12 @@ export class ErrorBoundary extends Component<Props, State> {
     this.props.onStartWithClassic?.();
   };
 
+  private handleStartBasicMode = (): void => {
+    activateBasicStartupMode();
+    this.setState({ hasError: false, errorCategory: null, diagnosticsVisible: false });
+    this.props.onStartBasicMode?.();
+  };
+
   private toggleDiagnostics = (): void => {
     this.setState((prev) => ({ diagnosticsVisible: !prev.diagnosticsVisible }));
   };
@@ -92,8 +101,10 @@ export class ErrorBoundary extends Component<Props, State> {
       <View style={styles.container} accessibilityRole="alert">
         <Text style={styles.title}>21 BLAZE COULDN&apos;T START</Text>
         <Text style={styles.body}>
-          Something went wrong while starting the app. Your account, wallet, scores, and
-          cosmetics are safe. Try again, or start with the Classic theme.
+          LAST STEP: {lastStage?.stage ?? 'unknown'}
+        </Text>
+        <Text style={styles.bodyMuted}>
+          Your account, wallet, scores, and cosmetics are safe.
         </Text>
         <Pressable
           accessibilityRole="button"
@@ -105,11 +116,11 @@ export class ErrorBoundary extends Component<Props, State> {
         </Pressable>
         <Pressable
           accessibilityRole="button"
-          accessibilityLabel="Start with Classic theme"
-          onPress={this.handleStartWithClassic}
+          accessibilityLabel="Start Basic Mode"
+          onPress={this.handleStartBasicMode}
           style={({ pressed }) => [styles.button, styles.secondary, pressed && styles.pressed]}
         >
-          <Text style={styles.buttonText}>START WITH CLASSIC THEME</Text>
+          <Text style={styles.buttonText}>START BASIC MODE</Text>
         </Pressable>
         <Pressable
           accessibilityRole="button"
@@ -156,6 +167,14 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     maxWidth: 360,
     lineHeight: 22,
+  },
+  bodyMuted: {
+    fontFamily: fontFamilies.body,
+    fontSize: 13,
+    color: colors.textMuted,
+    textAlign: 'center',
+    maxWidth: 360,
+    lineHeight: 20,
   },
   button: {
     minWidth: 260,

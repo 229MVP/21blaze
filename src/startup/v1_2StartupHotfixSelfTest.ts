@@ -18,6 +18,12 @@ import path from 'node:path';
 
 import {
   isBoardEffectsEnabled,
+  isExpoUpdatesEnabled,
+  isRescueStartupProfile,
+  isStartupAdsDisabled,
+  isStartupNotificationsDisabled,
+  isStartupUmpDisabled,
+  isStartupVisualPreloadDisabled,
   isStorePurchasesEnabled,
   isThemePreviewDevEnabled,
   isVictoryEffectsEnabled,
@@ -35,6 +41,11 @@ import {
   shouldForceClassicVisuals,
   __resetClassicVisualsOverrideForTests,
 } from './visualStartupOverride';
+import {
+  activateBasicStartupMode,
+  isBasicStartupModeActive,
+  __resetBasicStartupModeForTests,
+} from './basicStartupMode';
 import { getLastStartupStageSync, recordStartupStage, __resetStartupDiagnosticsForTests } from './startupDiagnostics';
 
 function assert(condition: boolean, message: string): void {
@@ -177,15 +188,18 @@ export async function runV1_2StartupHotfixSelfTests(): Promise<void> {
   }
 
   // 8-9. UMP / AdMob failure does not block startup — structural check:
-  // neither `hydrateAdConsent`/`requestAdConsentIfNeeded`
-  // (`adConsentService.ts`) nor any AdMob initializer is called from
-  // App.tsx or HomeScreen's mount path; both are only ever invoked
-  // lazily from `services/adService.ts` immediately before an actual ad
-  // request, strictly after the first screen has rendered.
+  // minimal App.tsx never imports ad SDK; AppShell defers heavy modules
+  // via lazy load after rescue root render.
   {
     const appSource = readFileSync(path.join(REPO_ROOT, 'App.tsx'), 'utf8');
+    for (const forbidden of ['hydrateAdConsent', 'requestAdConsentIfNeeded', 'MobileAds', 'useFonts', 'NavigationContainer']) {
+      assert(!appSource.includes(forbidden), `App.tsx must never import or call ${forbidden} during module load`);
+    }
+    assert(appSource.includes('lazy(() => import'), 'App.tsx lazy-loads AppShell after rescue root');
+    assert(appSource.includes('StartupFallbackView'), 'App.tsx renders synchronous rescue fallback');
+    const shellSource = readFileSync(path.join(REPO_ROOT, 'AppShell.tsx'), 'utf8');
     for (const forbidden of ['hydrateAdConsent', 'requestAdConsentIfNeeded', 'MobileAds']) {
-      assert(!appSource.includes(forbidden), `App.tsx must never call ${forbidden} during startup`);
+      assert(!shellSource.includes(forbidden), `AppShell.tsx must never call ${forbidden} at module scope`);
     }
     const homeSource = readFileSync(path.join(REPO_ROOT, 'src/screens/HomeScreen.tsx'), 'utf8');
     for (const forbidden of ['hydrateAdConsent', 'requestAdConsentIfNeeded', 'MobileAds']) {
@@ -217,24 +231,26 @@ export async function runV1_2StartupHotfixSelfTests(): Promise<void> {
     // crashing the process) is the assertion.
   }
 
-  // 11. Splash hide occurs from a guaranteed path — verified by code
-  // review of App.tsx's `hideSplashOnce()`: called from a `finally`-safe,
-  // try/catch-wrapped function, from both the fonts-ready effect and
-  // (transitively, since the watchdog sets state that flips
-  // `fontsReady`) the watchdog path, and is idempotent (a
-  // module-level `splashHidden` guard makes every call after the first
-  // a safe no-op). Cannot execute `SplashScreen.hideAsync()` under plain
-  // Node/tsx (no native module).
-  assert(true, 'splash-hide guarantee — verified by code review of App.tsx hideSplashOnce()');
+  // 11. Splash hide occurs from a guaranteed path — hideSplashOnce in
+  // splashControl.ts is idempotent; called from App.tsx fallback onLayout,
+  // AppShell fonts-ready, navigation onReady, and watchdog paths.
+  {
+    const splashSource = readFileSync(path.join(REPO_ROOT, 'src/startup/splashControl.ts'), 'utf8');
+    assert(splashSource.includes('hideSplashOnce'), 'splashControl exposes idempotent hideSplashOnce');
+    assert(splashSource.includes('splashHidden'), 'splash hide is guarded against duplicate calls');
+    const appSource = readFileSync(path.join(REPO_ROOT, 'App.tsx'), 'utf8');
+    assert(appSource.includes('hideSplashOnce'), 'App.tsx calls hideSplashOnce from rescue fallback');
+  }
 
-  // 12. Root rendering error shows the recovery screen — verified by
-  // code review: `ErrorBoundary.getDerivedStateFromError` unconditionally
-  // returns `{ hasError: true, ... }` for ANY thrown value, and `App.tsx`
-  // now wraps the ENTIRE `AppContent` tree (including the pre-fonts-
-  // ready loading phase) in this boundary, closing the previous gap
-  // where a throw during font loading had no boundary above it at all.
-  // Cannot render React components under plain Node/tsx.
-  assert(true, 'root error boundary coverage — verified by code review of App.tsx / ErrorBoundary.tsx');
+  // 12. Root rendering error shows the recovery screen — ErrorBoundary wraps
+  // AppShell; Basic Mode action exists.
+  {
+    const boundarySource = readFileSync(path.join(REPO_ROOT, 'src/components/ErrorBoundary.tsx'), 'utf8');
+    assert(boundarySource.includes('START BASIC MODE'), 'ErrorBoundary offers START BASIC MODE');
+    assert(boundarySource.includes('activateBasicStartupMode'), 'ErrorBoundary activates Basic Mode');
+    const shellSource = readFileSync(path.join(REPO_ROOT, 'AppShell.tsx'), 'utf8');
+    assert(shellSource.includes('<ErrorBoundary'), 'AppShell wraps tree in ErrorBoundary');
+  }
 
   // 13. Start With Classic preserves gameplay data — structural proof:
   // `visualStartupOverride.ts` has zero imports from any
@@ -254,17 +270,17 @@ export async function runV1_2StartupHotfixSelfTests(): Promise<void> {
     __resetClassicVisualsOverrideForTests();
   }
 
-  // 14. No startup path returns null indefinitely — structural check of
-  // App.tsx: the only early-return branch renders `StartupFallbackView`,
-  // never `null`, and it is not gated behind any condition that could
-  // stay false forever undetected (fonts OR error OR timeout OR
-  // watchdog).
+  // 14. No startup path returns null indefinitely — AppShell not-ready
+  // branch renders StartupFallbackView; minimal App.tsx always renders Suspense fallback.
   {
     const appSource = readFileSync(path.join(REPO_ROOT, 'App.tsx'), 'utf8');
-    assert(appSource.includes('<StartupFallbackView'), 'App.tsx renders a visible fallback while not ready');
-    assert(!/if \(!fontsReady\) \{\s*return null/.test(appSource), 'the not-ready branch never returns null');
-    assert(appSource.includes('fontTimedOut'), 'a font-load timeout exists');
-    assert(appSource.includes('watchdogTriggered'), 'a top-level watchdog exists independent of fonts');
+    assert(appSource.includes('<StartupFallbackView'), 'App.tsx renders a visible fallback while AppShell loads');
+    assert(!/return null/.test(appSource), 'minimal App.tsx never returns null');
+    const shellSource = readFileSync(path.join(REPO_ROOT, 'AppShell.tsx'), 'utf8');
+    assert(shellSource.includes('<StartupFallbackView'), 'AppShell renders fallback while fonts load');
+    assert(!/if \(!fontsReady\) \{\s*return null/.test(shellSource), 'fonts-not-ready branch never returns null');
+    assert(shellSource.includes('fontTimedOut'), 'font-load timeout exists in AppShell');
+    assert(shellSource.includes('watchdogTriggered'), 'startup watchdog exists in AppShell');
   }
 
   // 15. RevenueCat remains disabled.
@@ -274,20 +290,74 @@ export async function runV1_2StartupHotfixSelfTests(): Promise<void> {
     });
   });
 
-  // 16. Purchases remain hidden — the testflight EAS profile keeps
-  // purchases disabled (re-checked live against the real eas.json, not
-  // just the default).
+  // 16. Purchases remain hidden — testflight and testflight-rescue profiles.
   {
     const easConfig = JSON.parse(readFileSync(path.join(REPO_ROOT, 'eas.json'), 'utf8'));
     assert(easConfig.build.testflight.env.EXPO_PUBLIC_ENABLE_STORE_PURCHASES === 'false', 'testflight profile keeps purchases disabled');
+    assert(
+      easConfig.build['testflight-rescue'].env.EXPO_PUBLIC_ENABLE_STORE_PURCHASES === 'false',
+      'testflight-rescue profile keeps purchases disabled',
+    );
+    assert(
+      easConfig.build['testflight-rescue'].distribution === 'store',
+      'testflight-rescue uses store distribution',
+    );
+    assert(
+      easConfig.build['testflight-rescue'].ios.simulator === false,
+      'testflight-rescue targets physical iOS devices',
+    );
+    assert(
+      !easConfig.build['testflight-rescue'].developmentClient,
+      'testflight-rescue does not use developmentClient',
+    );
   }
 
-  // 17. Classic isolation mode launches successfully.
+  // 17. testflight-rescue disables EAS Update in resolved app config.
+  {
+    const appConfigSource = readFileSync(path.join(REPO_ROOT, 'app.config.js'), 'utf8');
+    assert(appConfigSource.includes('testflight-rescue'), 'app.config.js handles testflight-rescue profile');
+    assert(appConfigSource.includes('enabled: false'), 'app.config.js sets updates.enabled false for rescue');
+    withEnv('EAS_BUILD_PROFILE', 'testflight-rescue', () => {
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
+      const resolved = require(path.join(REPO_ROOT, 'app.config.js'))({ config: {} });
+      assert(resolved.expo.updates?.enabled === false, 'resolved rescue config has updates.enabled=false');
+    });
+  }
+
+  // 18. Rescue profile disables optional native startup services.
+  withEnv('EXPO_PUBLIC_RESCUE_STARTUP_PROFILE', 'true', () => {
+    assert(isRescueStartupProfile() === true, 'rescue profile flag is active');
+    assert(isStartupAdsDisabled() === true, 'rescue profile disables startup ads');
+    assert(isStartupUmpDisabled() === true, 'rescue profile disables startup UMP');
+    assert(isStartupNotificationsDisabled() === true, 'rescue profile disables startup notifications');
+    assert(isStartupVisualPreloadDisabled() === true, 'rescue profile disables visual preload');
+    assert(isExpoUpdatesEnabled() === false, 'rescue profile reports expo-updates disabled');
+  });
+
+  // 19. Basic Mode preserves gameplay data and skips purchases init.
+  {
+    __resetBasicStartupModeForTests();
+    __resetClassicVisualsOverrideForTests();
+    assert(isBasicStartupModeActive() === false, 'basic mode starts inactive');
+    activateBasicStartupMode();
+    assert(isBasicStartupModeActive() === true, 'basic mode activates');
+    assert(isClassicVisualsOverrideActive() === true, 'basic mode forces classic visuals');
+    const basicSource = readFileSync(path.join(REPO_ROOT, 'src/startup/basicStartupMode.ts'), 'utf8');
+    for (const forbidden of ['useWalletStore', 'useProgressionStore', 'useScoreHistoryStore', 'useAuthStore', 'AsyncStorage']) {
+      assert(!basicSource.includes(forbidden), `basicStartupMode must never touch ${forbidden}`);
+    }
+    const homeSource = readFileSync(path.join(REPO_ROOT, 'src/screens/HomeScreen.tsx'), 'utf8');
+    assert(homeSource.includes('isBasicStartupModeActive'), 'HomeScreen checks Basic Mode before purchases');
+    __resetBasicStartupModeForTests();
+    __resetClassicVisualsOverrideForTests();
+  }
+
+  // 20. Classic isolation mode launches successfully.
   withEnv('EXPO_PUBLIC_ENABLE_V1_2_VISUAL_SYSTEM', 'false', () => {
     assert(shouldForceClassicVisuals() === true, 'disabling the visual-system flag forces classic resolution');
   });
 
-  // 18. Web startup skips unsupported native services — reuses the
+  // 21. Web startup skips unsupported native services — reuses the
   // existing platform-support mechanism (unchanged this milestone);
   // Metro's `.web.ts` module resolution (e.g.
   // `adConsentService.web.ts`) is the existing, unmodified mechanism

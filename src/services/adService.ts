@@ -1,5 +1,7 @@
 import { Platform } from 'react-native';
 
+import { isStartupAdsDisabled, isStartupUmpDisabled } from '../config/featureFlags';
+
 import { recordRewardedAdInteraction } from '../monetization/adActivityTracker';
 import {
   canRequestPersonalizedAds,
@@ -86,7 +88,7 @@ export function isAdSdkSupported(): boolean {
  * without blocking Solo Play or app startup.
  */
 export async function initializeAdsOnce(): Promise<boolean> {
-  if (!isAdSdkSupported()) {
+  if (!isAdSdkSupported() || isStartupAdsDisabled()) {
     return false;
   }
   if (sdkReady) {
@@ -98,7 +100,9 @@ export async function initializeAdsOnce(): Promise<boolean> {
 
   sdkInitPromise = (async () => {
     try {
-      await requestAdConsentIfNeeded();
+      if (!isStartupUmpDisabled()) {
+        await requestAdConsentIfNeeded();
+      }
       const { default: mobileAds } = await import('react-native-google-mobile-ads');
       await mobileAds().initialize();
       sdkReady = true;

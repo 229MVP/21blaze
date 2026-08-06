@@ -1,52 +1,86 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
+import { APP_VERSION } from '../game/constants';
+import { isExpoUpdatesEnabled } from '../config/featureFlags';
+import { isBasicStartupModeActive } from './basicStartupMode';
+
 /**
- * Version 1.2.0 startup hotfix — sanitized startup-stage tracking.
- *
- * Persists ONLY the single latest stage name + a timestamp, overwriting
- * on every call — never an access token, user id, wallet value, Supabase
- * record, ad identifier, or any other secret/PII. This exists purely so
- * a player who hits the recovery screen (`src/components/ErrorBoundary.tsx`)
- * can see (and, if asked, report) "LAST STARTUP STEP: <stage>" without any
- * remote logging infrastructure — a local troubleshooting breadcrumb.
- *
- * Every write is fire-and-forget and swallows its own errors: recording a
- * diagnostic must never itself become a reason startup fails or blocks.
+ * Sanitized startup diagnostics — stage name + timestamp only.
+ * Optional metadata: app version, build profile flags, basic mode.
+ * Never stores tokens, user ids, wallet values, or secrets.
  */
 export type StartupStage =
   | 'native_entry'
-  | 'react_root_started'
-  | 'storage_hydration_started'
-  | 'storage_hydration_finished'
-  | 'classic_theme_ready'
+  | 'react_registered'
+  | 'rescue_root_rendered'
+  | 'providers_loading'
+  | 'navigation_loading'
   | 'navigation_ready'
-  | 'first_content_rendered'
-  | 'optional_services_started'
+  | 'storage_loading'
+  | 'storage_ready'
+  | 'optional_services_loading'
   | 'optional_services_finished'
+  | 'app_ready'
   | 'startup_watchdog_triggered'
-  | 'startup_error_boundary_triggered';
+  | 'startup_failed'
+  | 'startup_error_boundary_triggered'
+  | 'classic_theme_ready';
 
 const STORAGE_KEY = '@21blaze/startupDiagnostics';
+const META_KEY = '@21blaze/startupDiagnosticsMeta';
 
-/** In-memory mirror so a synchronous read (e.g. the recovery screen's
- * diagnostics line) never has to wait on AsyncStorage. Updated
- * synchronously by `recordStartupStage`, best-effort persisted after. */
+export type StartupDiagnosticsMeta = {
+  appVersion: string;
+  buildNumber: string | null;
+  expoUpdatesEnabled: boolean;
+  basicModeUsed: boolean;
+  recordedAtMs: number;
+};
+
 let lastStageInMemory: { stage: StartupStage; atMs: number } | null = null;
+let lastMetaInMemory: StartupDiagnosticsMeta | null = null;
+
+function readBuildNumber(): string | null {
+  try {
+    // Expo injects at build time when available.
+    const fromEnv = process.env.EXPO_PUBLIC_IOS_BUILD_NUMBER;
+    if (fromEnv && fromEnv.trim().length > 0) {
+      return fromEnv.trim();
+    }
+  } catch {
+    // ignore
+  }
+  return null;
+}
 
 export function recordStartupStage(stage: StartupStage): void {
   const entry = { stage, atMs: Date.now() };
   lastStageInMemory = entry;
-  // Fire-and-forget — a persistence failure must never affect startup.
   AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(entry)).catch(() => undefined);
+
+  const meta: StartupDiagnosticsMeta = {
+    appVersion: APP_VERSION,
+    buildNumber: readBuildNumber(),
+    expoUpdatesEnabled: isExpoUpdatesEnabled(),
+    basicModeUsed: isBasicStartupModeActive(),
+    recordedAtMs: Date.now(),
+  };
+  lastMetaInMemory = meta;
+  AsyncStorage.setItem(META_KEY, JSON.stringify(meta)).catch(() => undefined);
 }
 
-/** Synchronous, in-memory-only read for the current process. */
+export function recordStartupFailed(): void {
+  recordStartupStage('startup_failed');
+}
+
 export function getLastStartupStageSync(): { stage: StartupStage; atMs: number } | null {
   return lastStageInMemory;
 }
 
-/** Async read (survives a fresh process) for a future "diagnostics from
- * last session" surface — reachable only from the recovery screen. */
+export function getStartupDiagnosticsMetaSync(): StartupDiagnosticsMeta | null {
+  return lastMetaInMemory;
+}
+
 export async function getLastStartupStageAsync(): Promise<{ stage: StartupStage; atMs: number } | null> {
   if (lastStageInMemory) {
     return lastStageInMemory;
@@ -73,4 +107,5 @@ export async function getLastStartupStageAsync(): Promise<{ stage: StartupStage;
 
 export function __resetStartupDiagnosticsForTests(): void {
   lastStageInMemory = null;
+  lastMetaInMemory = null;
 }

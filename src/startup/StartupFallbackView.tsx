@@ -1,46 +1,50 @@
-import { StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View, type LayoutChangeEvent } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 /**
- * Version 1.2.0 startup hotfix — the ONLY view rendered before the real
- * app shell (fonts/theme/navigation) is ready. Deliberately dependency-
- * free: no custom fonts (system font only), no remote data, no theme
- * assets, no Supabase, no ads, no RevenueCat, no SVG, no large images —
- * every one of those is a potential failure point this view must survive
- * without going blank. Uses a plain `View`/`Text` from react-native core
- * only, so it can render even if every other subsystem in the app is
- * broken.
- *
- * Never a bare, empty, black `View` — always a visible, non-black
- * background plus readable text, per the release-hotfix requirement that
- * no startup path may show only a black screen.
+ * Synchronous rescue screen — react-native core only (plus SafeAreaView).
+ * Renders before fonts, navigation, Supabase, ads, or themes load.
  */
 export type StartupFallbackStage = 'starting' | 'loading' | 'classic';
 
 const STAGE_COPY: Record<StartupFallbackStage, string> = {
-  starting: 'STARTING 21 BLAZE…',
+  starting: 'STARTING GAME…',
   loading: 'LOADING YOUR GAME…',
   classic: 'STARTING WITH CLASSIC THEME…',
 };
 
-// A dark-but-clearly-not-black, dependency-free color literal (never
-// imported from `src/theme/*`, which could itself fail to load/evaluate
-// in a truly broken bundle) — deliberately duplicated here rather than
-// shared, so this view has zero import surface beyond `react-native`.
-const FALLBACK_BACKGROUND = '#1A0F06';
-const FALLBACK_TEXT = '#FFE7C2';
+const FALLBACK_BACKGROUND = '#2A2520';
+const FALLBACK_TEXT = '#F5E6D0';
 const FALLBACK_ACCENT = '#FF6B00';
 
-export function StartupFallbackView({ stage = 'starting' }: { stage?: StartupFallbackStage }) {
+type Props = {
+  stage?: StartupFallbackStage;
+  onFirstLayout?: () => void;
+};
+
+export function StartupFallbackView({ stage = 'starting', onFirstLayout }: Props) {
+  const handleLayout = (event: LayoutChangeEvent) => {
+    if (event.nativeEvent.layout.height > 0) {
+      onFirstLayout?.();
+    }
+  };
+
   return (
-    <View style={styles.root}>
-      <View style={styles.mark} />
-      <Text style={styles.title}>21 BLAZE</Text>
-      <Text style={styles.subtitle}>{STAGE_COPY[stage]}</Text>
-    </View>
+    <SafeAreaView style={styles.safe} onLayout={handleLayout}>
+      <View style={styles.root}>
+        <View style={styles.mark} />
+        <Text style={styles.title}>21 BLAZE</Text>
+        <Text style={styles.subtitle}>{STAGE_COPY[stage]}</Text>
+      </View>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
+  safe: {
+    flex: 1,
+    backgroundColor: FALLBACK_BACKGROUND,
+  },
   root: {
     flex: 1,
     backgroundColor: FALLBACK_BACKGROUND,
@@ -64,6 +68,6 @@ const styles = StyleSheet.create({
     color: FALLBACK_TEXT,
     fontSize: 13,
     letterSpacing: 0.5,
-    opacity: 0.85,
+    opacity: 0.9,
   },
 });

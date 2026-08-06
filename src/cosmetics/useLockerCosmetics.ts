@@ -2,11 +2,12 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 
 import type { CardBackVariant } from '../components/cards/CardBack';
 import type { CardFaceVariant } from '../components/cards/PlayingCard';
-import { isDailyRewardsEnabled, isV1_1LockerEnabled } from '../config/featureFlags';
+import { isDailyRewardsEnabled, isStartupVisualPreloadDisabled, isV1_1LockerEnabled } from '../config/featureFlags';
 import { trackEvent } from '../monetization/analytics';
 import { classicTheme } from '../themes/defaultTheme';
 import { memoizedResolvePlayerVisualTheme } from '../themes/resolvePlayerVisualTheme';
 import type { PlayerVisualLoadout, VisualTheme } from '../themes/types';
+import { isBasicStartupModeActive } from '../startup/basicStartupMode';
 import { shouldForceClassicVisuals } from '../startup/visualStartupOverride';
 import { FREE_DEFAULT_COSMETIC_IDS, V1_1B_LOCKER_CATALOG } from './lockerCatalog';
 import {
@@ -146,6 +147,9 @@ export function useResolvedVisualTheme(): VisualTheme {
 export function usePreloadEquippedVisualTheme(): void {
   const theme = useResolvedVisualTheme();
   useEffect(() => {
+    if (isStartupVisualPreloadDisabled() || isBasicStartupModeActive()) {
+      return;
+    }
     void preloadLaunchCriticalThemeAssets(theme.requiredAssets);
   }, [theme.requiredAssets]);
 }
