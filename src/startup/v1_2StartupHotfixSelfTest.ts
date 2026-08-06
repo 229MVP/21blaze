@@ -281,6 +281,11 @@ export async function runV1_2StartupHotfixSelfTests(): Promise<void> {
     assert(!/if \(!fontsReady\) \{\s*return null/.test(shellSource), 'fonts-not-ready branch never returns null');
     assert(shellSource.includes('fontTimedOut'), 'font-load timeout exists in AppShell');
     assert(shellSource.includes('watchdogTriggered'), 'startup watchdog exists in AppShell');
+    const fallbackSource = readFileSync(path.join(REPO_ROOT, 'src/startup/StartupFallbackView.tsx'), 'utf8');
+    assert(
+      !fallbackSource.includes('react-native-safe-area-context'),
+      'StartupFallbackView must not depend on SafeAreaProvider',
+    );
   }
 
   // 15. RevenueCat remains disabled.

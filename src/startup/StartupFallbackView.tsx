@@ -1,9 +1,8 @@
 import { StyleSheet, Text, View, type LayoutChangeEvent } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
 
 /**
- * Synchronous rescue screen — react-native core only (plus SafeAreaView).
- * Renders before fonts, navigation, Supabase, ads, or themes load.
+ * Synchronous rescue screen — react-native core only.
+ * Renders before fonts, navigation, SafeAreaProvider, Supabase, ads, or themes load.
  */
 export type StartupFallbackStage = 'starting' | 'loading' | 'classic';
 
@@ -30,13 +29,13 @@ export function StartupFallbackView({ stage = 'starting', onFirstLayout }: Props
   };
 
   return (
-    <SafeAreaView style={styles.safe} onLayout={handleLayout}>
+    <View style={styles.safe} onLayout={handleLayout}>
       <View style={styles.root}>
         <View style={styles.mark} />
         <Text style={styles.title}>21 BLAZE</Text>
         <Text style={styles.subtitle}>{STAGE_COPY[stage]}</Text>
       </View>
-    </SafeAreaView>
+    </View>
   );
 }
 
