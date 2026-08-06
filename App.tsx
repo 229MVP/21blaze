@@ -14,6 +14,9 @@ import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { ErrorBoundary } from './src/components/ErrorBoundary';
+import {
+  isAsyncChallengeDeepLinksEnabled,
+} from './src/config/featureFlags';
 import { hydrateInterstitialCaps } from './src/monetization/interstitialAdService';
 import { AppNavigator, navigationRef } from './src/navigation/AppNavigator';
 import { blazeAudio } from './src/services/audio/blazeAudio';
@@ -114,6 +117,17 @@ export default function App() {
     return <View style={{ flex: 1, backgroundColor: colors.background }} />;
   }
 
+  const linking = isAsyncChallengeDeepLinksEnabled()
+    ? {
+        prefixes: ['twentyoneblaze://', 'https://21blaze.app'],
+        config: {
+          screens: {
+            JoinAsyncChallenge: 'challenge/:inviteCode',
+          },
+        },
+      }
+    : undefined;
+
   return (
     <SafeAreaProvider>
       <ErrorBoundary
@@ -123,7 +137,7 @@ export default function App() {
           }
         }}
       >
-        <NavigationContainer ref={navigationRef} theme={navigationTheme}>
+        <NavigationContainer ref={navigationRef} theme={navigationTheme} linking={linking}>
           <StatusBar style="light" />
           <AppNavigator />
         </NavigationContainer>

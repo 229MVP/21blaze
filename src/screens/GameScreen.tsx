@@ -89,10 +89,16 @@ export function GameScreen({ navigation }: GameScreenProps) {
   const cardsPlayed = useGameStore((state) => state.cardsPlayed);
   const gameMode = useGameStore((state) => state.gameMode);
   const dailyChallengeSession = useGameStore((state) => state.dailyChallengeSession);
+  const asyncChallengeSession = useGameStore((state) => state.asyncChallengeSession);
   const clearDailyChallengeMode = useGameStore((state) => state.clearDailyChallengeMode);
+  const clearAsyncChallengeMode = useGameStore((state) => state.clearAsyncChallengeMode);
 
   useInterstitialScreenTracking(
-    gameMode === 'dailyChallenge' ? 'dailyChallenge' : 'gameplay',
+    gameMode === 'dailyChallenge'
+      ? 'dailyChallenge'
+      : gameMode === 'asyncChallenge'
+        ? 'other'
+        : 'gameplay',
   );
 
   const isPreparingMatch = useGameStore((state) => state.isPreparingMatch);
@@ -124,7 +130,7 @@ export function GameScreen({ navigation }: GameScreenProps) {
 
   useEffect(() => {
     const current = useGameStore.getState();
-    if (current.gameMode === 'dailyChallenge') {
+    if (current.gameMode === 'dailyChallenge' || current.gameMode === 'asyncChallenge') {
       return;
     }
     if (
@@ -224,6 +230,9 @@ export function GameScreen({ navigation }: GameScreenProps) {
         attemptType: dailyChallengeSession?.attemptType ?? 'unknown',
       });
     }
+    if (gameMode === 'asyncChallenge') {
+      trackEvent('async_challenge_attempt_completed');
+    }
     navigation.replace('Results', {
       score,
       highScore,
@@ -321,18 +330,24 @@ export function GameScreen({ navigation }: GameScreenProps) {
   };
 
   const isDailyChallenge = gameMode === 'dailyChallenge';
+  const isAsyncChallenge = gameMode === 'asyncChallenge';
   const challengeLabel =
-    dailyChallengeSession?.attemptType === 'ranked'
-      ? 'DAILY RANKED'
-      : dailyChallengeSession?.attemptType === 'practice'
-        ? 'DAILY PRACTICE'
-        : null;
-  const countdownTitle = isDailyChallenge ? 'DAILY CHALLENGE' : 'GET READY!';
-  const countdownSubtitle = isDailyChallenge
-    ? dailyChallengeSession?.attemptType === 'ranked'
-      ? 'RANKED ATTEMPT'
-      : 'PRACTICE'
-    : undefined;
+    isAsyncChallenge
+      ? 'ASYNC DUEL'
+      : dailyChallengeSession?.attemptType === 'ranked'
+        ? 'DAILY RANKED'
+        : dailyChallengeSession?.attemptType === 'practice'
+          ? 'DAILY PRACTICE'
+          : null;
+  const countdownTitle =
+    isAsyncChallenge ? 'ASYNC DUEL' : isDailyChallenge ? 'DAILY CHALLENGE' : 'GET READY!';
+  const countdownSubtitle = isAsyncChallenge
+    ? 'ONE ATTEMPT'
+    : isDailyChallenge
+      ? dailyChallengeSession?.attemptType === 'ranked'
+        ? 'RANKED ATTEMPT'
+        : 'PRACTICE'
+      : undefined;
   const isCountdown = timerStatus === 'countdown';
   const isPaused = timerStatus === 'paused';
   const canPlay =
@@ -516,7 +531,7 @@ export function GameScreen({ navigation }: GameScreenProps) {
               label: 'RESTART',
               onPress: requestRestartConfirm,
               variant: 'danger',
-              disabled: isDailyChallenge,
+              disabled: isDailyChallenge || isAsyncChallenge,
               accessibilityLabel: 'Restart game',
             }}
             secondaryAction={{

@@ -81,6 +81,27 @@ export const V1_1C_ANALYTICS_EVENTS = [
 
 export type V1_1CAnalyticsEvent = (typeof V1_1C_ANALYTICS_EVENTS)[number];
 
+export const ASYNC_CHALLENGE_ANALYTICS_EVENTS = [
+  'async_challenge_hub_viewed',
+  'async_challenge_created',
+  'async_challenge_invite_shared',
+  'async_challenge_code_entered',
+  'async_challenge_accepted',
+  'async_challenge_attempt_started',
+  'async_challenge_first_move',
+  'async_challenge_attempt_completed',
+  'async_challenge_attempt_abandoned',
+  'async_challenge_verification_started',
+  'async_challenge_verified',
+  'async_challenge_finalized',
+  'async_challenge_draw',
+  'async_challenge_expired',
+  'async_challenge_result_viewed',
+] as const;
+
+export type AsyncChallengeAnalyticsEvent =
+  (typeof ASYNC_CHALLENGE_ANALYTICS_EVENTS)[number];
+
 export const DAILY_CHALLENGE_ANALYTICS_EVENTS = [
   'daily_challenge_viewed',
   'daily_challenge_ranked_started',

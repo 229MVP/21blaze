@@ -41,6 +41,10 @@ export type RootStackParamList = {
   DailyChallenge: undefined;
   DailyChallengeLeaderboard: undefined;
   ChallengeRewards: undefined;
+  AsyncChallengeHub: undefined;
+  CreateAsyncChallenge: undefined;
+  JoinAsyncChallenge: { inviteCode?: string } | undefined;
+  AsyncChallengeDetail: { challengeId?: string } | undefined;
   PurchaseDiagnostics: undefined;
   Feedback: undefined;
   /** Development-only UI kit gallery. Registered only when __DEV__ is true. */
@@ -149,6 +153,22 @@ export type DailyChallengeLeaderboardScreenProps = NativeStackScreenProps<
 export type ChallengeRewardsScreenProps = NativeStackScreenProps<
   RootStackParamList,
   'ChallengeRewards'
+>;
+export type AsyncChallengeHubScreenProps = NativeStackScreenProps<
+  RootStackParamList,
+  'AsyncChallengeHub'
+>;
+export type CreateAsyncChallengeScreenProps = NativeStackScreenProps<
+  RootStackParamList,
+  'CreateAsyncChallenge'
+>;
+export type JoinAsyncChallengeScreenProps = NativeStackScreenProps<
+  RootStackParamList,
+  'JoinAsyncChallenge'
+>;
+export type AsyncChallengeDetailScreenProps = NativeStackScreenProps<
+  RootStackParamList,
+  'AsyncChallengeDetail'
 >;
 export type PurchaseDiagnosticsScreenProps = NativeStackScreenProps<
   RootStackParamList,

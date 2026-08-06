@@ -51,6 +51,7 @@ import {
 } from '../store/useScoreHistoryStore';
 import { useGameStore } from '../store/useGameStore';
 import { useDailyChallengeStore } from '../store/useDailyChallengeStore';
+import { useAsyncChallengeStore } from '../store/useAsyncChallengeStore';
 import { useProgressionStore } from '../store/useProgressionStore';
 import { useWalletStore } from '../store/useWalletStore';
 import {
@@ -107,6 +108,8 @@ export function ResultsScreen({ navigation, route }: ResultsScreenProps) {
   const gameMode = useGameStore((state) => state.gameMode);
   const dailyChallengeSession = useGameStore((state) => state.dailyChallengeSession);
   const clearDailyChallengeMode = useGameStore((state) => state.clearDailyChallengeMode);
+  const asyncChallengeSession = useGameStore((state) => state.asyncChallengeSession);
+  const clearAsyncChallengeMode = useGameStore((state) => state.clearAsyncChallengeMode);
   const challengeVerifiedResult = useDailyChallengeStore((state) => state.verifiedResult);
   const challengeVerificationStatus = useDailyChallengeStore(
     (state) => state.verificationStatus,
@@ -116,6 +119,13 @@ export function ResultsScreen({ navigation, route }: ResultsScreenProps) {
   );
   const rankedAttemptScore = useDailyChallengeStore(
     (state) => state.rankedAttempt?.verifiedScore,
+  );
+  const asyncVerifiedResult = useAsyncChallengeStore((state) => state.verifiedResult);
+  const asyncVerificationStatus = useAsyncChallengeStore(
+    (state) => state.verificationStatus,
+  );
+  const asyncSelectedChallenge = useAsyncChallengeStore(
+    (state) => state.selectedChallenge,
   );
 
   const routeScore = resolveParam(route.params?.score);
@@ -295,6 +305,38 @@ export function ResultsScreen({ navigation, route }: ResultsScreenProps) {
         : `LOCAL RANK #${localRank}`;
 
   const verification = useMemo(() => {
+    if (gameMode === 'asyncChallenge') {
+      if (asyncVerificationStatus === 'verified' && asyncVerifiedResult) {
+        const waiting =
+          asyncSelectedChallenge?.status !== 'completed' &&
+          asyncSelectedChallenge?.opponent?.attemptStatus !== 'VERIFIED';
+        return {
+          label: waiting ? 'YOUR RESULT VERIFIED' : 'ASYNC DUEL COMPLETE',
+          detail: waiting
+            ? 'WAITING FOR OPPONENT'
+            : asyncSelectedChallenge?.resultType === 'draw'
+              ? 'Draw — identical verified results'
+              : 'Final result confirmed by server',
+          tone: 'ok' as const,
+        };
+      }
+      if (
+        asyncVerificationStatus === 'submitting' ||
+        submissionStatus === 'submitting'
+      ) {
+        return {
+          label: 'VERIFYING ASYNC DUEL',
+          detail: 'Server is confirming your attempt.',
+          tone: 'pending' as const,
+        };
+      }
+      return {
+        label: 'ASYNC DUEL RESULT',
+        detail: 'Awaiting server confirmation.',
+        tone: 'pending' as const,
+      };
+    }
+
     if (gameMode === 'dailyChallenge') {
       if (dailyChallengeSession?.attemptType === 'practice') {
         return {
@@ -416,6 +458,9 @@ export function ResultsScreen({ navigation, route }: ResultsScreenProps) {
       tone: 'local' as const,
     };
   }, [
+    asyncSelectedChallenge,
+    asyncVerificationStatus,
+    asyncVerifiedResult,
     challengeRejectionReason,
     challengeVerificationStatus,
     challengeVerifiedResult,
@@ -530,6 +575,11 @@ export function ResultsScreen({ navigation, route }: ResultsScreenProps) {
   );
 
   const playAgain = () => {
+    if (gameMode === 'asyncChallenge') {
+      clearAsyncChallengeMode();
+      navigation.navigate('AsyncChallengeHub');
+      return;
+    }
     if (gameMode === 'dailyChallenge') {
       clearDailyChallengeMode();
       navigation.navigate('DailyChallenge');
@@ -542,6 +592,9 @@ export function ResultsScreen({ navigation, route }: ResultsScreenProps) {
   const returnHome = () => {
     if (gameMode === 'dailyChallenge') {
       clearDailyChallengeMode();
+    }
+    if (gameMode === 'asyncChallenge') {
+      clearAsyncChallengeMode();
     }
     navigation.reset({
       index: 0,
@@ -866,6 +919,21 @@ export function ResultsScreen({ navigation, route }: ResultsScreenProps) {
                   variant="secondary"
                   onPress={playAgain}
                 />
+              </>
+            ) : gameMode === 'asyncChallenge' ? (
+              <>
+                <BlazeButton
+                  label="RETURN TO CHALLENGE HUB"
+                  onPress={playAgain}
+                  accessibilityLabel="Return to async challenge hub"
+                />
+                {asyncSelectedChallenge?.status === 'completed' ? (
+                  <BlazeButton
+                    label="VIEW CHALLENGE DETAIL"
+                    variant="secondary"
+                    onPress={() => navigation.navigate('AsyncChallengeDetail')}
+                  />
+                ) : null}
               </>
             ) : gameMode === 'dailyChallenge' ? (
               <>

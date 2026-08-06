@@ -3,7 +3,7 @@ import type { DailyChallengeSession } from '../game/challenge/types';
 
 export type OnlineEligibility = 'verified' | 'localOnly';
 
-export type GameMode = 'solo' | 'dailyChallenge';
+export type GameMode = 'solo' | 'dailyChallenge' | 'asyncChallenge';
 
 export type SubmissionStatus =
   | 'idle'

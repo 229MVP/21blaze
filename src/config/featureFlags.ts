@@ -261,3 +261,37 @@ export function isChallengeBadgesEnabled(): boolean {
     envFlag('EXPO_PUBLIC_ENABLE_CHALLENGE_BADGES', false)
   );
 }
+
+/** Version 1.4A — Async direct-invite duels (shared seed, one attempt each). */
+export function isAsyncChallengesEnabled(): boolean {
+  return envFlag('EXPO_PUBLIC_ENABLE_ASYNC_CHALLENGES', false);
+}
+
+export function isAsyncChallengeCreationEnabled(): boolean {
+  return (
+    isAsyncChallengesEnabled() &&
+    envFlag('EXPO_PUBLIC_ENABLE_ASYNC_CHALLENGE_CREATION', false)
+  );
+}
+
+export function isAsyncChallengeJoinEnabled(): boolean {
+  return (
+    isAsyncChallengesEnabled() &&
+    envFlag('EXPO_PUBLIC_ENABLE_ASYNC_CHALLENGE_JOIN', false)
+  );
+}
+
+export function isAsyncChallengeDeepLinksEnabled(): boolean {
+  return (
+    isAsyncChallengesEnabled() &&
+    envFlag('EXPO_PUBLIC_ENABLE_ASYNC_CHALLENGE_DEEP_LINKS', false)
+  );
+}
+
+/** Deferred to Version 1.4B — defaults OFF. */
+export function isAsyncRematchEnabled(): boolean {
+  return (
+    isAsyncChallengesEnabled() &&
+    envFlag('EXPO_PUBLIC_ENABLE_ASYNC_REMATCH', false)
+  );
+}

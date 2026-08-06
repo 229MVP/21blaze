@@ -2,14 +2,18 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createNavigationContainerRef } from '@react-navigation/native';
 
 import {
+  isAsyncChallengesEnabled,
   isDailyChallengeEnabled,
   isChallengeRewardsEnabled,
   isPurchaseDiagnosticsEnabled,
   isThemePreviewDevEnabled,
   isV1_1LockerEnabled,
 } from '../config/featureFlags';
+import { AsyncChallengeDetailScreen } from '../screens/AsyncChallengeDetailScreen';
+import { AsyncChallengeHubScreen } from '../screens/AsyncChallengeHubScreen';
 import { BlazeLockerScreen } from '../screens/BlazeLockerScreen';
 import { BlazeStoreScreen } from '../screens/BlazeStoreScreen';
+import { CreateAsyncChallengeScreen } from '../screens/CreateAsyncChallengeScreen';
 import { CreateLiveRoomScreen } from '../screens/CreateLiveRoomScreen';
 import { ChallengeRewardsScreen } from '../screens/ChallengeRewardsScreen';
 import { DailyLeaderboardScreen } from '../screens/DailyLeaderboardScreen';
@@ -23,6 +27,7 @@ import { HighScoresScreen } from '../screens/HighScoresScreen';
 import { HomeScreen } from '../screens/HomeScreen';
 import { HowRankedWorksScreen } from '../screens/HowRankedWorksScreen';
 import { HowToPlayScreen } from '../screens/HowToPlayScreen';
+import { JoinAsyncChallengeScreen } from '../screens/JoinAsyncChallengeScreen';
 import { JoinLiveRoomScreen } from '../screens/JoinLiveRoomScreen';
 import { LiveDuelHomeScreen } from '../screens/LiveDuelHomeScreen';
 import { LiveDuelResultsScreen } from '../screens/LiveDuelResultsScreen';
@@ -96,6 +101,14 @@ export function AppNavigator() {
           {isChallengeRewardsEnabled() ? (
             <Stack.Screen name="ChallengeRewards" component={ChallengeRewardsScreen} />
           ) : null}
+        </>
+      ) : null}
+      {isAsyncChallengesEnabled() ? (
+        <>
+          <Stack.Screen name="AsyncChallengeHub" component={AsyncChallengeHubScreen} />
+          <Stack.Screen name="CreateAsyncChallenge" component={CreateAsyncChallengeScreen} />
+          <Stack.Screen name="JoinAsyncChallenge" component={JoinAsyncChallengeScreen} />
+          <Stack.Screen name="AsyncChallengeDetail" component={AsyncChallengeDetailScreen} />
         </>
       ) : null}
       <Stack.Screen name="Feedback" component={FeedbackScreen} />

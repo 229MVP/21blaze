@@ -22,6 +22,7 @@ import { XpProgressBar } from '../components/Progression/XpProgressBar';
 import { SvgRoot as Svg } from '../components/svg/SvgRoot';
 import { BlazeButton } from '../components/ui/BlazeButton';
 import {
+  isAsyncChallengesEnabled,
   isDailyChallengeEnabled,
   isDailyMissionsEnabled,
   isDailyRewardsEnabled,
@@ -60,6 +61,7 @@ import { useScoreHistoryStore } from '../store/useScoreHistoryStore';
 import { useSettingsStore } from '../store/useSettingsStore';
 import { useWalletStore } from '../store/useWalletStore';
 import { useDailyChallengeStore } from '../store/useDailyChallengeStore';
+import { useAsyncChallengeStore } from '../store/useAsyncChallengeStore';
 import { hasSeenWhatsNew, markWhatsNewSeen } from '../services/whatsNewService';
 import { colors as kitColors, spacing as kitSpacing } from '../theme/uiKit';
 
@@ -151,6 +153,9 @@ export function HomeScreen({ navigation, route }: HomeScreenProps) {
   const dailyChallengeBadge = useDailyChallengeStore((state) => state.shouldShowBadge());
   const hydrateDailyChallenge = useDailyChallengeStore((state) => state.hydrateStatus);
   const dailyChallengeEnabled = isDailyChallengeEnabled();
+  const asyncChallengeEnabled = isAsyncChallengesEnabled();
+  const asyncChallengeBadge = useAsyncChallengeStore((state) => state.shouldShowBadge());
+  const loadAsyncChallenges = useAsyncChallengeStore((state) => state.loadChallenges);
 
   const [nameEditorOpen, setNameEditorOpen] = useState(false);
   const [whatsNewVisible, setWhatsNewVisible] = useState(false);
@@ -178,6 +183,9 @@ export function HomeScreen({ navigation, route }: HomeScreenProps) {
       if (dailyChallengeEnabled) {
         void hydrateDailyChallenge();
       }
+      if (asyncChallengeEnabled) {
+        void loadAsyncChallenges();
+      }
       if (isMounted) {
         setHighScore(savedScore);
       }
@@ -197,7 +205,9 @@ export function HomeScreen({ navigation, route }: HomeScreenProps) {
     initializePurchases,
     progressionEnabled,
     dailyChallengeEnabled,
+    asyncChallengeEnabled,
     hydrateDailyChallenge,
+    loadAsyncChallenges,
     setHighScore,
     v1_1RewardsOn,
   ]);
@@ -453,6 +463,19 @@ export function HomeScreen({ navigation, route }: HomeScreenProps) {
                   accessibilityLabel="Open Daily Challenge"
                 />
                 {dailyChallengeBadge ? (
+                  <View style={styles.lockerBadge} accessibilityElementsHidden />
+                ) : null}
+              </View>
+            ) : null}
+            {asyncChallengeEnabled ? (
+              <View style={styles.lockerButtonWrap}>
+                <BlazeButton
+                  label="ASYNC DUEL"
+                  variant="secondary"
+                  onPress={() => navigation.navigate('AsyncChallengeHub')}
+                  accessibilityLabel="Open Async Duel challenges"
+                />
+                {asyncChallengeBadge ? (
                   <View style={styles.lockerBadge} accessibilityElementsHidden />
                 ) : null}
               </View>

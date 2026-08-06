@@ -1,6 +1,6 @@
 {
   "name": "21-blaze",
-  "version": "1.3.0",
+  "version": "1.4.0",
   "main": "index.ts",
   "dependencies": {
     "@expo-google-fonts/anton": "^0.4.2",
@@ -60,6 +60,7 @@
     "test:daily-challenge": "npx tsx src/challenge/v1_3aDailyChallengeSelfTest.ts",
     "test:leaderboards": "npx tsx src/leaderboards/v1_3bLeaderboardSelfTest.ts",
     "test:challenge-rewards": "npx tsx src/challenge/v1_3cChallengeRewardSelfTest.ts",
+    "test:async-challenge": "npx tsx src/async/v1_4aAsyncChallengeSelfTest.ts",
     "validate:visual-assets": "npx tsx scripts/validate-visual-assets.mjs"
   },
   "private": true
