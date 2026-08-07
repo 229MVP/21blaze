@@ -46,6 +46,8 @@ export type RootStackParamList = {
   BlazeUIKitPreview: undefined;
   /** Development-only theme gallery. Registered only when the dev-preview flag + __DEV__ are both true. */
   ThemePreview: undefined;
+  /** Development-only Daily Challenge RPC diagnostics. Registered only when __DEV__ is true. */
+  DailyChallengeDiagnostics: undefined;
 };
 
 export type HomeScreenProps = NativeStackScreenProps<RootStackParamList, 'Home'>;

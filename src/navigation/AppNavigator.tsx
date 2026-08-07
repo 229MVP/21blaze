@@ -15,6 +15,7 @@ import { DailyChallengeScreen } from '../screens/DailyChallengeScreen';
 import { DailyMissionsScreen } from '../screens/DailyMissionsScreen';
 import { DailyRewardScreen } from '../screens/DailyRewardScreen';
 import { BlazeUIKitPreviewScreen } from '../screens/dev/BlazeUIKitPreviewScreen';
+import { DailyChallengeDiagnosticsScreen } from '../screens/dev/DailyChallengeDiagnosticsScreen';
 import { FeedbackScreen } from '../screens/FeedbackScreen';
 import { GameScreen } from '../screens/GameScreen';
 import { HighScoresScreen } from '../screens/HighScoresScreen';
@@ -101,10 +102,16 @@ export function AppNavigator() {
         />
       ) : null}
       {__DEV__ ? (
-        <Stack.Screen
-          name="BlazeUIKitPreview"
-          component={BlazeUIKitPreviewScreen}
-        />
+        <>
+          <Stack.Screen
+            name="BlazeUIKitPreview"
+            component={BlazeUIKitPreviewScreen}
+          />
+          <Stack.Screen
+            name="DailyChallengeDiagnostics"
+            component={DailyChallengeDiagnosticsScreen}
+          />
+        </>
       ) : null}
       {isThemePreviewDevEnabled() ? (
         <Stack.Screen name="ThemePreview" component={ThemePreviewScreen} />
