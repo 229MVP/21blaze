@@ -399,6 +399,12 @@ export function SettingsScreen({ navigation }: SettingsScreenProps) {
                     onPress={() => navigation.navigate('BlazeUIKitPreview')}
                   />
                 ) : null}
+                {__DEV__ ? (
+                  <SettingsActionRow
+                    label="DAILY CHALLENGE DIAGNOSTICS (DEV)"
+                    onPress={() => navigation.navigate('DailyChallengeDiagnostics')}
+                  />
+                ) : null}
                 {isThemePreviewDevEnabled() ? (
                   <SettingsActionRow
                     label="OPEN THEME PREVIEW"

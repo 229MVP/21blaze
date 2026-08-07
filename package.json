@@ -59,6 +59,8 @@
     "test:v1.2a-visual-theme": "npx tsx src/themes/v1_2aVisualThemeSelfTest.ts",
     "test:countdown-layout": "npx tsx src/components/GameTimer/gameStartCountdownLayoutSelfTest.ts",
     "test:daily-challenge": "npx tsx src/challenge/v1_3aDailyChallengeSelfTest.ts",
+    "test:daily-challenge-deck": "npx tsx src/challenge/dailyChallengeDeckSelfTest.ts",
+    "test:daily-challenge-attempts": "npx tsx src/challenge/dailyChallengeAttemptSelfTest.ts",
     "validate:visual-assets": "npx tsx scripts/validate-visual-assets.mjs"
   },
   "private": true

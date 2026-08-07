@@ -948,6 +948,135 @@ export type Database = {
         };
         Relationships: [];
       };
+      daily_challenges: {
+        Row: {
+          id: string;
+          challenge_date: string;
+          seed: number;
+          authoritative_seed: string | null;
+          rules_version: number;
+          scoring_version: number;
+          deck_version: string;
+          duration_seconds: number;
+          bust_limit: number;
+          status: string;
+          starts_at: string;
+          ends_at: string;
+          created_at: string;
+          published_at: string | null;
+        };
+        Insert: {
+          id?: string;
+          challenge_date: string;
+          seed: number;
+          authoritative_seed?: string | null;
+          rules_version?: number;
+          scoring_version?: number;
+          deck_version?: string;
+          duration_seconds?: number;
+          bust_limit?: number;
+          status?: string;
+          starts_at: string;
+          ends_at: string;
+          created_at?: string;
+          published_at?: string | null;
+        };
+        Update: {
+          id?: string;
+          challenge_date?: string;
+          seed?: number;
+          authoritative_seed?: string | null;
+          rules_version?: number;
+          scoring_version?: number;
+          deck_version?: string;
+          duration_seconds?: number;
+          bust_limit?: number;
+          status?: string;
+          starts_at?: string;
+          ends_at?: string;
+          created_at?: string;
+          published_at?: string | null;
+        };
+        Relationships: [];
+      };
+      daily_challenge_attempts: {
+        Row: {
+          id: string;
+          challenge_id: string;
+          user_id: string;
+          attempt_type: string;
+          status: string;
+          started_at: string | null;
+          completed_at: string | null;
+          first_move_at: string | null;
+          verified_score: number | null;
+          verified_clears: number | null;
+          verified_exact_21_count: number | null;
+          verified_five_card_clears: number | null;
+          verified_bust_count: number | null;
+          verified_multiplier: number | null;
+          elapsed_time_ms: number | null;
+          scoring_version: number | null;
+          rules_version: string | null;
+          submission_version: string | null;
+          cards_played: number | null;
+          verification_status: string | null;
+          move_log: Json | null;
+          game_over_reason: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          challenge_id: string;
+          user_id: string;
+          attempt_type: string;
+          status?: string;
+          started_at?: string | null;
+          completed_at?: string | null;
+          first_move_at?: string | null;
+          verified_score?: number | null;
+          verified_clears?: number | null;
+          verified_exact_21_count?: number | null;
+          verified_five_card_clears?: number | null;
+          verified_bust_count?: number | null;
+          verified_multiplier?: number | null;
+          elapsed_time_ms?: number | null;
+          scoring_version?: number | null;
+          rules_version?: string | null;
+          submission_version?: string | null;
+          cards_played?: number | null;
+          verification_status?: string | null;
+          move_log?: Json | null;
+          game_over_reason?: string | null;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          challenge_id?: string;
+          user_id?: string;
+          attempt_type?: string;
+          status?: string;
+          started_at?: string | null;
+          completed_at?: string | null;
+          first_move_at?: string | null;
+          verified_score?: number | null;
+          verified_clears?: number | null;
+          verified_exact_21_count?: number | null;
+          verified_five_card_clears?: number | null;
+          verified_bust_count?: number | null;
+          verified_multiplier?: number | null;
+          elapsed_time_ms?: number | null;
+          scoring_version?: number | null;
+          rules_version?: string | null;
+          submission_version?: string | null;
+          cards_played?: number | null;
+          verification_status?: string | null;
+          move_log?: Json | null;
+          game_over_reason?: string | null;
+          created_at?: string;
+        };
+        Relationships: [];
+      };
     };
     Views: {
       global_leaderboard: {
@@ -1049,6 +1178,27 @@ export type Database = {
           old_rating: number;
         };
         Returns: number;
+      };
+      get_today_daily_challenge: {
+        Args: Record<string, never>;
+        Returns: Json;
+      };
+      start_daily_challenge: {
+        Args: Record<string, never>;
+        Returns: Json;
+      };
+      complete_daily_challenge: {
+        Args: {
+          p_attempt_id: string;
+          p_score: number;
+          p_exact_21_count: number;
+          p_five_card_clear_count: number;
+          p_bust_count: number;
+          p_cards_played: number;
+          p_completion_ms: number;
+          p_rules_version: string;
+        };
+        Returns: Json;
       };
     };
     Enums: Record<string, never>;
