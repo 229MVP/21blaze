@@ -172,8 +172,9 @@ REVOKE INSERT, UPDATE, DELETE ON public.live_match_players FROM authenticated, a
 
 -- ---------------------------------------------------------------------------
 -- Realtime Authorization — private topics: live-match:{matchId}
+-- RLS on realtime.messages is managed by Supabase; do not ALTER that table.
+-- Policies below are supported on hosted projects when RLS is already enabled.
 -- ---------------------------------------------------------------------------
-ALTER TABLE realtime.messages ENABLE ROW LEVEL SECURITY;
 
 CREATE OR REPLACE FUNCTION public.is_live_match_participant(topic text)
 RETURNS boolean
