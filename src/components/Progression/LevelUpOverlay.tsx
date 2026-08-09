@@ -72,16 +72,22 @@ export function LevelUpOverlay({ pending, onContinue }: LevelUpOverlayProps) {
       >
         <FlameIcon width={40} height={52} />
         <Text style={styles.kicker}>LEVEL UP!</Text>
-        <Text style={styles.level}>LEVEL {pending.levelAfter}</Text>
+        {pending.levelsCrossed.length > 1 ? (
+          <Text style={styles.level}>
+            LEVEL {pending.levelBefore} → {pending.levelAfter}
+          </Text>
+        ) : (
+          <Text style={styles.level}>LEVEL {pending.levelAfter}</Text>
+        )}
         {pending.levelsCrossed.length > 1 ? (
           <Text style={styles.multi}>
-            Crossed {pending.levelsCrossed.length} levels
+            {pending.levelsCrossed.length} LEVELS GAINED
           </Text>
         ) : null}
 
         {coinTotal > 0 || cosmetics.length > 0 || titles.length > 0 ? (
           <View style={styles.rewards}>
-            <Text style={styles.rewardsTitle}>REWARDS UNLOCKED</Text>
+            <Text style={styles.rewardsTitle}>UNLOCKED</Text>
             {coinTotal > 0 ? (
               <Text style={styles.rewardLine}>+{coinTotal.toLocaleString()} Blaze Coins</Text>
             ) : null}

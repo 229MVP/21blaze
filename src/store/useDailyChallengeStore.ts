@@ -25,6 +25,8 @@ import type {
 } from '../game/challenge/types';
 import { supabase } from '../lib/supabase';
 import { trackEvent } from '../monetization/analytics';
+import { useDailyLeaderboardStore } from './useDailyLeaderboardStore';
+import { useProgressionStore } from './useProgressionStore';
 import {
   clearPersistedDailyChallengeSession,
   loadPersistedDailyChallengeSession,
@@ -417,9 +419,20 @@ export const useDailyChallengeStore = create<DailyChallengeStore>((set, get) => 
         completionMs: result.completionMs,
         rulesVersion: result.rulesVersion,
         alreadyCompleted: result.alreadyCompleted,
+        dailyRank: result.dailyRank ?? null,
+        totalPlayers: result.totalPlayers,
+        currentStreak: result.currentStreak,
+        longestStreak: result.longestStreak,
       };
 
+      if (result.currentStreak != null) {
+        trackEvent('daily_streak_incremented', { streak: result.currentStreak });
+      }
+
       await clearPersistedDailyChallengeSession();
+      useDailyLeaderboardStore.getState().invalidateCache();
+      void useDailyLeaderboardStore.getState().loadStreakStatus({ refresh: true });
+      void useProgressionStore.getState().hydrateProgression();
 
       const rankedAttempt: DailyChallengeRankedAttempt = {
         id: session.attemptId,

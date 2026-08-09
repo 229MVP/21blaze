@@ -3,8 +3,14 @@
  * Client flags are not security boundaries — server remains authoritative.
  */
 
+import {
+  getXpRequiredForLevel as curveXpRequired,
+  XP_MAX_LEVEL,
+} from '../progression/xpCurve';
+import { xpAmountForSource } from '../progression/xpSources';
+
 export const PROGRESSION_CONFIG = {
-  maxLevel: 50,
+  maxLevel: XP_MAX_LEVEL,
   dailyMissionCount: 3,
   dailyRewardCycleLength: 7,
   /** Minimum hours between daily claims. */
@@ -12,20 +18,15 @@ export const PROGRESSION_CONFIG = {
   /** Maximum hours after last claim to continue the streak. */
   maxStreakContinuationHours: 48,
   matchXp: {
-    solo: 50,
+    solo: xpAmountForSource('SOLO_COMPLETION'),
     casual: 75,
     ranked: 100,
+    dailyChallenge: xpAmountForSource('DAILY_CHALLENGE_COMPLETION'),
   },
 } as const;
 
 export type ProgressionConfig = typeof PROGRESSION_CONFIG;
 
 export function xpRequiredForLevel(level: number): number {
-  if (level < 1) {
-    return 0;
-  }
-  if (level >= PROGRESSION_CONFIG.maxLevel) {
-    return 0;
-  }
-  return 100 + (level - 1) * 25;
+  return curveXpRequired(level);
 }

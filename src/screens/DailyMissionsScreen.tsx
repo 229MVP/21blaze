@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { RewardedCoinButton } from '../components/ads/RewardedCoinButton';
@@ -16,20 +16,34 @@ import { radius } from '../theme/radius';
 import { spacing } from '../theme/spacing';
 import { fontFamilies, typography } from '../theme/typography';
 
-function formatReset(iso: string | null | undefined): string {
-  if (!iso) {
-    return 'Reset time syncing…';
+function formatResetCountdown(resetAt: string | null | undefined, nowMs: number): string {
+  if (!resetAt) {
+    return 'Resets soon…';
   }
-  const date = new Date(iso);
-  if (Number.isNaN(date.getTime())) {
-    return 'Reset time syncing…';
+  const resetMs = Date.parse(resetAt);
+  if (Number.isNaN(resetMs)) {
+    return 'Resets soon…';
   }
-  return `Resets ${date.toLocaleString(undefined, {
-    month: 'short',
-    day: 'numeric',
-    hour: 'numeric',
-    minute: '2-digit',
-  })}`;
+  const delta = Math.max(0, resetMs - nowMs);
+  const totalSeconds = Math.floor(delta / 1000);
+  const hours = Math.floor(totalSeconds / 3600);
+  const minutes = Math.floor((totalSeconds % 3600) / 60);
+  const seconds = totalSeconds % 60;
+  const pad = (n: number) => String(n).padStart(2, '0');
+  return `Resets in ${pad(hours)}:${pad(minutes)}:${pad(seconds)}`;
+}
+
+function missionStatusLabel(state: MissionCardState): string {
+  switch (state) {
+    case 'CLAIMED':
+      return 'CLAIMED';
+    case 'CLAIM':
+      return 'COMPLETE';
+    case 'IN PROGRESS':
+      return 'ACTIVE';
+    default:
+      return state;
+  }
 }
 
 type MissionCardState =
@@ -101,12 +115,18 @@ function MissionCard({
         </Text>
       </View>
       {state === 'CLAIMED' ? (
-        <Text style={styles.claimed}>CLAIMED</Text>
+        <Text style={styles.claimed}>{missionStatusLabel(state)}</Text>
       ) : state === 'SYNC REQUIRED' ? (
         <Text style={styles.syncRequired}>SYNC REQUIRED</Text>
       ) : (
         <BlazeButton
-          title={state === 'IN PROGRESS' ? 'IN PROGRESS' : state}
+          title={
+            state === 'IN PROGRESS'
+              ? missionStatusLabel(state)
+              : state === 'CLAIM'
+                ? 'CLAIM'
+                : state
+          }
           onPress={onClaim}
           disabled={!canClaim}
           loading={claiming}
@@ -130,8 +150,15 @@ export function DailyMissionsScreen({ navigation }: DailyMissionsScreenProps) {
   useEffect(() => {
     clearError();
     void loadDailyMissions();
-    trackEvent('daily_mission_viewed');
+    trackEvent('daily_missions_viewed');
   }, [clearError, loadDailyMissions]);
+
+  const [nowMs, setNowMs] = useState(Date.now());
+
+  useEffect(() => {
+    const timer = setInterval(() => setNowMs(Date.now()), 1000);
+    return () => clearInterval(timer);
+  }, []);
 
   const missions = dailyMissions?.missions ?? [];
   const online = authStatus === 'online';
@@ -140,7 +167,9 @@ export function DailyMissionsScreen({ navigation }: DailyMissionsScreenProps) {
     <ScreenContainer style={styles.container} intensity="normal" padded={false}>
       <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
         <ScreenHeader title="DAILY MISSIONS" />
-        <Text style={styles.reset}>{formatReset(dailyMissions?.resetAt)}</Text>
+        <Text style={styles.reset}>
+          {formatResetCountdown(dailyMissions?.resetAt, nowMs)}
+        </Text>
 
         {!online ? (
           <Text style={styles.offline}>
