@@ -204,12 +204,23 @@ function parseMission(value: unknown): DailyMissionView | null {
     'Mission';
   const description = asString(value.description) ?? '';
   const categoryRaw = asString(value.category);
-  const category: DailyMissionView['category'] =
-    categoryRaw === 'participation' ||
-    categoryRaw === 'skill' ||
-    categoryRaw === 'mode'
-      ? categoryRaw
-      : 'participation';
+  const categoryValues = [
+    'participation',
+    'skill',
+    'mode',
+    'gameplay',
+    'score',
+    'exact_21',
+    'five_card',
+    'survival',
+    'daily_challenge',
+    'completion',
+  ] as const;
+  const category: DailyMissionView['category'] = categoryValues.includes(
+    categoryRaw as DailyMissionView['category'],
+  )
+    ? (categoryRaw as DailyMissionView['category'])
+    : 'participation';
   const progress = asNumber(value.progress);
   const targetValue = asNumber(value.targetValue ?? value.target_value);
   const xpReward = asNumber(value.xpReward ?? value.xp_reward);
@@ -439,6 +450,18 @@ function parseXpResult(value: unknown): {
 }
 
 export async function loadPlayerProgression(): Promise<PlayerProgression | null> {
+  const { data: rpcData, error: rpcError } = await withTimeout(
+    Promise.resolve(supabase.rpc('get_player_progression')),
+    'get_player_progression',
+  );
+
+  if (!rpcError && rpcData) {
+    const parsed = parseProgression(rpcData);
+    if (parsed) {
+      return parsed;
+    }
+  }
+
   const { data, error } = await withTimeout(
     Promise.resolve(
       supabase
@@ -553,6 +576,46 @@ export async function claimDailyMission(
 ): Promise<DailyMissionClaimResult> {
   if (!missionId || typeof missionId !== 'string') {
     throw new ProgressionServiceError('Mission id is required.');
+  }
+
+  const { data: rpcData, error: rpcError } = await withTimeout(
+    Promise.resolve(
+      supabase.rpc('claim_daily_mission_reward', {
+        p_mission_progress_id: missionId,
+      }),
+    ),
+    'claim_daily_mission_reward',
+  );
+
+  if (!rpcError && rpcData && isRecord(rpcData)) {
+    const result = rpcData as Record<string, unknown>;
+    const mission = parseMission(result.mission);
+    const progression = parseProgression(result.progression);
+    if (mission && progression) {
+      const xpResult = parseXpResult(result.xp_result ?? result.xpResult);
+      return {
+        ok: true,
+        alreadyClaimed: Boolean(
+          result.already_processed ?? result.alreadyProcessed,
+        ),
+        mission: {
+          ...mission,
+          isClaimed: true,
+          claimedAt: mission.claimedAt ?? new Date().toISOString(),
+        },
+        progression,
+        blazeCoinsGranted:
+          asNumber(result.blazeCoinsGranted ?? result.blaze_coins_granted) ??
+          mission.blazeCoinReward,
+        xpGranted:
+          asNumber(result.xpGranted ?? result.xp_granted) ??
+          xpResult.xpGranted ??
+          mission.xpReward,
+        levelsCrossed: xpResult.levelsCrossed,
+        rewardsGranted: xpResult.rewardsGranted,
+        missions: null,
+      };
+    }
   }
 
   const data = await invoke(

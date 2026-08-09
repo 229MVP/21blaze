@@ -1238,6 +1238,16 @@ export type Database = {
         };
         Returns: Json;
       };
+      get_player_progression: {
+        Args: Record<string, never>;
+        Returns: Json;
+      };
+      claim_daily_mission_reward: {
+        Args: {
+          p_mission_progress_id: string;
+        };
+        Returns: Json;
+      };
     };
     Enums: Record<string, never>;
     CompositeTypes: Record<string, never>;
