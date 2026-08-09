@@ -68,6 +68,10 @@ export type DailyChallengeCompletionSummary = {
   completionMs: number;
   rulesVersion: string;
   alreadyCompleted: boolean;
+  dailyRank?: number | null;
+  totalPlayers?: number;
+  currentStreak?: number;
+  longestStreak?: number;
 };
 
 export type DailyChallengeVerifiedResult = {

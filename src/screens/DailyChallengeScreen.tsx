@@ -11,10 +11,8 @@ import {
 import { BlazeScreenBackground } from '../components/layout/BlazeScreenBackground';
 import { BlazeButton } from '../components/ui/BlazeButton';
 import { BlazePanel } from '../components/ui/BlazePanel';
-import {
-  isDailyChallengePracticeEnabled,
-  isDailyChallengeRankedEnabled,
-} from '../config/featureFlags';
+import { isDailyChallengePracticeEnabled, isDailyChallengeRankedEnabled, isDailyLeaderboardEnabled } from '../config/featureFlags';
+import { DailyStreakPanel } from '../components/dailyChallenge/DailyStreakPanel';
 import {
   formatDurationSeconds,
   formatFriendlyChallengeDate,
@@ -25,6 +23,7 @@ import type { DailyChallengeScreenProps } from '../navigation/navigationTypes';
 import { trackEvent } from '../monetization/analytics';
 import { useAuthStore } from '../store/useAuthStore';
 import { useDailyChallengeStore } from '../store/useDailyChallengeStore';
+import { useDailyLeaderboardStore } from '../store/useDailyLeaderboardStore';
 import { useGameStore } from '../store/useGameStore';
 import {
   colors as kitColors,
@@ -73,6 +72,9 @@ export function DailyChallengeScreen({ navigation }: DailyChallengeScreenProps) 
   const prepareDailyChallengeGame = useGameStore(
     (state) => state.prepareDailyChallengeGame,
   );
+  const streakStatus = useDailyLeaderboardStore((s) => s.streakStatus);
+  const loadStreakStatus = useDailyLeaderboardStore((s) => s.loadStreakStatus);
+  const leaderboardEnabled = isDailyLeaderboardEnabled();
 
   const [nowMs, setNowMs] = useState(Date.now());
   const authOnline = authStatus === 'online';
@@ -80,7 +82,8 @@ export function DailyChallengeScreen({ navigation }: DailyChallengeScreenProps) 
   useEffect(() => {
     trackEvent('daily_challenge_viewed');
     void hydrateStatus(authOnline);
-  }, [authOnline, hydrateStatus]);
+    void loadStreakStatus();
+  }, [authOnline, hydrateStatus, loadStreakStatus]);
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -229,6 +232,14 @@ export function DailyChallengeScreen({ navigation }: DailyChallengeScreenProps) 
           ) : null}
         </BlazePanel>
 
+        {streakStatus ? (
+          <DailyStreakPanel
+            currentStreak={streakStatus.currentStreak}
+            longestStreak={streakStatus.longestStreak}
+            compact
+          />
+        ) : null}
+
         <BlazePanel style={styles.panel}>
           <Text style={styles.panelLabel}>RESETS AT</Text>
           <Text style={styles.panelValue}>00:00 UTC</Text>
@@ -306,6 +317,14 @@ export function DailyChallengeScreen({ navigation }: DailyChallengeScreenProps) 
                   variant="secondary"
                   onPress={onPractice}
                   accessibilityLabel="Start Daily Blaze practice run"
+                />
+              ) : null}
+              {leaderboardEnabled ? (
+                <BlazeButton
+                  label="VIEW LEADERBOARD"
+                  variant="ghost"
+                  onPress={() => navigation.navigate('DailyChallengeLeaderboard')}
+                  accessibilityLabel="View Daily Blaze leaderboard"
                 />
               ) : null}
             </>

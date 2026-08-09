@@ -33,3 +33,20 @@ export function formatDurationSeconds(seconds: number): string {
   const secs = seconds % 60;
   return `${mins}:${String(secs).padStart(2, '0')}`;
 }
+
+/** UTC week starts Monday 00:00 — mirrors `utc_week_start` in Postgres. */
+export function utcWeekStartForDate(challengeDate: string): string {
+  const parts = challengeDate.split('-').map(Number);
+  const date = new Date(Date.UTC(parts[0], parts[1] - 1, parts[2]));
+  const dow = date.getUTCDay();
+  const daysSinceMonday = (dow + 6) % 7;
+  date.setUTCDate(date.getUTCDate() - daysSinceMonday);
+  return date.toISOString().slice(0, 10);
+}
+
+export function utcWeekEndForDate(challengeDate: string): string {
+  const start = utcWeekStartForDate(challengeDate);
+  const parts = start.split('-').map(Number);
+  const date = new Date(Date.UTC(parts[0], parts[1] - 1, parts[2] + 6));
+  return date.toISOString().slice(0, 10);
+}

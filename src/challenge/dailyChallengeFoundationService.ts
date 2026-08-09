@@ -43,6 +43,10 @@ function mapCompletionRow(value: Record<string, unknown>): DailyChallengeComplet
     rulesVersion: String(value.rulesVersion),
     verificationStatus:
       typeof value.verificationStatus === 'string' ? value.verificationStatus : undefined,
+    currentStreak: value.currentStreak != null ? Number(value.currentStreak) : undefined,
+    longestStreak: value.longestStreak != null ? Number(value.longestStreak) : undefined,
+    dailyRank: value.dailyRank != null ? Number(value.dailyRank) : null,
+    totalPlayers: value.totalPlayers != null ? Number(value.totalPlayers) : undefined,
   };
 }
 

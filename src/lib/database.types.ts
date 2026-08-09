@@ -1200,6 +1200,44 @@ export type Database = {
         };
         Returns: Json;
       };
+      get_daily_leaderboard: {
+        Args: {
+          p_challenge_id: string;
+          p_limit?: number;
+          p_offset?: number;
+        };
+        Returns: Json;
+      };
+      get_my_daily_leaderboard_position: {
+        Args: {
+          p_challenge_id: string;
+        };
+        Returns: Json;
+      };
+      get_weekly_leaderboard: {
+        Args: {
+          p_week_start?: string;
+          p_limit?: number;
+          p_offset?: number;
+        };
+        Returns: Json;
+      };
+      get_my_weekly_leaderboard_position: {
+        Args: {
+          p_week_start?: string;
+        };
+        Returns: Json;
+      };
+      get_daily_streak_status: {
+        Args: Record<string, never>;
+        Returns: Json;
+      };
+      claim_daily_streak_reward: {
+        Args: {
+          p_milestone: number;
+        };
+        Returns: Json;
+      };
     };
     Enums: Record<string, never>;
     CompositeTypes: Record<string, never>;
