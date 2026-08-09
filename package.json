@@ -64,6 +64,7 @@
     "test:daily-challenge-phase2": "npx tsx src/challenge/dailyChallengePhase2SelfTest.ts",
     "test:daily-challenge-phase3": "npx tsx src/challenge/dailyChallengePhase3SelfTest.ts",
     "test:daily-challenge-phase4": "npx tsx src/challenge/dailyChallengePhase4SelfTest.ts",
+    "test:v1.3-release": "npx tsx src/challenge/v1_3ReleaseSelfTest.ts",
     "test:daily-challenge-live": "npx tsx scripts/dailyChallengeLiveVerification.ts",
     "validate:visual-assets": "npx tsx scripts/validate-visual-assets.mjs"
   },
