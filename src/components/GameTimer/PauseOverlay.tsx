@@ -20,6 +20,7 @@ type PauseOverlayProps = {
   onResume: () => void;
   onRestart: () => void;
   onQuit: () => void;
+  hideRestart?: boolean;
 };
 
 /**
@@ -31,6 +32,7 @@ export function PauseOverlay({
   onResume,
   onRestart,
   onQuit,
+  hideRestart = false,
 }: PauseOverlayProps) {
   const { width } = useWindowDimensions();
 
@@ -84,12 +86,14 @@ export function PauseOverlay({
             onPress={onResume}
             accessibilityLabel="Resume match"
           />
-          <BlazeButton
-            label="RESTART GAME"
-            onPress={onRestart}
-            variant="danger"
-            accessibilityLabel="Restart game. Requires confirmation."
-          />
+          {hideRestart ? null : (
+            <BlazeButton
+              label="RESTART GAME"
+              onPress={onRestart}
+              variant="danger"
+              accessibilityLabel="Restart game. Requires confirmation."
+            />
+          )}
           <BlazeButton
             label="QUIT TO HOME"
             onPress={onQuit}

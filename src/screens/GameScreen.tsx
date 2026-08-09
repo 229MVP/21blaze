@@ -321,6 +321,8 @@ export function GameScreen({ navigation }: GameScreenProps) {
   };
 
   const isDailyChallenge = gameMode === 'dailyChallenge';
+  const isDailyRanked =
+    isDailyChallenge && dailyChallengeSession?.attemptType === 'ranked';
   const challengeLabel =
     dailyChallengeSession?.attemptType === 'ranked'
       ? 'DAILY RANKED'
@@ -508,6 +510,7 @@ export function GameScreen({ navigation }: GameScreenProps) {
               onResume={handleResume}
               onRestart={requestRestartConfirm}
               onQuit={requestQuitConfirm}
+              hideRestart={isDailyRanked}
             />
           </View>
 
@@ -518,7 +521,7 @@ export function GameScreen({ navigation }: GameScreenProps) {
               label: 'RESTART',
               onPress: requestRestartConfirm,
               variant: 'danger',
-              disabled: isDailyChallenge,
+              disabled: isDailyRanked,
               accessibilityLabel: 'Restart game',
             }}
             secondaryAction={{

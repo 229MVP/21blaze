@@ -1,8 +1,10 @@
 import {
+  DAILY_CHALLENGE_BUST_LIMIT,
+  DAILY_CHALLENGE_DECK_VERSION,
   DAILY_CHALLENGE_DURATION_SECONDS,
   DAILY_CHALLENGE_RULES_VERSION,
 } from '../../challenge/dailyChallengeRegistry';
-import { deriveDailyChallengeSeed } from '../../challenge/seedDerivation';
+import { deriveNumericSeedFromAuthoritative, deriveAuthoritativeSeed } from '../../challenge/seedDerivation';
 import {
   getUtcChallengeDate,
   isUtcChallengeDate,
@@ -10,10 +12,7 @@ import {
   utcMidnightForDate,
   utcNextMidnightForDate,
 } from '../../challenge/utcChallengeDate';
-import {
-  DAILY_CHALLENGE_SCORING_VERSION,
-  type DailyChallengeConfig,
-} from './types';
+import type { DailyChallengeConfig } from './types';
 
 export const DAILY_CHALLENGE_SUBMISSION_GRACE_SECONDS = 30;
 
@@ -21,25 +20,26 @@ export {
   getUtcChallengeDate,
   utcMidnightForDate,
   utcNextMidnightForDate,
-  deriveDailyChallengeSeed,
 };
+
+/** Legacy numeric seed helper for tests comparing deck derivation. */
+export function deriveDailyChallengeSeed(challengeDate: string): number {
+  return deriveNumericSeedFromAuthoritative(deriveAuthoritativeSeed(challengeDate));
+}
 
 export function createDailyChallengeConfig(
   challengeDate: string,
   challengeId = `local-${challengeDate}`,
 ): DailyChallengeConfig {
-  const startsAt = utcMidnightForDate(challengeDate).toISOString();
-  const endsAt = utcNextMidnightForDate(challengeDate).toISOString();
-
   return {
     challengeId,
     challengeDate,
-    seed: deriveDailyChallengeSeed(challengeDate),
-    rulesVersion: Number(DAILY_CHALLENGE_RULES_VERSION),
-    scoringVersion: DAILY_CHALLENGE_SCORING_VERSION,
+    rulesVersion: String(DAILY_CHALLENGE_RULES_VERSION),
+    deckVersion: String(DAILY_CHALLENGE_DECK_VERSION),
     durationSeconds: DAILY_CHALLENGE_DURATION_SECONDS,
-    startsAt,
-    endsAt,
+    bustLimit: DAILY_CHALLENGE_BUST_LIMIT,
+    status: 'active',
+    authoritativeSeed: deriveAuthoritativeSeed(challengeDate),
   };
 }
 
