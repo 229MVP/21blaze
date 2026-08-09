@@ -18,6 +18,7 @@ import { BlazeScreenBackground } from '../components/layout/BlazeScreenBackgroun
 import { WhatsNewOverlay } from '../components/modals/WhatsNewOverlay';
 import { EditDisplayNameModal } from '../components/Profile/EditDisplayNameModal';
 import { LevelUpOverlay } from '../components/Progression/LevelUpOverlay';
+import { ProgressionCompactCard } from '../components/Progression/ProgressionCompactCard';
 import { XpProgressBar } from '../components/Progression/XpProgressBar';
 import { SvgRoot as Svg } from '../components/svg/SvgRoot';
 import { BlazeButton } from '../components/ui/BlazeButton';
@@ -27,11 +28,11 @@ import {
   isDailyRewardsEnabled,
   isLiveDuelEnabled,
   isMonetizationBetaEnabled,
-  isProgressionBetaEnabled,
   isRankedBetaEnabled,
   isStorePurchasesEnabled,
   isV1_1LockerEnabled,
   isV1_1RewardsEnabled,
+  isV1_3ProgressionUiEnabled,
 } from '../config/featureFlags';
 import { getCosmetic } from '../cosmetics/catalog';
 import {
@@ -129,7 +130,7 @@ export function HomeScreen({ navigation, route }: HomeScreenProps) {
   const hasRemoveAds = useHasRemoveAdsEntitlement();
   const storeEnabled = isMonetizationBetaEnabled();
   const purchasesEnabled = isStorePurchasesEnabled();
-  const progressionEnabled = isProgressionBetaEnabled();
+  const progressionEnabled = isV1_3ProgressionUiEnabled();
   const v1_1RewardsOn = isV1_1RewardsEnabled();
   const v1_1LockerOn = isV1_1LockerEnabled();
   const lockerBadgeVisible = useLockerBadgeVisible();
@@ -169,8 +170,20 @@ export function HomeScreen({ navigation, route }: HomeScreenProps) {
     Boolean(dailyRewardStatus?.isAvailable) ||
     Boolean(progression?.isDailyRewardAvailable);
   const missionClaimable = dailyMissions?.claimableCount ?? 0;
+  const missionsCompleteCount =
+    dailyMissions?.missions.filter((mission) => mission.isComplete).length ?? 0;
+  const missionsTotal = dailyMissions?.missions.length ?? 3;
   const showDailyLink = isDailyRewardsEnabled() && dailyReady;
-  const showMissionsLink = isDailyMissionsEnabled() && missionClaimable > 0;
+  const showMissionsLink =
+    isDailyMissionsEnabled() &&
+    authStatus === 'online' &&
+    (dailyMissions?.missions.length ?? 0) > 0;
+  const showGuestProgressionHint =
+    progressionEnabled && authStatus === 'local' && isDailyMissionsEnabled();
+  const missionsLinkLabel =
+    missionClaimable > 0
+      ? `MISSIONS · ${missionClaimable} CLAIM`
+      : `MISSIONS · ${missionsCompleteCount} / ${missionsTotal} COMPLETE`;
 
   useEffect(() => {
     let isMounted = true;
@@ -405,9 +418,7 @@ export function HomeScreen({ navigation, route }: HomeScreenProps) {
                         onPress={() => navigation.navigate('DailyMissions')}
                         style={({ pressed }) => pressed && styles.pressed}
                       >
-                        <Text style={styles.claimLink}>
-                          MISSIONS · {missionClaimable}
-                        </Text>
+                        <Text style={styles.claimLink}>{missionsLinkLabel}</Text>
                       </Pressable>
                     ) : null}
                   </View>
@@ -447,9 +458,7 @@ export function HomeScreen({ navigation, route }: HomeScreenProps) {
                       onPress={() => navigation.navigate('DailyMissions')}
                       style={({ pressed }) => pressed && styles.pressed}
                     >
-                      <Text style={styles.claimLink}>
-                        MISSIONS · {missionClaimable}
-                      </Text>
+                      <Text style={styles.claimLink}>{missionsLinkLabel}</Text>
                     </Pressable>
                   ) : null}
                 </View>
@@ -527,6 +536,19 @@ export function HomeScreen({ navigation, route }: HomeScreenProps) {
                   });
                 }}
                 primaryBusy={dailyIsStarting}
+              />
+            ) : null}
+            {showGuestProgressionHint ? (
+              <Text style={styles.guestProgressionHint}>
+                SIGN IN TO SAVE PROGRESS
+              </Text>
+            ) : null}
+            {progressionEnabled && progression && authStatus === 'online' ? (
+              <ProgressionCompactCard
+                progression={progression}
+                missionsCompleteCount={missionsCompleteCount}
+                missionsTotal={missionsTotal}
+                onPress={() => navigation.navigate('PlayerProgression')}
               />
             ) : null}
             {v1_1LockerOn ? (
@@ -769,6 +791,13 @@ const styles = StyleSheet.create({
     fontFamily: 'RobotoCondensed_700Bold',
     fontSize: 11,
     letterSpacing: 0.7,
+  },
+  guestProgressionHint: {
+    color: kitColors.text.secondary,
+    fontFamily: 'RobotoCondensed_400Regular',
+    fontSize: 12,
+    textAlign: 'center',
+    letterSpacing: 0.6,
   },
   coinChip: {
     alignItems: 'flex-end',

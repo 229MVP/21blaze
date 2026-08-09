@@ -13,7 +13,7 @@ export type AdminClient = ReturnType<typeof createServiceClient>;
 export type MatchXpMode = 'solo' | 'casual' | 'ranked';
 
 export const MATCH_XP: Record<MatchXpMode, number> = {
-  solo: 50,
+  solo: 25,
   casual: 75,
   ranked: 100,
 };
@@ -53,6 +53,8 @@ export type MatchProgressionSummary = {
   maximumMultiplierReached: number;
   /** Busts in this match. Used by the "fewer than three busts" mission. */
   busts: number | null;
+  score?: number | null;
+  cardsPlayed?: number | null;
   matchMode: MatchXpMode | 'unknown';
   matchCompleted: boolean;
   validCompletion: boolean;
@@ -201,6 +203,8 @@ export function buildMatchSummaryFromReplay(
     matchCompleted?: boolean;
     validCompletion?: boolean;
     busts?: number | null;
+    score?: number | null;
+    cardsPlayed?: number | null;
   },
 ): MatchProgressionSummary {
   let state = createServerGameState(seed);
@@ -245,6 +249,8 @@ export function buildMatchSummaryFromReplay(
     totalLaneClears: state.clearedLanes,
     maximumMultiplierReached,
     busts: options.busts ?? state.busts,
+    score: options.score ?? null,
+    cardsPlayed: options.cardsPlayed ?? state.cardsPlayed ?? null,
     matchMode: options.matchMode,
     matchCompleted: options.matchCompleted ?? true,
     validCompletion: options.validCompletion ?? true,
@@ -262,6 +268,8 @@ export function buildMatchSummaryFromVerifiedFields(input: {
   fiveCardClears?: number;
   maximumMultiplierReached?: number;
   busts?: number | null;
+  score?: number | null;
+  cardsPlayed?: number | null;
   matchMode: MatchXpMode | 'unknown';
   matchCompleted?: boolean;
   validCompletion?: boolean;
@@ -272,6 +280,8 @@ export function buildMatchSummaryFromVerifiedFields(input: {
     totalLaneClears: Math.max(0, input.lanesCleared),
     maximumMultiplierReached: Math.max(0, input.maximumMultiplierReached ?? 0),
     busts: input.busts ?? null,
+    score: input.score ?? null,
+    cardsPlayed: input.cardsPlayed ?? null,
     matchMode: input.matchMode,
     matchCompleted: input.matchCompleted ?? true,
     validCompletion: input.validCompletion ?? true,
@@ -287,6 +297,8 @@ export function tryBuildMatchSummaryFromMoveLog(
     validCompletion?: boolean;
     lanesClearedFallback?: number;
     busts?: number | null;
+    score?: number | null;
+    cardsPlayed?: number | null;
   },
 ): MatchProgressionSummary {
   const validated = validateMoveLog(moveLog);
@@ -297,6 +309,8 @@ export function tryBuildMatchSummaryFromMoveLog(
       matchCompleted: options.matchCompleted,
       validCompletion: options.validCompletion,
       busts: options.busts,
+      score: options.score,
+      cardsPlayed: options.cardsPlayed,
     });
   }
 
@@ -355,6 +369,8 @@ export async function applyMissionProgressFromMatch(
     p_allow_live_duel: options?.allowLiveDuel ?? true,
     p_allow_ranked: options?.allowRanked ?? true,
     p_busts: summary.busts,
+    p_score: summary.score ?? null,
+    p_cards_played: summary.cardsPlayed ?? null,
   });
 
   if (error) {

@@ -30,6 +30,8 @@ async function applySoloProgression(input: {
   moveLog?: unknown;
   lanesCleared?: number;
   busts?: number;
+  score?: number;
+  cardsPlayed?: number;
 }): Promise<ProgressionPayload | undefined> {
   if (input.gameOverReason === 'quit') {
     return undefined;
@@ -52,6 +54,8 @@ async function applySoloProgression(input: {
         matchCompleted: true,
         validCompletion: true,
         busts: input.busts,
+        score: input.score,
+        cardsPlayed: input.cardsPlayed,
       });
     } else if (typeof input.seed === 'number' && input.moveLog !== undefined) {
       summary = tryBuildMatchSummaryFromMoveLog(input.seed, input.moveLog, {
@@ -60,6 +64,8 @@ async function applySoloProgression(input: {
         validCompletion: true,
         lanesClearedFallback: input.lanesCleared ?? 0,
         busts: input.busts,
+        score: input.score,
+        cardsPlayed: input.cardsPlayed,
       });
     } else {
       summary = buildMatchSummaryFromVerifiedFields({
@@ -68,6 +74,8 @@ async function applySoloProgression(input: {
         matchCompleted: true,
         validCompletion: true,
         busts: input.busts,
+        score: input.score,
+        cardsPlayed: input.cardsPlayed,
       });
     }
 
@@ -181,6 +189,8 @@ Deno.serve(async (request) => {
         moveLog: existingScore.move_log,
         lanesCleared: existingScore.lanes_cleared,
         busts: existingScore.busts,
+        score: existingScore.score,
+        cardsPlayed: existingScore.cards_played,
       });
 
       return jsonResponse({
@@ -282,6 +292,8 @@ Deno.serve(async (request) => {
             moves: moveValidation.moves,
             lanesCleared: raced.lanes_cleared,
             busts: raced.busts,
+            score: raced.score,
+            cardsPlayed: raced.cards_played,
           });
 
           return jsonResponse({
@@ -311,6 +323,8 @@ Deno.serve(async (request) => {
       moves: moveValidation.moves,
       lanesCleared: replay.result.lanesCleared,
       busts: replay.result.busts,
+      score: replay.result.score,
+      cardsPlayed: replay.result.cardsPlayed,
     });
 
     return jsonResponse({
