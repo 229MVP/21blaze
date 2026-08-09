@@ -6,7 +6,6 @@ const CACHE_KEY = '@21blaze/dailyChallengeCache';
 
 export type CachedDailyChallengeState = {
   challenge: DailyChallengeConfig;
-  serverTime: string;
   cachedAtMs: number;
 };
 
@@ -21,7 +20,6 @@ export async function loadCachedDailyChallenge(): Promise<CachedDailyChallengeSt
       parsed &&
       typeof parsed === 'object' &&
       typeof (parsed as { challenge?: unknown }).challenge === 'object' &&
-      typeof (parsed as { serverTime?: unknown }).serverTime === 'string' &&
       typeof (parsed as { cachedAtMs?: unknown }).cachedAtMs === 'number'
     ) {
       return parsed as CachedDailyChallengeState;

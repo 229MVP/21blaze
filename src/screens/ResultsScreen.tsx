@@ -107,13 +107,11 @@ export function ResultsScreen({ navigation, route }: ResultsScreenProps) {
   const gameMode = useGameStore((state) => state.gameMode);
   const dailyChallengeSession = useGameStore((state) => state.dailyChallengeSession);
   const clearDailyChallengeMode = useGameStore((state) => state.clearDailyChallengeMode);
-  const challengeVerifiedResult = useDailyChallengeStore((state) => state.verifiedResult);
-  const challengeVerificationStatus = useDailyChallengeStore(
-    (state) => state.verificationStatus,
-  );
-  const challengeRejectionReason = useDailyChallengeStore(
-    (state) => state.rejectionReason,
-  );
+  const dailyExact21Count = useGameStore((state) => state.dailyExact21Count);
+  const dailyFiveCardClearCount = useGameStore((state) => state.dailyFiveCardClearCount);
+  const dailyCompletionSummary = useDailyChallengeStore((state) => state.completionSummary);
+  const dailySubmissionStatus = useDailyChallengeStore((state) => state.submissionStatus);
+  const dailySubmissionError = useDailyChallengeStore((state) => state.submissionError);
   const rankedAttemptScore = useDailyChallengeStore(
     (state) => state.rankedAttempt?.verifiedScore,
   );
@@ -280,7 +278,29 @@ export function ResultsScreen({ navigation, route }: ResultsScreenProps) {
     blazeHaptics.highScore(`high:${highScoreFeedbackKey}`);
   }, [highScoreFeedbackKey, isNewHighScore]);
 
-  const { title, subtitle } = getResultCopy(gameOverReason, isNewHighScore);
+  const { title, subtitle } = useMemo(() => {
+    if (
+      gameMode === 'dailyChallenge' &&
+      dailyChallengeSession?.attemptType === 'ranked' &&
+      (dailySubmissionStatus === 'completed' || submissionStatus === 'verified')
+    ) {
+      return { title: 'DAILY BLAZE COMPLETE', subtitle: 'OFFICIAL RESULT' };
+    }
+    if (
+      gameMode === 'dailyChallenge' &&
+      dailyChallengeSession?.attemptType === 'practice'
+    ) {
+      return { title: 'PRACTICE RUN', subtitle: 'UNRANKED' };
+    }
+    return getResultCopy(gameOverReason, isNewHighScore);
+  }, [
+    dailyChallengeSession?.attemptType,
+    dailySubmissionStatus,
+    gameMode,
+    gameOverReason,
+    isNewHighScore,
+    submissionStatus,
+  ]);
   const showStopwatch =
     gameOverReason === 'timeExpired' && !isNewHighScore;
   const localRank =
@@ -298,66 +318,50 @@ export function ResultsScreen({ navigation, route }: ResultsScreenProps) {
     if (gameMode === 'dailyChallenge') {
       if (dailyChallengeSession?.attemptType === 'practice') {
         return {
-          label: 'PRACTICE RESULT',
-          detail: 'Practice never enters the daily leaderboard.',
+          label: 'PRACTICE RUN',
+          detail: 'Practice scores do not affect your official Daily Blaze result.',
           tone: 'local' as const,
         };
       }
 
-      if (challengeVerificationStatus === 'verified' && challengeVerifiedResult) {
-        const rankLine =
-          challengeVerifiedResult.rank != null
-            ? `Daily rank #${challengeVerifiedResult.rank}`
-            : 'Verified for today’s challenge';
-        const percentileLine =
-          challengeVerifiedResult.percentile != null
-            ? `Top ${challengeVerifiedResult.percentile}%`
-            : null;
+      if (
+        dailySubmissionStatus === 'completed' &&
+        dailyCompletionSummary
+      ) {
         return {
-          label: 'DAILY CHALLENGE VERIFIED',
-          detail: percentileLine ? `${rankLine} · ${percentileLine}` : rankLine,
+          label: 'DAILY BLAZE COMPLETE',
+          detail: 'Your official attempt is complete.',
           tone: 'ok' as const,
         };
       }
 
       if (
-        challengeVerificationStatus === 'submitting' ||
+        dailySubmissionStatus === 'submitting' ||
         submissionStatus === 'submitting' ||
         submissionStatus === 'idle'
       ) {
         return {
-          label: 'VERIFYING RESULT…',
-          detail: 'Checking your ranked attempt with the server…',
+          label: 'SUBMITTING RESULT…',
+          detail: 'Recording your official Daily Blaze attempt…',
           tone: 'pending' as const,
         };
       }
 
       if (
-        challengeVerificationStatus === 'rejected' ||
-        submissionStatus === 'rejected'
-      ) {
-        return {
-          label: 'RANKED ATTEMPT REJECTED',
-          detail:
-            challengeRejectionReason ?? 'Verification failed. No leaderboard score was stored.',
-          tone: 'warn' as const,
-        };
-      }
-
-      if (
-        challengeVerificationStatus === 'failed' ||
+        dailySubmissionStatus === 'failed' ||
         submissionStatus === 'failed'
       ) {
         return {
-          label: 'VERIFICATION FAILED',
-          detail: challengeRejectionReason ?? 'Connection lost. Retry when online.',
+          label: 'SUBMISSION FAILED',
+          detail:
+            dailySubmissionError ?? 'Could not submit your official result. Retry when online.',
           tone: 'warn' as const,
         };
       }
 
       return {
-        label: 'DAILY CHALLENGE RESULT',
-        detail: 'Awaiting server confirmation.',
+        label: 'DAILY BLAZE RESULT',
+        detail: 'Awaiting official submission.',
         tone: 'pending' as const,
       };
     }
@@ -403,10 +407,10 @@ export function ResultsScreen({ navigation, route }: ResultsScreenProps) {
       tone: 'local' as const,
     };
   }, [
-    challengeRejectionReason,
-    challengeVerificationStatus,
-    challengeVerifiedResult,
     dailyChallengeSession?.attemptType,
+    dailyCompletionSummary,
+    dailySubmissionError,
+    dailySubmissionStatus,
     eligibility,
     gameMode,
     submissionStatus,
@@ -485,6 +489,35 @@ export function ResultsScreen({ navigation, route }: ResultsScreenProps) {
     ).length;
   }, [dailyMissions]);
 
+  const dailyStatsRows = useMemo(() => {
+    if (gameMode !== 'dailyChallenge') {
+      return null;
+    }
+    const summary = dailyCompletionSummary;
+    const exact21 =
+      summary?.exact21Count ?? dailyExact21Count;
+    const fiveCard =
+      summary?.fiveCardClearCount ?? dailyFiveCardClearCount;
+    const bustTotal = summary?.bustCount ?? busts;
+    return [
+      {
+        label: 'SCORE',
+        value: (summary?.score ?? score).toLocaleString(),
+        gold: true,
+      },
+      { label: 'EXACT 21', value: exact21.toLocaleString() },
+      { label: 'FIVE CARD CLEARS', value: fiveCard.toLocaleString() },
+      { label: 'BUSTS', value: bustTotal.toLocaleString(), danger: bustTotal >= 3 },
+    ];
+  }, [
+    busts,
+    dailyCompletionSummary,
+    dailyExact21Count,
+    dailyFiveCardClearCount,
+    gameMode,
+    score,
+  ]);
+
   const statsRows = useMemo(
     () => [
       {
@@ -524,6 +557,13 @@ export function ResultsScreen({ navigation, route }: ResultsScreenProps) {
     }
     restartGame();
     navigation.replace('Game');
+  };
+
+  const playSolo = () => {
+    if (gameMode === 'dailyChallenge') {
+      clearDailyChallengeMode();
+    }
+    navigation.navigate('Game');
   };
 
   const returnHome = () => {
@@ -681,7 +721,7 @@ export function ResultsScreen({ navigation, route }: ResultsScreenProps) {
           </View>
 
           <ResultsTable
-            rows={statsRows}
+            rows={dailyStatsRows ?? statsRows}
             highlightedRow={isNewHighScore ? 'HIGH SCORE' : undefined}
             compact
           />
@@ -857,15 +897,15 @@ export function ResultsScreen({ navigation, route }: ResultsScreenProps) {
             ) : gameMode === 'dailyChallenge' ? (
               <>
                 <BlazeButton
-                  label="VIEW LEADERBOARD"
-                  onPress={() => navigation.navigate('DailyChallengeLeaderboard')}
-                  disabled={submissionStatus !== 'verified'}
-                  accessibilityLabel="View daily challenge leaderboard"
+                  label="VIEW DAILY CHALLENGE"
+                  onPress={playAgain}
+                  accessibilityLabel="View Daily Blaze challenge"
                 />
                 <BlazeButton
-                  label="RETURN TO CHALLENGE"
+                  label="PLAY SOLO"
                   variant="secondary"
-                  onPress={playAgain}
+                  onPress={playSolo}
+                  accessibilityLabel="Play solo mode"
                 />
               </>
             ) : (

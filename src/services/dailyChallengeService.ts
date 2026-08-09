@@ -157,13 +157,18 @@ export async function fetchDailyChallengeLeaderboard(
 export function toDailyChallengeSession(
   start: StartDailyChallengeResponse,
 ): DailyChallengeSession {
+  const authoritativeSeed =
+    start.challenge.authoritativeSeed ??
+    `${start.challenge.challengeDate}-legacy`;
   return {
     challengeId: start.challenge.challengeId,
     attemptId: start.attempt.attemptId,
     attemptType: start.attempt.attemptType,
-    seed: start.challenge.seed,
-    rulesVersion: start.challenge.rulesVersion,
-    scoringVersion: start.challenge.scoringVersion,
+    authoritativeSeed,
+    rulesVersion: String(start.challenge.rulesVersion),
+    deckVersion: start.challenge.deckVersion ?? '1',
+    durationSeconds: start.challenge.durationSeconds ?? 120,
+    bustLimit: start.challenge.bustLimit ?? 3,
     serverStartTime: start.serverTime,
     expiresAt: start.expiresAt,
     challengeDate: start.challenge.challengeDate,

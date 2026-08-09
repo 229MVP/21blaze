@@ -14,7 +14,12 @@ import {
 import { hashAuthoritativeSeedFingerprint } from '../../challenge/seedFingerprint';
 import { getUtcChallengeDate } from '../../challenge/utcChallengeDate';
 import { createDailyChallengeDeck } from '../../game/challenge/createDailyChallengeDeck';
+import { createDailyChallengeConfig } from '../../game/challenge/createDailyChallenge';
 import type { RootStackParamList } from '../../navigation/navigationTypes';
+import {
+  useDailyChallengeStore,
+  type DailyChallengeUiStatus,
+} from '../../store/useDailyChallengeStore';
 import { colors } from '../../theme/colors';
 import { spacing } from '../../theme/spacing';
 import { fontFamilies, typography } from '../../theme/typography';
@@ -116,6 +121,134 @@ export function DailyChallengeDiagnosticsScreen({ navigation }: Props) {
     }
   }, [diagnostics.attemptId, diagnostics.rulesVersion]);
 
+  const applyUiFixture = (fixture: DailyChallengeUiStatus) => {
+    const date = getUtcChallengeDate();
+    const config = createDailyChallengeConfig(date, `fixture-${date}`);
+    const base = {
+      challenge: config,
+      errorMessage: null as string | null,
+      activeSession: null,
+      rankedAttempt: null,
+      completionSummary: null,
+      submissionStatus: 'idle' as const,
+      isStarting: false,
+    };
+
+    switch (fixture) {
+      case 'available':
+        useDailyChallengeStore.setState({ ...base, uiStatus: 'available' });
+        break;
+      case 'in_progress':
+        useDailyChallengeStore.setState({
+          ...base,
+          uiStatus: 'in_progress',
+          activeSession: {
+            challengeId: config.challengeId,
+            attemptId: 'fixture-attempt',
+            attemptType: 'ranked',
+            authoritativeSeed: config.authoritativeSeed!,
+            rulesVersion: config.rulesVersion,
+            deckVersion: config.deckVersion,
+            durationSeconds: config.durationSeconds,
+            bustLimit: config.bustLimit,
+            serverStartTime: new Date().toISOString(),
+            expiresAt: new Date().toISOString(),
+            challengeDate: date,
+          },
+          rankedAttempt: {
+            id: 'fixture-attempt',
+            status: 'started',
+            verifiedScore: null,
+            exact21Count: null,
+            fiveCardClearCount: null,
+            bustCount: null,
+            completionMs: null,
+            startedAt: new Date().toISOString(),
+            completedAt: null,
+          },
+        });
+        break;
+      case 'completed':
+        useDailyChallengeStore.setState({
+          ...base,
+          uiStatus: 'completed',
+          rankedAttempt: {
+            id: 'fixture-attempt',
+            status: 'completed',
+            verifiedScore: 12480,
+            exact21Count: 4,
+            fiveCardClearCount: 2,
+            bustCount: 1,
+            completionMs: 95000,
+            startedAt: new Date().toISOString(),
+            completedAt: new Date().toISOString(),
+          },
+          completionSummary: {
+            score: 12480,
+            exact21Count: 4,
+            fiveCardClearCount: 2,
+            bustCount: 1,
+            completionMs: 95000,
+            rulesVersion: config.rulesVersion,
+            alreadyCompleted: true,
+          },
+          submissionStatus: 'completed',
+        });
+        break;
+      case 'practice_available':
+        useDailyChallengeStore.setState({
+          ...base,
+          uiStatus: 'practice_available',
+          rankedAttempt: {
+            id: 'fixture-attempt',
+            status: 'completed',
+            verifiedScore: 12480,
+            exact21Count: 4,
+            fiveCardClearCount: 2,
+            bustCount: 1,
+            completionMs: 95000,
+            startedAt: new Date().toISOString(),
+            completedAt: new Date().toISOString(),
+          },
+        });
+        break;
+      case 'offline':
+        useDailyChallengeStore.setState({
+          ...base,
+          uiStatus: 'offline',
+          errorMessage: 'CONNECT ONLINE FOR A RANKED ATTEMPT',
+        });
+        break;
+      case 'error':
+        useDailyChallengeStore.setState({
+          challenge: null,
+          rankedAttempt: null,
+          activeSession: null,
+          completionSummary: null,
+          submissionStatus: 'idle',
+          isStarting: false,
+          uiStatus: 'error',
+          errorMessage: 'Fixture error state',
+        });
+        break;
+      case 'sign_in_required':
+        useDailyChallengeStore.setState({
+          challenge: config,
+          rankedAttempt: null,
+          activeSession: null,
+          completionSummary: null,
+          submissionStatus: 'idle',
+          isStarting: false,
+          uiStatus: 'sign_in_required',
+          errorMessage: 'SIGN IN TO COMPETE',
+        });
+        break;
+      default:
+        useDailyChallengeStore.setState({ ...base, uiStatus: fixture });
+    }
+    Alert.alert('UI fixture applied', fixture);
+  };
+
   return (
     <BlazeScreenBackground variant="home">
       <ScrollView contentContainerStyle={styles.content}>
@@ -160,6 +293,29 @@ export function DailyChallengeDiagnosticsScreen({ navigation }: Props) {
             void runCompletionProbe();
           }}
         />
+
+        <Text style={styles.label}>UI state fixtures (dev only)</Text>
+        <View style={styles.fixtureRow}>
+          {(
+            [
+              'available',
+              'in_progress',
+              'completed',
+              'practice_available',
+              'offline',
+              'error',
+              'sign_in_required',
+            ] as DailyChallengeUiStatus[]
+          ).map((fixture) => (
+            <BlazeButton
+              key={fixture}
+              title={fixture.toUpperCase()}
+              variant="secondary"
+              onPress={() => applyUiFixture(fixture)}
+            />
+          ))}
+        </View>
+
         <BlazeButton
           title="BACK"
           variant="secondary"
@@ -196,5 +352,8 @@ const styles = StyleSheet.create({
     ...typography.body,
     color: colors.textPrimary,
     marginBottom: spacing.sm,
+  },
+  fixtureRow: {
+    gap: spacing.xs,
   },
 });

@@ -1,54 +1,74 @@
 import type {
   DailyChallengeConfig,
+  DailyChallengeRankedAttempt,
   DailyChallengeSession,
 } from '../game/challenge/types';
-import type { DailyChallengeAttemptSummary } from '../services/dailyChallengeService';
 
 export type DailyChallengeUiStatus =
   | 'loading'
   | 'available'
   | 'in_progress'
   | 'completed'
+  | 'practice_available'
   | 'abandoned'
   | 'unavailable'
   | 'offline'
-  | 'error';
+  | 'error'
+  | 'sign_in_required'
+  | 'disabled';
 
 export function deriveDailyChallengeUiStatus(input: {
   challenge: DailyChallengeConfig | null;
-  rankedAttempt: DailyChallengeAttemptSummary | null;
+  rankedAttempt: DailyChallengeRankedAttempt | null;
   activeSession: DailyChallengeSession | null;
   offline: boolean;
   errorMessage: string | null;
+  authOnline: boolean;
 }): DailyChallengeUiStatus {
+  if (!input.authOnline && !input.activeSession) {
+    return 'sign_in_required';
+  }
+
   if (input.errorMessage && !input.challenge) {
     return input.offline ? 'offline' : 'error';
   }
+
   if (input.offline && !input.challenge) {
     return 'offline';
   }
+
   if (!input.challenge) {
     return 'loading';
   }
-  if (input.activeSession) {
+
+  if (input.challenge.status === 'closed') {
+    return 'disabled';
+  }
+
+  if (input.activeSession?.attemptType === 'ranked') {
     return 'in_progress';
   }
+
   if (input.rankedAttempt?.status === 'completed') {
-    return 'completed';
+    return input.activeSession?.attemptType === 'practice' ? 'practice_available' : 'completed';
   }
+
   if (
     input.rankedAttempt?.status === 'abandoned' ||
     input.rankedAttempt?.status === 'rejected' ||
-    input.rankedAttempt?.status === 'expired'
+    input.rankedAttempt?.status === 'expired' ||
+    input.rankedAttempt?.status === 'invalid'
   ) {
     return 'abandoned';
   }
+
   if (
     input.rankedAttempt?.status === 'created' ||
     input.rankedAttempt?.status === 'started'
   ) {
     return 'in_progress';
   }
+
   return 'available';
 }
 

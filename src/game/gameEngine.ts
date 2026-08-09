@@ -9,6 +9,7 @@ import {
   START_COUNTDOWN_SECONDS,
   TARGET_TOTAL,
 } from './constants';
+import { createDailyChallengeDeck } from './challenge/createDailyChallengeDeck';
 import { createSeededShuffledDeck, createShuffledDeck, drawCard } from './deck';
 import type { Card, GameState, Lane, LaneId, LaneOutcome } from './types';
 
@@ -70,6 +71,13 @@ export function createInitialGameState(
 /** Online matches: identical seed ⇒ identical deck / first active card. */
 export function createInitialGameStateFromSeed(seed: number): GameState {
   return buildInitialState(createSeededShuffledDeck(seed));
+}
+
+/** Official Daily Challenge: authoritative server seed string → deterministic deck. */
+export function createInitialGameStateFromAuthoritativeSeed(
+  authoritativeSeed: string,
+): GameState {
+  return buildInitialState(createDailyChallengeDeck(authoritativeSeed));
 }
 
 function resetLane(lanes: readonly Lane[], laneId: LaneId): Lane[] {
