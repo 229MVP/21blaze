@@ -217,3 +217,11 @@ export function isDailyLeaderboardEnabled(): boolean {
     envFlag('EXPO_PUBLIC_ENABLE_DAILY_LEADERBOARD', false)
   );
 }
+
+/**
+ * Version 1.4 Phase 1 Async Duel backend/client service foundation.
+ * Defaults OFF — no full UI in Phase 1. Diagnostics remain __DEV__-only.
+ */
+export function isAsyncDuelEnabled(): boolean {
+  return envFlag('EXPO_PUBLIC_ENABLE_ASYNC_DUEL', false);
+}

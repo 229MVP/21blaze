@@ -16,6 +16,7 @@ import { DailyMissionsScreen } from '../screens/DailyMissionsScreen';
 import { DailyRewardScreen } from '../screens/DailyRewardScreen';
 import { BlazeUIKitPreviewScreen } from '../screens/dev/BlazeUIKitPreviewScreen';
 import { DailyChallengeDiagnosticsScreen } from '../screens/dev/DailyChallengeDiagnosticsScreen';
+import { AsyncDuelDiagnosticsScreen } from '../screens/dev/AsyncDuelDiagnosticsScreen';
 import { FeedbackScreen } from '../screens/FeedbackScreen';
 import { GameScreen } from '../screens/GameScreen';
 import { HighScoresScreen } from '../screens/HighScoresScreen';
@@ -110,6 +111,10 @@ export function AppNavigator() {
           <Stack.Screen
             name="DailyChallengeDiagnostics"
             component={DailyChallengeDiagnosticsScreen}
+          />
+          <Stack.Screen
+            name="AsyncDuelDiagnostics"
+            component={AsyncDuelDiagnosticsScreen}
           />
         </>
       ) : null}

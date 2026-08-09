@@ -1248,6 +1248,78 @@ export type Database = {
         };
         Returns: Json;
       };
+      create_async_duel: {
+        Args: {
+          p_opponent_id: string;
+        };
+        Returns: Json;
+      };
+      start_async_duel_opponent_attempt: {
+        Args: {
+          p_duel_id: string;
+        };
+        Returns: Json;
+      };
+      complete_async_duel_attempt: {
+        Args: {
+          p_attempt_id: string;
+          p_score: number;
+          p_exact_21_count: number;
+          p_five_card_clear_count: number;
+          p_bust_count: number;
+          p_cards_played: number;
+          p_lanes_cleared: number;
+          p_completion_ms: number;
+          p_rules_version: string;
+          p_deck_version: string;
+          p_submission_version?: string | null;
+        };
+        Returns: Json;
+      };
+      decline_async_duel: {
+        Args: {
+          p_duel_id: string;
+        };
+        Returns: Json;
+      };
+      cancel_async_duel: {
+        Args: {
+          p_duel_id: string;
+        };
+        Returns: Json;
+      };
+      get_async_duel_inbox: {
+        Args: {
+          p_limit?: number;
+          p_offset?: number;
+        };
+        Returns: Json;
+      };
+      get_async_duel_history: {
+        Args: {
+          p_limit?: number;
+          p_offset?: number;
+        };
+        Returns: Json;
+      };
+      get_async_duel_details: {
+        Args: {
+          p_duel_id: string;
+        };
+        Returns: Json;
+      };
+      get_async_duel_result: {
+        Args: {
+          p_duel_id: string;
+        };
+        Returns: Json;
+      };
+      expire_async_duels: {
+        Args: {
+          p_now?: string;
+        };
+        Returns: number;
+      };
     };
     Enums: Record<string, never>;
     CompositeTypes: Record<string, never>;

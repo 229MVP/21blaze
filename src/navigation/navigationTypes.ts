@@ -48,6 +48,7 @@ export type RootStackParamList = {
   ThemePreview: undefined;
   /** Development-only Daily Challenge RPC diagnostics. Registered only when __DEV__ is true. */
   DailyChallengeDiagnostics: undefined;
+  AsyncDuelDiagnostics: undefined;
 };
 
 export type HomeScreenProps = NativeStackScreenProps<RootStackParamList, 'Home'>;
