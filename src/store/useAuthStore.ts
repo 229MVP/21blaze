@@ -4,6 +4,7 @@ import { create } from 'zustand';
 import { isSupabaseConfigured, supabase } from '../lib/supabase';
 import type { ProfileRow } from '../lib/database.types';
 import { safeReleaseLog } from '../monetization/safeLog';
+import { resetUserScopedStores } from './resetUserScopedStores';
 
 const DISPLAY_NAME_PATTERN = /^[A-Za-z0-9_]{3,16}$/;
 
@@ -29,6 +30,7 @@ let authSubscription: { unsubscribe: () => void } | null = null;
 let initializePromise: Promise<void> | null = null;
 /** After a settled local fallback, skip automatic re-init until explicit retry. */
 let authSettledLocal = false;
+let lastKnownUserId: string | null = null;
 
 function validateDisplayName(raw: string): { ok: true; value: string } | { ok: false; message: string } {
   const value = raw.trim();
@@ -178,6 +180,12 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
       if (!authSubscription) {
         const { data } = supabase.auth.onAuthStateChange((_event, session) => {
+          const nextUserId = session?.user?.id ?? null;
+          if (lastKnownUserId !== null && nextUserId !== lastKnownUserId) {
+            resetUserScopedStores();
+          }
+          lastKnownUserId = nextUserId;
+
           const hasProfile = Boolean(get().profile);
           set({
             session,
@@ -324,6 +332,8 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
   signOutAndCreateNewGuest: async () => {
     await supabase.auth.signOut();
+    resetUserScopedStores();
+    lastKnownUserId = null;
     initializePromise = null;
     authSettledLocal = false;
     set({
