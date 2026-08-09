@@ -405,6 +405,12 @@ export function SettingsScreen({ navigation }: SettingsScreenProps) {
                     onPress={() => navigation.navigate('DailyChallengeDiagnostics')}
                   />
                 ) : null}
+                {__DEV__ ? (
+                  <SettingsActionRow
+                    label="ASYNC DUEL DIAGNOSTICS (DEV)"
+                    onPress={() => navigation.navigate('AsyncDuelDiagnostics')}
+                  />
+                ) : null}
                 {isThemePreviewDevEnabled() ? (
                   <SettingsActionRow
                     label="OPEN THEME PREVIEW"
