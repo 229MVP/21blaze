@@ -7,10 +7,11 @@ import { BlazeScreenBackground } from '../../components/layout/BlazeScreenBackgr
 import { BlazePanel } from '../../components/ui/BlazePanel';
 import { hashDailyChallengeDeckOrder } from '../../challenge/dailyChallengeDeckHash';
 import {
-  completeDailyChallengeRanked,
+  completeDailyChallenge,
   getTodayDailyChallenge,
-  startDailyChallengeRanked,
-} from '../../challenge/dailyChallengeFoundationService';
+  startDailyChallenge,
+} from '../../challenge/dailyChallengeClient';
+import { hashAuthoritativeSeedFingerprint } from '../../challenge/seedFingerprint';
 import { getUtcChallengeDate } from '../../challenge/utcChallengeDate';
 import { createDailyChallengeDeck } from '../../game/challenge/createDailyChallengeDeck';
 import type { RootStackParamList } from '../../navigation/navigationTypes';
@@ -25,6 +26,7 @@ type DiagnosticsState = {
   challengeDate?: string;
   rulesVersion?: string;
   deckVersion?: string;
+  seedFingerprint?: string;
   deckHash?: string;
   attemptId?: string;
   attemptStatus?: string;
@@ -43,18 +45,20 @@ export function DailyChallengeDiagnosticsScreen({ navigation }: Props) {
     setLoading(true);
     try {
       const challenge = await getTodayDailyChallenge();
-      const start = await startDailyChallengeRanked();
+      const start = await startDailyChallenge();
 
       let attemptId: string | undefined;
       let attemptStatus: string | undefined;
       let startError: string | undefined;
       let deckHash: string | undefined;
+      let seedFingerprint: string | undefined;
 
       if ('error' in start) {
         startError = start.error;
       } else {
         attemptId = start.attemptId;
         attemptStatus = start.resumed ? 'started (resumed)' : 'started';
+        seedFingerprint = hashAuthoritativeSeedFingerprint(start.seed);
         deckHash = hashDailyChallengeDeckOrder(
           createDailyChallengeDeck(start.seed).map((card) => card.id),
         );
@@ -65,6 +69,7 @@ export function DailyChallengeDiagnosticsScreen({ navigation }: Props) {
         challengeDate: challenge.challengeDate,
         rulesVersion: challenge.rulesVersion,
         deckVersion: challenge.deckVersion,
+        seedFingerprint,
         deckHash,
         attemptId,
         attemptStatus,
@@ -86,7 +91,7 @@ export function DailyChallengeDiagnosticsScreen({ navigation }: Props) {
 
     setLoading(true);
     try {
-      const result = await completeDailyChallengeRanked({
+      const result = await completeDailyChallenge({
         attemptId: diagnostics.attemptId,
         score: 0,
         exact21Count: 0,
@@ -128,6 +133,8 @@ export function DailyChallengeDiagnosticsScreen({ navigation }: Props) {
           <Text style={styles.value}>{diagnostics.rulesVersion ?? '—'}</Text>
           <Text style={styles.label}>Deck version</Text>
           <Text style={styles.value}>{diagnostics.deckVersion ?? '—'}</Text>
+          <Text style={styles.label}>Seed fingerprint</Text>
+          <Text style={styles.value}>{diagnostics.seedFingerprint ?? '—'}</Text>
           <Text style={styles.label}>Deterministic deck hash</Text>
           <Text style={styles.value}>{diagnostics.deckHash ?? '—'}</Text>
           <Text style={styles.label}>Attempt ID</Text>
