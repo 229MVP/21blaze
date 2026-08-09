@@ -7,6 +7,12 @@ import type {
 } from '../game/challenge/types';
 import type { MoveLogEntry } from '../online/types';
 
+/**
+ * @deprecated Version 1.3 Phase 2 UI must use `src/challenge/dailyChallengeClient.ts`
+ * (Supabase RPC). This module invokes the legacy `daily-challenge` Edge Function
+ * with move-log replay — not the canonical ranked path.
+ */
+
 const REQUEST_TIMEOUT_MS = 8000;
 
 export class DailyChallengeServiceError extends Error {

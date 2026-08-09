@@ -61,6 +61,7 @@
     "test:daily-challenge": "npx tsx src/challenge/v1_3aDailyChallengeSelfTest.ts",
     "test:daily-challenge-deck": "npx tsx src/challenge/dailyChallengeDeckSelfTest.ts",
     "test:daily-challenge-attempts": "npx tsx src/challenge/dailyChallengeAttemptSelfTest.ts",
+    "test:daily-challenge-live": "npx tsx scripts/dailyChallengeLiveVerification.ts",
     "validate:visual-assets": "npx tsx scripts/validate-visual-assets.mjs"
   },
   "private": true
