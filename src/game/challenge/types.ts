@@ -11,7 +11,8 @@ export type DailyChallengeAttemptStatus =
   | 'completed'
   | 'abandoned'
   | 'rejected'
-  | 'expired';
+  | 'expired'
+  | 'invalid';
 
 export type DailyChallengeVerificationStatus =
   | 'pending'
@@ -19,27 +20,58 @@ export type DailyChallengeVerificationStatus =
   | 'rejected'
   | 'failed';
 
+/** Cached / offline challenge metadata (no authoritative seed until start RPC). */
 export type DailyChallengeConfig = {
   challengeId: string;
   challengeDate: string;
-  seed: number;
-  rulesVersion: number;
-  scoringVersion: number;
+  rulesVersion: string;
+  deckVersion: string;
   durationSeconds: number;
-  startsAt: string;
-  endsAt: string;
+  bustLimit: number;
+  status: string;
+  /** Populated after ranked start or from secure cache for practice offline. */
+  authoritativeSeed?: string;
 };
 
 export type DailyChallengeSession = {
   challengeId: string;
   attemptId: string;
   attemptType: DailyChallengeAttemptType;
-  seed: number;
-  rulesVersion: number;
-  scoringVersion: number;
+  authoritativeSeed: string;
+  rulesVersion: string;
+  deckVersion: string;
+  durationSeconds: number;
+  bustLimit: number;
   serverStartTime: string;
   expiresAt: string;
   challengeDate: string;
+  resumed?: boolean;
+};
+
+export type DailyChallengeRankedAttempt = {
+  id: string;
+  status: DailyChallengeAttemptStatus;
+  verifiedScore: number | null;
+  exact21Count: number | null;
+  fiveCardClearCount: number | null;
+  bustCount: number | null;
+  completionMs: number | null;
+  startedAt: string | null;
+  completedAt: string | null;
+};
+
+export type DailyChallengeCompletionSummary = {
+  score: number;
+  exact21Count: number;
+  fiveCardClearCount: number;
+  bustCount: number;
+  completionMs: number;
+  rulesVersion: string;
+  alreadyCompleted: boolean;
+  dailyRank?: number | null;
+  totalPlayers?: number;
+  currentStreak?: number;
+  longestStreak?: number;
 };
 
 export type DailyChallengeVerifiedResult = {

@@ -130,9 +130,22 @@ export function isDailyRewardsEnabled(): boolean {
 
 export function isDailyMissionsEnabled(): boolean {
   return (
-    isV1_1RewardsEnabled() &&
-    envFlag('EXPO_PUBLIC_ENABLE_DAILY_MISSIONS', false)
+    isV1_3ProgressionEnabled() ||
+    (isV1_1RewardsEnabled() &&
+      envFlag('EXPO_PUBLIC_ENABLE_DAILY_MISSIONS', false))
   );
+}
+
+/**
+ * Version 1.3 Phase 4 — XP, levels, daily missions, progression UI.
+ * When enabled, progression beta and daily missions are also surfaced.
+ */
+export function isV1_3ProgressionEnabled(): boolean {
+  return envFlag('EXPO_PUBLIC_ENABLE_V1_3_PROGRESSION', false);
+}
+
+export function isV1_3ProgressionUiEnabled(): boolean {
+  return isV1_3ProgressionEnabled() || isProgressionBetaEnabled();
 }
 
 /**

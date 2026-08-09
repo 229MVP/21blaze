@@ -11,16 +11,19 @@ import {
 import { BlazeScreenBackground } from '../components/layout/BlazeScreenBackground';
 import { BlazeButton } from '../components/ui/BlazeButton';
 import { BlazePanel } from '../components/ui/BlazePanel';
+import { isDailyChallengePracticeEnabled, isDailyChallengeRankedEnabled, isDailyLeaderboardEnabled } from '../config/featureFlags';
+import { DailyStreakPanel } from '../components/dailyChallenge/DailyStreakPanel';
 import {
-  isDailyChallengePracticeEnabled,
-  isDailyChallengeRankedEnabled,
-  isDailyLeaderboardEnabled,
-} from '../config/featureFlags';
-import { getUtcChallengeDate } from '../game/challenge/createDailyChallenge';
+  formatDurationSeconds,
+  formatFriendlyChallengeDate,
+  formatUtcResetCountdown,
+} from '../challenge/utcResetCountdown';
+import { getUtcChallengeDate } from '../challenge/utcChallengeDate';
 import type { DailyChallengeScreenProps } from '../navigation/navigationTypes';
 import { trackEvent } from '../monetization/analytics';
 import { useAuthStore } from '../store/useAuthStore';
 import { useDailyChallengeStore } from '../store/useDailyChallengeStore';
+import { useDailyLeaderboardStore } from '../store/useDailyLeaderboardStore';
 import { useGameStore } from '../store/useGameStore';
 import {
   colors as kitColors,
@@ -30,51 +33,24 @@ import {
 
 const CONTENT_MAX = 410;
 
-function formatDuration(ms: number): string {
-  const totalSeconds = Math.max(0, Math.floor(ms / 1000));
-  const hours = Math.floor(totalSeconds / 3600);
-  const minutes = Math.floor((totalSeconds % 3600) / 60);
-  if (hours > 0) {
-    return `${hours}H ${minutes}M`;
-  }
-  return `${minutes}M`;
-}
-
-function statusCopy(
-  uiStatus: string,
-  offlineMessage: string | null,
-): { title: string; detail: string } {
+function playerStatusLabel(uiStatus: string): string {
   switch (uiStatus) {
     case 'available':
-      return {
-        title: 'RANKED ATTEMPT AVAILABLE',
-        detail: 'One official attempt per UTC day. Same deck for every player.',
-      };
+      return 'READY';
     case 'in_progress':
-      return {
-        title: 'RANKED ATTEMPT IN PROGRESS',
-        detail: 'Resume your attempt or finish before the UTC day ends.',
-      };
+      return 'IN PROGRESS';
     case 'completed':
-      return {
-        title: 'RANKED ATTEMPT COMPLETE',
-        detail: 'Your verified score is locked for today’s leaderboard.',
-      };
-    case 'abandoned':
-      return {
-        title: 'RANKED ATTEMPT UNAVAILABLE',
-        detail: 'Today’s ranked attempt has been used or expired.',
-      };
+      return 'COMPLETE';
+    case 'practice_available':
+      return 'PRACTICE';
+    case 'sign_in_required':
+      return 'SIGN IN REQUIRED';
     case 'offline':
-      return {
-        title: 'OFFLINE',
-        detail: offlineMessage ?? 'CONNECT ONLINE FOR A RANKED ATTEMPT',
-      };
+      return 'OFFLINE';
+    case 'error':
+      return 'ERROR';
     default:
-      return {
-        title: 'LOADING CHALLENGE',
-        detail: 'Fetching today’s UTC challenge…',
-      };
+      return 'LOADING';
   }
 }
 
@@ -82,85 +58,139 @@ export function DailyChallengeScreen({ navigation }: DailyChallengeScreenProps) 
   const { width } = useWindowDimensions();
   const columnWidth = Math.min(CONTENT_MAX, width - 24);
   const authStatus = useAuthStore((state) => state.authStatus);
+  const retryOnlineAuth = useAuthStore((state) => state.retryOnlineAuth);
   const hydrateStatus = useDailyChallengeStore((state) => state.hydrateStatus);
-  const startAttempt = useDailyChallengeStore((state) => state.startAttempt);
+  const startRankedAttempt = useDailyChallengeStore((state) => state.startRankedAttempt);
+  const resumeRankedAttempt = useDailyChallengeStore((state) => state.resumeRankedAttempt);
+  const startPracticeAttempt = useDailyChallengeStore((state) => state.startPracticeAttempt);
   const challenge = useDailyChallengeStore((state) => state.challenge);
   const rankedAttempt = useDailyChallengeStore((state) => state.rankedAttempt);
-  const verifiedResult = useDailyChallengeStore((state) => state.verifiedResult);
-  const streakCurrent = useDailyChallengeStore((state) => state.streakCurrent);
+  const completionSummary = useDailyChallengeStore((state) => state.completionSummary);
   const uiStatus = useDailyChallengeStore((state) => state.uiStatus);
   const errorMessage = useDailyChallengeStore((state) => state.errorMessage);
-  const getTimeRemainingMs = useDailyChallengeStore((state) => state.getTimeRemainingMs);
+  const isStarting = useDailyChallengeStore((state) => state.isStarting);
   const prepareDailyChallengeGame = useGameStore(
     (state) => state.prepareDailyChallengeGame,
   );
+  const streakStatus = useDailyLeaderboardStore((s) => s.streakStatus);
+  const loadStreakStatus = useDailyLeaderboardStore((s) => s.loadStreakStatus);
+  const leaderboardEnabled = isDailyLeaderboardEnabled();
 
-  const [busy, setBusy] = useState(false);
   const [nowMs, setNowMs] = useState(Date.now());
+  const authOnline = authStatus === 'online';
 
   useEffect(() => {
     trackEvent('daily_challenge_viewed');
-    void hydrateStatus();
-  }, [hydrateStatus]);
+    void hydrateStatus(authOnline);
+    void loadStreakStatus();
+  }, [authOnline, hydrateStatus, loadStreakStatus]);
 
   useEffect(() => {
-    const interval = setInterval(() => setNowMs(Date.now()), 30_000);
+    const interval = setInterval(() => {
+      const next = Date.now();
+      setNowMs(next);
+      const today = getUtcChallengeDate(next);
+      if (challenge?.challengeDate && challenge.challengeDate !== today) {
+        void hydrateStatus(authOnline);
+      }
+    }, 1000);
     return () => clearInterval(interval);
-  }, []);
+  }, [authOnline, challenge?.challengeDate, hydrateStatus]);
 
   const challengeDate = challenge?.challengeDate ?? getUtcChallengeDate(nowMs);
-  const timeRemainingMs = getTimeRemainingMs(nowMs);
-  const copy = statusCopy(uiStatus, errorMessage);
+  const friendlyDate = formatFriendlyChallengeDate(challengeDate);
+  const resetCountdown = formatUtcResetCountdown(nowMs);
   const rankedEnabled = isDailyChallengeRankedEnabled();
   const practiceEnabled = isDailyChallengePracticeEnabled();
-  const leaderboardEnabled = isDailyLeaderboardEnabled();
-  const online = authStatus === 'online';
 
-  const canStartRanked = useMemo(() => {
-    if (!online || !rankedEnabled || busy) {
-      return false;
-    }
-    return uiStatus === 'available' || uiStatus === 'in_progress';
-  }, [busy, online, rankedEnabled, uiStatus]);
+  const officialScore =
+    completionSummary?.score ??
+    rankedAttempt?.verifiedScore ??
+    null;
 
-  const canPractice = useMemo(() => {
-    if (!practiceEnabled || busy) {
-      return false;
-    }
-    if (uiStatus === 'offline' && challenge) {
-      return true;
-    }
-    return Boolean(challenge) && uiStatus !== 'loading';
-  }, [busy, challenge, practiceEnabled, uiStatus]);
+  const canStartRanked =
+    authOnline &&
+    rankedEnabled &&
+    !isStarting &&
+    (uiStatus === 'available' || uiStatus === 'in_progress');
 
-  const launchAttempt = useCallback(
-    async (attemptType: 'ranked' | 'practice') => {
-      setBusy(true);
-      try {
-        const session = await startAttempt(attemptType);
-        await prepareDailyChallengeGame(session);
-        navigation.navigate('Game');
-      } catch (error) {
-        setBusy(false);
-        throw error;
-      }
-    },
-    [navigation, prepareDailyChallengeGame, startAttempt],
-  );
+  const canResume =
+    authOnline &&
+    rankedEnabled &&
+    !isStarting &&
+    uiStatus === 'in_progress';
 
-  const onStartRanked = () => {
-    if (!canStartRanked) {
+  const canPractice =
+    practiceEnabled &&
+    !isStarting &&
+    (uiStatus === 'completed' || uiStatus === 'practice_available');
+
+  const launchRanked = useCallback(async () => {
+    const session =
+      uiStatus === 'in_progress'
+        ? await resumeRankedAttempt()
+        : await startRankedAttempt();
+    await prepareDailyChallengeGame(session);
+    navigation.navigate('Game');
+  }, [
+    navigation,
+    prepareDailyChallengeGame,
+    resumeRankedAttempt,
+    startRankedAttempt,
+    uiStatus,
+  ]);
+
+  const launchPractice = useCallback(async () => {
+    const session = await startPracticeAttempt();
+    await prepareDailyChallengeGame(session);
+    navigation.navigate('Game');
+  }, [navigation, prepareDailyChallengeGame, startPracticeAttempt]);
+
+  const onStart = () => {
+    if (!canStartRanked && !canResume) {
       return;
     }
-    void launchAttempt('ranked').catch(() => undefined);
+    void launchRanked().catch(() => undefined);
   };
 
   const onPractice = () => {
     if (!canPractice) {
       return;
     }
-    void launchAttempt('practice').catch(() => undefined);
+    void launchPractice().catch(() => undefined);
   };
+
+  const onRetry = () => {
+    void hydrateStatus(authOnline);
+  };
+
+  const onSignIn = () => {
+    void retryOnlineAuth().then(() => {
+      const online = useAuthStore.getState().authStatus === 'online';
+      return hydrateStatus(online);
+    });
+  };
+
+  const bustLimit = challenge?.bustLimit ?? 3;
+  const durationSeconds = challenge?.durationSeconds ?? 120;
+
+  const statusDetail = useMemo(() => {
+    if (uiStatus === 'sign_in_required') {
+      return 'Sign in to start your one official ranked attempt.';
+    }
+    if (uiStatus === 'offline') {
+      return errorMessage ?? 'Daily Blaze requires a connection for ranked play.';
+    }
+    if (uiStatus === 'error') {
+      return errorMessage ?? "We couldn't load today's challenge.";
+    }
+    if (uiStatus === 'completed' || uiStatus === 'practice_available') {
+      return 'Official attempt used. Leaderboard coming in the next phase.';
+    }
+    return 'Same deck. Same rules. One ranked attempt.';
+  }, [errorMessage, uiStatus]);
+
+  const isLoading = uiStatus === 'loading' || isStarting;
 
   return (
     <BlazeScreenBackground>
@@ -168,80 +198,146 @@ export function DailyChallengeScreen({ navigation }: DailyChallengeScreenProps) 
         contentContainerStyle={[styles.scroll, { width: columnWidth, maxWidth: CONTENT_MAX }]}
         showsVerticalScrollIndicator={false}
       >
-        <Text style={styles.eyebrow}>UTC CHALLENGE</Text>
-        <Text style={styles.title}>DAILY CHALLENGE</Text>
-        <Text style={styles.date}>{challengeDate}</Text>
+        <Text style={styles.eyebrow}>DAILY BLAZE</Text>
+        <Text style={styles.title}>TODAY&apos;S CHALLENGE</Text>
+        <Text style={styles.date} accessibilityLabel={`Challenge date ${friendlyDate}`}>
+          {friendlyDate}
+        </Text>
+
+        <View style={styles.tagRow}>
+          <Text style={styles.tag}>SAME DECK</Text>
+          <Text style={styles.tag}>SAME RULES</Text>
+          <Text style={styles.tag}>ONE RANKED ATTEMPT</Text>
+        </View>
+
+        <View style={styles.metricsRow}>
+          <BlazePanel style={styles.metricPanel}>
+            <Text style={styles.metricLabel}>TIME</Text>
+            <Text style={styles.metricValue}>{formatDurationSeconds(durationSeconds)}</Text>
+          </BlazePanel>
+          <BlazePanel style={styles.metricPanel}>
+            <Text style={styles.metricLabel}>BUST LIMIT</Text>
+            <Text style={styles.metricValue}>{bustLimit}</Text>
+          </BlazePanel>
+        </View>
 
         <BlazePanel style={styles.panel}>
-          <Text style={styles.panelLabel}>TIME REMAINING</Text>
-          <Text style={styles.panelValue}>{formatDuration(timeRemainingMs)}</Text>
-          <Text style={styles.panelHint}>Resets at UTC midnight</Text>
-        </BlazePanel>
-
-        <BlazePanel style={styles.panel}>
-          <Text style={styles.panelLabel}>{copy.title}</Text>
-          <Text style={styles.panelDetail}>{copy.detail}</Text>
-          {rankedAttempt?.verifiedScore != null ? (
+          <Text style={styles.panelLabel}>YOUR STATUS</Text>
+          <Text style={styles.statusValue}>{playerStatusLabel(uiStatus)}</Text>
+          <Text style={styles.panelDetail}>{statusDetail}</Text>
+          {officialScore != null && uiStatus === 'completed' ? (
             <Text style={styles.scoreLine}>
-              Verified score: {rankedAttempt.verifiedScore}
+              Official score: {officialScore.toLocaleString()}
             </Text>
           ) : null}
-          {verifiedResult?.rank ? (
-            <Text style={styles.scoreLine}>Daily rank: #{verifiedResult.rank}</Text>
-          ) : null}
         </BlazePanel>
 
+        {streakStatus ? (
+          <DailyStreakPanel
+            currentStreak={streakStatus.currentStreak}
+            longestStreak={streakStatus.longestStreak}
+            compact
+          />
+        ) : null}
+
         <BlazePanel style={styles.panel}>
-          <Text style={styles.panelLabel}>CHALLENGE STREAK</Text>
-          <Text style={styles.panelValue}>{streakCurrent}</Text>
-          <Text style={styles.panelHint}>
-            Verified ranked completions on consecutive UTC days
+          <Text style={styles.panelLabel}>RESETS AT</Text>
+          <Text style={styles.panelValue}>00:00 UTC</Text>
+          <Text
+            style={styles.panelHint}
+            accessibilityLabel={`New challenge in ${resetCountdown}`}
+          >
+            NEW CHALLENGE IN {resetCountdown}
           </Text>
         </BlazePanel>
 
-        <BlazePanel style={styles.panel}>
-          <Text style={styles.rulesTitle}>RULES</Text>
-          <Text style={styles.ruleLine}>• Same seeded deck for every player today</Text>
-          <Text style={styles.ruleLine}>• One ranked attempt per UTC day</Text>
-          <Text style={styles.ruleLine}>• Unlimited practice — never ranks</Text>
-          <Text style={styles.ruleLine}>• Ranked requires an online connection</Text>
-          <Text style={styles.ruleLine}>• Attempt consumed after the first move</Text>
-        </BlazePanel>
-
-        {uiStatus === 'loading' || busy ? (
+        {isLoading ? (
           <ActivityIndicator color={kitColors.fire.orange} style={styles.loader} />
         ) : null}
 
-        {errorMessage && uiStatus !== 'offline' ? (
-          <Text style={styles.error}>{errorMessage}</Text>
-        ) : null}
-
         <View style={styles.actions}>
-          <BlazeButton
-            label="START RANKED ATTEMPT"
-            size="lg"
-            onPress={onStartRanked}
-            disabled={!canStartRanked}
-            accessibilityLabel="Start ranked daily challenge attempt"
-          />
-          <BlazeButton
-            label="PRACTICE"
-            variant="secondary"
-            onPress={onPractice}
-            disabled={!canPractice}
-            accessibilityLabel="Practice daily challenge"
-          />
-          {leaderboardEnabled ? (
+          {uiStatus === 'sign_in_required' ? (
             <BlazeButton
-              label="VIEW LEADERBOARD"
-              variant="ghost"
-              onPress={() => navigation.navigate('DailyChallengeLeaderboard')}
-              accessibilityLabel="View daily challenge leaderboard"
+              label="SIGN IN TO COMPETE"
+              size="lg"
+              onPress={onSignIn}
+              accessibilityLabel="Sign in to compete in Daily Blaze"
             />
-          ) : null}
-          {!online ? (
-            <Text style={styles.offlineHint}>CONNECT ONLINE FOR A RANKED ATTEMPT</Text>
-          ) : null}
+          ) : uiStatus === 'error' ? (
+            <>
+              <Text style={styles.errorTitle}>DAILY BLAZE UNAVAILABLE</Text>
+              <Text style={styles.errorDetail}>
+                {errorMessage ?? "We couldn't load today's challenge."}
+              </Text>
+              <BlazeButton
+                label="TRY AGAIN"
+                onPress={onRetry}
+                accessibilityLabel="Try loading Daily Blaze again"
+              />
+              <BlazeButton
+                label="PLAY SOLO"
+                variant="secondary"
+                onPress={() => navigation.navigate('Game')}
+                accessibilityLabel="Play solo mode"
+              />
+            </>
+          ) : uiStatus === 'offline' ? (
+            <>
+              <Text style={styles.errorTitle}>DAILY BLAZE REQUIRES A CONNECTION</Text>
+              <BlazeButton
+                label="PLAY SOLO"
+                size="lg"
+                onPress={() => navigation.navigate('Game')}
+                accessibilityLabel="Play solo mode"
+              />
+            </>
+          ) : uiStatus === 'in_progress' ? (
+            <BlazeButton
+              label="RESUME DAILY CHALLENGE"
+              size="lg"
+              onPress={onStart}
+              disabled={!canResume}
+              loading={isStarting}
+              accessibilityLabel="Resume Daily Blaze ranked attempt"
+            />
+          ) : uiStatus === 'completed' || uiStatus === 'practice_available' ? (
+            <>
+              {officialScore != null ? (
+                <BlazePanel style={styles.completedPanel}>
+                  <Text style={styles.panelLabel}>YOUR SCORE</Text>
+                  <Text style={styles.completedScore}>
+                    {officialScore.toLocaleString()}
+                  </Text>
+                  <Text style={styles.panelHint}>Official attempt used.</Text>
+                </BlazePanel>
+              ) : null}
+              {canPractice ? (
+                <BlazeButton
+                  label="PRACTICE"
+                  variant="secondary"
+                  onPress={onPractice}
+                  accessibilityLabel="Start Daily Blaze practice run"
+                />
+              ) : null}
+              {leaderboardEnabled ? (
+                <BlazeButton
+                  label="VIEW LEADERBOARD"
+                  variant="ghost"
+                  onPress={() => navigation.navigate('DailyChallengeLeaderboard')}
+                  accessibilityLabel="View Daily Blaze leaderboard"
+                />
+              ) : null}
+            </>
+          ) : (
+            <BlazeButton
+              label="START DAILY CHALLENGE"
+              size="lg"
+              onPress={onStart}
+              disabled={!canStartRanked}
+              loading={isStarting}
+              accessibilityLabel="Start Daily Blaze ranked attempt"
+            />
+          )}
         </View>
       </ScrollView>
 
@@ -267,17 +363,57 @@ const styles = StyleSheet.create({
   },
   title: {
     color: kitColors.text.primary,
-    fontSize: 32,
+    fontSize: 28,
     fontFamily: kitTypography.families.display,
     letterSpacing: 1,
   },
   date: {
     color: kitColors.text.secondary,
-    fontSize: 14,
-    marginBottom: kitSpacing.sm,
+    fontSize: 16,
+    marginBottom: kitSpacing.xs,
+  },
+  tagRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  tag: {
+    color: kitColors.fire.gold,
+    fontFamily: kitTypography.families.condensed,
+    fontSize: 10,
+    letterSpacing: 1,
+    paddingVertical: 4,
+    paddingHorizontal: 8,
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: 'rgba(255,138,0,0.35)',
+  },
+  metricsRow: {
+    flexDirection: 'row',
+    gap: kitSpacing.sm,
+  },
+  metricPanel: {
+    flex: 1,
+    alignItems: 'center',
+    gap: 4,
+  },
+  metricLabel: {
+    color: kitColors.fire.gold,
+    fontSize: 11,
+    letterSpacing: 1,
+    fontFamily: kitTypography.families.condensed,
+  },
+  metricValue: {
+    color: kitColors.text.primary,
+    fontSize: 28,
+    fontFamily: kitTypography.families.display,
   },
   panel: {
     gap: kitSpacing.xs,
+  },
+  completedPanel: {
+    gap: kitSpacing.xs,
+    alignItems: 'center',
   },
   panelLabel: {
     color: kitColors.fire.gold,
@@ -287,7 +423,12 @@ const styles = StyleSheet.create({
   },
   panelValue: {
     color: kitColors.text.primary,
-    fontSize: 28,
+    fontSize: 22,
+    fontFamily: kitTypography.families.display,
+  },
+  statusValue: {
+    color: kitColors.text.primary,
+    fontSize: 24,
     fontFamily: kitTypography.families.display,
   },
   panelHint: {
@@ -304,29 +445,28 @@ const styles = StyleSheet.create({
     fontSize: 16,
     marginTop: kitSpacing.xs,
   },
-  rulesTitle: {
+  completedScore: {
     color: kitColors.fire.gold,
-    fontSize: 12,
-    letterSpacing: 1.2,
-    marginBottom: kitSpacing.xs,
-  },
-  ruleLine: {
-    color: kitColors.text.secondary,
-    fontSize: 13,
-    lineHeight: 20,
+    fontSize: 32,
+    fontFamily: kitTypography.families.display,
   },
   actions: {
     gap: kitSpacing.sm,
     marginTop: kitSpacing.md,
   },
-  offlineHint: {
-    color: kitColors.fire.orange,
-    textAlign: 'center',
-    fontSize: 13,
-  },
-  error: {
+  errorTitle: {
     color: kitColors.status.danger,
     textAlign: 'center',
+    fontFamily: kitTypography.families.condensed,
+    fontWeight: '700',
+    fontSize: 13,
+    letterSpacing: 0.8,
+  },
+  errorDetail: {
+    color: kitColors.text.secondary,
+    textAlign: 'center',
+    fontSize: 13,
+    marginBottom: kitSpacing.sm,
   },
   loader: {
     marginVertical: kitSpacing.sm,

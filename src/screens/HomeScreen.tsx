@@ -18,6 +18,7 @@ import { BlazeScreenBackground } from '../components/layout/BlazeScreenBackgroun
 import { WhatsNewOverlay } from '../components/modals/WhatsNewOverlay';
 import { EditDisplayNameModal } from '../components/Profile/EditDisplayNameModal';
 import { LevelUpOverlay } from '../components/Progression/LevelUpOverlay';
+import { ProgressionCompactCard } from '../components/Progression/ProgressionCompactCard';
 import { XpProgressBar } from '../components/Progression/XpProgressBar';
 import { SvgRoot as Svg } from '../components/svg/SvgRoot';
 import { BlazeButton } from '../components/ui/BlazeButton';
@@ -27,11 +28,11 @@ import {
   isDailyRewardsEnabled,
   isLiveDuelEnabled,
   isMonetizationBetaEnabled,
-  isProgressionBetaEnabled,
   isRankedBetaEnabled,
   isStorePurchasesEnabled,
   isV1_1LockerEnabled,
   isV1_1RewardsEnabled,
+  isV1_3ProgressionUiEnabled,
 } from '../config/featureFlags';
 import { getCosmetic } from '../cosmetics/catalog';
 import {
@@ -59,6 +60,8 @@ import { useProgressionStore } from '../store/useProgressionStore';
 import { useScoreHistoryStore } from '../store/useScoreHistoryStore';
 import { useSettingsStore } from '../store/useSettingsStore';
 import { useWalletStore } from '../store/useWalletStore';
+import { DailyBlazeHomeCard } from '../components/dailyChallenge/DailyBlazeHomeCard';
+import { getUtcChallengeDate } from '../challenge/utcChallengeDate';
 import { useDailyChallengeStore } from '../store/useDailyChallengeStore';
 import { hasSeenWhatsNew, markWhatsNewSeen } from '../services/whatsNewService';
 import { colors as kitColors, spacing as kitSpacing } from '../theme/uiKit';
@@ -127,7 +130,7 @@ export function HomeScreen({ navigation, route }: HomeScreenProps) {
   const hasRemoveAds = useHasRemoveAdsEntitlement();
   const storeEnabled = isMonetizationBetaEnabled();
   const purchasesEnabled = isStorePurchasesEnabled();
-  const progressionEnabled = isProgressionBetaEnabled();
+  const progressionEnabled = isV1_3ProgressionUiEnabled();
   const v1_1RewardsOn = isV1_1RewardsEnabled();
   const v1_1LockerOn = isV1_1LockerEnabled();
   const lockerBadgeVisible = useLockerBadgeVisible();
@@ -148,9 +151,17 @@ export function HomeScreen({ navigation, route }: HomeScreenProps) {
   const acknowledgeLevelUp = useProgressionStore(
     (state) => state.acknowledgeLevelUp,
   );
-  const dailyChallengeBadge = useDailyChallengeStore((state) => state.shouldShowBadge());
   const hydrateDailyChallenge = useDailyChallengeStore((state) => state.hydrateStatus);
+  const dailyUiStatus = useDailyChallengeStore((state) => state.uiStatus);
+  const dailyChallenge = useDailyChallengeStore((state) => state.challenge);
+  const dailyRankedAttempt = useDailyChallengeStore((state) => state.rankedAttempt);
+  const dailyCompletionSummary = useDailyChallengeStore((state) => state.completionSummary);
+  const dailyErrorMessage = useDailyChallengeStore((state) => state.errorMessage);
+  const dailyIsStarting = useDailyChallengeStore((state) => state.isStarting);
+  const resumeDailyRanked = useDailyChallengeStore((state) => state.resumeRankedAttempt);
   const dailyChallengeEnabled = isDailyChallengeEnabled();
+
+  const [dailyCountdownMs, setDailyCountdownMs] = useState(Date.now());
 
   const [nameEditorOpen, setNameEditorOpen] = useState(false);
   const [whatsNewVisible, setWhatsNewVisible] = useState(false);
@@ -159,8 +170,20 @@ export function HomeScreen({ navigation, route }: HomeScreenProps) {
     Boolean(dailyRewardStatus?.isAvailable) ||
     Boolean(progression?.isDailyRewardAvailable);
   const missionClaimable = dailyMissions?.claimableCount ?? 0;
+  const missionsCompleteCount =
+    dailyMissions?.missions.filter((mission) => mission.isComplete).length ?? 0;
+  const missionsTotal = dailyMissions?.missions.length ?? 3;
   const showDailyLink = isDailyRewardsEnabled() && dailyReady;
-  const showMissionsLink = isDailyMissionsEnabled() && missionClaimable > 0;
+  const showMissionsLink =
+    isDailyMissionsEnabled() &&
+    authStatus === 'online' &&
+    (dailyMissions?.missions.length ?? 0) > 0;
+  const showGuestProgressionHint =
+    progressionEnabled && authStatus === 'local' && isDailyMissionsEnabled();
+  const missionsLinkLabel =
+    missionClaimable > 0
+      ? `MISSIONS · ${missionClaimable} CLAIM`
+      : `MISSIONS · ${missionsCompleteCount} / ${missionsTotal} COMPLETE`;
 
   useEffect(() => {
     let isMounted = true;
@@ -176,7 +199,7 @@ export function HomeScreen({ navigation, route }: HomeScreenProps) {
         void hydrateProgression();
       }
       if (dailyChallengeEnabled) {
-        void hydrateDailyChallenge();
+        void hydrateDailyChallenge(authStatus === 'online');
       }
       if (isMounted) {
         setHighScore(savedScore);
@@ -198,6 +221,7 @@ export function HomeScreen({ navigation, route }: HomeScreenProps) {
     progressionEnabled,
     dailyChallengeEnabled,
     hydrateDailyChallenge,
+    authStatus,
     setHighScore,
     v1_1RewardsOn,
   ]);
@@ -226,6 +250,33 @@ export function HomeScreen({ navigation, route }: HomeScreenProps) {
     void maybeShowInterstitialAfterSoloHome(hasRemoveAds);
     navigation.setParams({ fromSoloComplete: undefined });
   }, [hasRemoveAds, navigation, route.params?.fromSoloComplete]);
+
+  useEffect(() => {
+    if (!dailyChallengeEnabled) {
+      return;
+    }
+    void hydrateDailyChallenge(authStatus === 'online');
+  }, [authStatus, dailyChallengeEnabled, hydrateDailyChallenge]);
+
+  useEffect(() => {
+    if (!dailyChallengeEnabled) {
+      return;
+    }
+    const interval = setInterval(() => {
+      const next = Date.now();
+      setDailyCountdownMs(next);
+      const today = getUtcChallengeDate(next);
+      if (dailyChallenge?.challengeDate && dailyChallenge.challengeDate !== today) {
+        void hydrateDailyChallenge(authStatus === 'online');
+      }
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [
+    authStatus,
+    dailyChallenge?.challengeDate,
+    dailyChallengeEnabled,
+    hydrateDailyChallenge,
+  ]);
 
   const showRetry = authStatus === 'local' && Boolean(authError);
 
@@ -367,9 +418,7 @@ export function HomeScreen({ navigation, route }: HomeScreenProps) {
                         onPress={() => navigation.navigate('DailyMissions')}
                         style={({ pressed }) => pressed && styles.pressed}
                       >
-                        <Text style={styles.claimLink}>
-                          MISSIONS · {missionClaimable}
-                        </Text>
+                        <Text style={styles.claimLink}>{missionsLinkLabel}</Text>
                       </Pressable>
                     ) : null}
                   </View>
@@ -409,9 +458,7 @@ export function HomeScreen({ navigation, route }: HomeScreenProps) {
                       onPress={() => navigation.navigate('DailyMissions')}
                       style={({ pressed }) => pressed && styles.pressed}
                     >
-                      <Text style={styles.claimLink}>
-                        MISSIONS · {missionClaimable}
-                      </Text>
+                      <Text style={styles.claimLink}>{missionsLinkLabel}</Text>
                     </Pressable>
                   ) : null}
                 </View>
@@ -445,17 +492,64 @@ export function HomeScreen({ navigation, route }: HomeScreenProps) {
               accessibilityLabel="Solo play 21 Blaze"
             />
             {dailyChallengeEnabled ? (
-              <View style={styles.lockerButtonWrap}>
-                <BlazeButton
-                  label="DAILY CHALLENGE"
-                  variant="secondary"
-                  onPress={() => navigation.navigate('DailyChallenge')}
-                  accessibilityLabel="Open Daily Challenge"
-                />
-                {dailyChallengeBadge ? (
-                  <View style={styles.lockerBadge} accessibilityElementsHidden />
-                ) : null}
-              </View>
+              <DailyBlazeHomeCard
+                uiStatus={dailyUiStatus}
+                challengeDate={dailyChallenge?.challengeDate ?? null}
+                officialScore={
+                  dailyCompletionSummary?.score ??
+                  dailyRankedAttempt?.verifiedScore ??
+                  null
+                }
+                errorMessage={dailyErrorMessage}
+                countdownNowMs={dailyCountdownMs}
+                onPress={() => navigation.navigate('DailyChallenge')}
+                onPrimaryAction={() => {
+                  if (dailyUiStatus === 'error') {
+                    void hydrateDailyChallenge(authStatus === 'online');
+                    return;
+                  }
+                  if (dailyUiStatus === 'in_progress') {
+                    void (async () => {
+                      const session = await resumeDailyRanked();
+                      await useGameStore.getState().prepareDailyChallengeGame(session);
+                      navigation.navigate('Game');
+                    })();
+                    return;
+                  }
+                  if (
+                    dailyUiStatus === 'completed' ||
+                    dailyUiStatus === 'practice_available'
+                  ) {
+                    navigation.navigate('DailyChallenge');
+                    return;
+                  }
+                  if (dailyUiStatus === 'available') {
+                    navigation.navigate('DailyChallenge');
+                    return;
+                  }
+                  navigation.navigate('DailyChallenge');
+                }}
+                onSignIn={() => {
+                  void retryOnlineAuth().then(() => {
+                    const online = useAuthStore.getState().authStatus === 'online';
+                    return hydrateDailyChallenge(online);
+                  });
+                }}
+                primaryBusy={dailyIsStarting}
+              />
+            ) : null}
+            {showGuestProgressionHint ? (
+              <Text style={styles.guestProgressionHint}>
+                SIGN IN TO SAVE PROGRESS
+              </Text>
+            ) : null}
+            {progressionEnabled && progression && authStatus === 'online' ? (
+              <ProgressionCompactCard
+                progression={progression}
+                missionsCompleteCount={missionsCompleteCount}
+                missionsTotal={missionsTotal}
+                onPress={() => navigation.navigate('PlayerProgression')}
+              />
             ) : null}
             {v1_1LockerOn ? (
               <View style={styles.lockerButtonWrap}>
@@ -697,6 +791,13 @@ const styles = StyleSheet.create({
     fontFamily: 'RobotoCondensed_700Bold',
     fontSize: 11,
     letterSpacing: 0.7,
+  },
+  guestProgressionHint: {
+    color: kitColors.text.secondary,
+    fontFamily: 'RobotoCondensed_400Regular',
+    fontSize: 12,
+    textAlign: 'center',
+    letterSpacing: 0.6,
   },
   coinChip: {
     alignItems: 'flex-end',

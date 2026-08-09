@@ -56,8 +56,12 @@ export async function runDailyChallengeSelfTests(): Promise<void> {
   );
 
   const config = createDailyChallengeConfig(dateA);
-  assert(config.seed === seedA, 'challenge config uses derived seed');
-  assert(config.scoringVersion === 1, 'challenge config exposes scoring version');
+  assert(
+    deriveDailyChallengeSeed(dateA) === seedA,
+    'challenge config uses derived numeric seed',
+  );
+  assert(config.rulesVersion === '1', 'challenge config exposes rules version');
+  assert(Boolean(config.authoritativeSeed), 'challenge config includes authoritative seed');
 
   assert(
     getUtcChallengeDate(Date.parse('2026-08-05T23:59:00.000Z')) === dateA,
@@ -79,6 +83,7 @@ export async function runDailyChallengeSelfTests(): Promise<void> {
       activeSession: null,
       offline: false,
       errorMessage: null,
+      authOnline: true,
     }) === 'available',
     'fresh challenge shows ranked availability',
   );
@@ -89,6 +94,7 @@ export async function runDailyChallengeSelfTests(): Promise<void> {
       activeSession: null,
       offline: false,
       errorMessage: null,
+      authOnline: true,
     }) === 'completed',
     'completed ranked attempt maps to completed UI state',
   );
@@ -99,6 +105,7 @@ export async function runDailyChallengeSelfTests(): Promise<void> {
       activeSession: null,
       offline: true,
       errorMessage: 'offline',
+      authOnline: true,
     }) === 'offline',
     'offline without challenge falls back safely',
   );

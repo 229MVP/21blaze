@@ -5,6 +5,8 @@ export type ProgressionSource =
   | 'daily_mission'
   | 'daily_reward'
   | 'level_reward'
+  | 'daily_challenge_completion'
+  | 'daily_streak_milestone'
   | 'admin_adjustment'
   | 'reversal';
 
@@ -70,7 +72,17 @@ export type DailyMissionView = {
   templateId: string;
   name: string;
   description: string;
-  category: 'participation' | 'skill' | 'mode';
+  category:
+    | 'participation'
+    | 'skill'
+    | 'mode'
+    | 'gameplay'
+    | 'score'
+    | 'exact_21'
+    | 'five_card'
+    | 'survival'
+    | 'daily_challenge'
+    | 'completion';
   progress: number;
   targetValue: number;
   xpReward: number;

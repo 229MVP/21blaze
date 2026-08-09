@@ -22,7 +22,9 @@ import { ResultHero } from '../components/results/ResultHero';
 import { ResultsTable } from '../components/results/ResultsTable';
 import { BlazeButton } from '../components/ui/BlazeButton';
 import { BlazePanel } from '../components/ui/BlazePanel';
+import { StreakMilestoneModal } from '../components/dailyChallenge/StreakMilestoneModal';
 import {
+  isDailyLeaderboardEnabled,
   isDailyMissionsEnabled,
   isMonetizationBetaEnabled,
   isProgressionBetaEnabled,
@@ -40,6 +42,7 @@ import { formatTimerSeconds } from '../game/timerEngine';
 import type { GameOverReason } from '../game/types';
 import { useInterstitialScreenTracking } from '../hooks/useInterstitialScreenTracking';
 import { useReducedMotionSetting } from '../hooks/useReducedMotionSetting';
+import { useDailyLeaderboardStore } from '../store/useDailyLeaderboardStore';
 import { trackEvent } from '../monetization/analytics';
 import { showRewardedAd } from '../monetization/rewardedAdService';
 import type { ResultsScreenProps } from '../navigation/navigationTypes';
@@ -107,16 +110,24 @@ export function ResultsScreen({ navigation, route }: ResultsScreenProps) {
   const gameMode = useGameStore((state) => state.gameMode);
   const dailyChallengeSession = useGameStore((state) => state.dailyChallengeSession);
   const clearDailyChallengeMode = useGameStore((state) => state.clearDailyChallengeMode);
-  const challengeVerifiedResult = useDailyChallengeStore((state) => state.verifiedResult);
-  const challengeVerificationStatus = useDailyChallengeStore(
-    (state) => state.verificationStatus,
-  );
-  const challengeRejectionReason = useDailyChallengeStore(
-    (state) => state.rejectionReason,
-  );
+  const dailyExact21Count = useGameStore((state) => state.dailyExact21Count);
+  const dailyFiveCardClearCount = useGameStore((state) => state.dailyFiveCardClearCount);
+  const dailyCompletionSummary = useDailyChallengeStore((state) => state.completionSummary);
+  const dailySubmissionStatus = useDailyChallengeStore((state) => state.submissionStatus);
+  const dailySubmissionError = useDailyChallengeStore((state) => state.submissionError);
   const rankedAttemptScore = useDailyChallengeStore(
     (state) => state.rankedAttempt?.verifiedScore,
   );
+  const loadStreakStatus = useDailyLeaderboardStore((s) => s.loadStreakStatus);
+  const claimStreakReward = useDailyLeaderboardStore((s) => s.claimStreakReward);
+  const streakStatus = useDailyLeaderboardStore((s) => s.streakStatus);
+  const loadMyDailyPosition = useDailyLeaderboardStore((s) => s.loadMyDailyPosition);
+  const myDailyEntry = useDailyLeaderboardStore((s) => s.myDailyEntry);
+  const dailyChallengeConfig = useDailyChallengeStore((s) => s.challenge);
+
+  const [milestoneModal, setMilestoneModal] = useState<number | null>(null);
+  const [claimBusy, setClaimBusy] = useState(false);
+  const [rankLookupFailed, setRankLookupFailed] = useState(false);
 
   const routeScore = resolveParam(route.params?.score);
   const highScore = resolveParam(route.params?.highScore);
@@ -196,6 +207,39 @@ export function ResultsScreen({ navigation, route }: ResultsScreenProps) {
       });
     }
   }, [dailyChallengeSession?.attemptType, gameMode]);
+
+  useEffect(() => {
+    if (
+      gameMode !== 'dailyChallenge' ||
+      dailyChallengeSession?.attemptType !== 'ranked' ||
+      dailySubmissionStatus !== 'completed'
+    ) {
+      return;
+    }
+    void loadStreakStatus({ refresh: true }).then(() => {
+      const status = useDailyLeaderboardStore.getState().streakStatus;
+      const eligible = status?.eligibleRewards ?? [];
+      if (eligible.length > 0) {
+        const milestone = eligible[eligible.length - 1]?.milestone;
+        if (milestone) {
+          trackEvent('streak_milestone_earned', { milestone });
+          setMilestoneModal(milestone);
+        }
+      }
+    });
+    if (dailyChallengeConfig?.challengeId) {
+      void loadMyDailyPosition(dailyChallengeConfig.challengeId).catch(() => {
+        setRankLookupFailed(true);
+      });
+    }
+  }, [
+    dailyChallengeConfig?.challengeId,
+    dailyChallengeSession?.attemptType,
+    dailySubmissionStatus,
+    gameMode,
+    loadMyDailyPosition,
+    loadStreakStatus,
+  ]);
 
   useEffect(() => {
     // Version 1.1A supersedes the flat 1.0 solo-coin formula with its own
@@ -280,7 +324,29 @@ export function ResultsScreen({ navigation, route }: ResultsScreenProps) {
     blazeHaptics.highScore(`high:${highScoreFeedbackKey}`);
   }, [highScoreFeedbackKey, isNewHighScore]);
 
-  const { title, subtitle } = getResultCopy(gameOverReason, isNewHighScore);
+  const { title, subtitle } = useMemo(() => {
+    if (
+      gameMode === 'dailyChallenge' &&
+      dailyChallengeSession?.attemptType === 'ranked' &&
+      (dailySubmissionStatus === 'completed' || submissionStatus === 'verified')
+    ) {
+      return { title: 'DAILY BLAZE COMPLETE', subtitle: 'OFFICIAL RESULT' };
+    }
+    if (
+      gameMode === 'dailyChallenge' &&
+      dailyChallengeSession?.attemptType === 'practice'
+    ) {
+      return { title: 'PRACTICE RUN', subtitle: 'UNRANKED' };
+    }
+    return getResultCopy(gameOverReason, isNewHighScore);
+  }, [
+    dailyChallengeSession?.attemptType,
+    dailySubmissionStatus,
+    gameMode,
+    gameOverReason,
+    isNewHighScore,
+    submissionStatus,
+  ]);
   const showStopwatch =
     gameOverReason === 'timeExpired' && !isNewHighScore;
   const localRank =
@@ -298,66 +364,50 @@ export function ResultsScreen({ navigation, route }: ResultsScreenProps) {
     if (gameMode === 'dailyChallenge') {
       if (dailyChallengeSession?.attemptType === 'practice') {
         return {
-          label: 'PRACTICE RESULT',
-          detail: 'Practice never enters the daily leaderboard.',
+          label: 'PRACTICE RUN',
+          detail: 'Practice scores do not affect your official Daily Blaze result.',
           tone: 'local' as const,
         };
       }
 
-      if (challengeVerificationStatus === 'verified' && challengeVerifiedResult) {
-        const rankLine =
-          challengeVerifiedResult.rank != null
-            ? `Daily rank #${challengeVerifiedResult.rank}`
-            : 'Verified for today’s challenge';
-        const percentileLine =
-          challengeVerifiedResult.percentile != null
-            ? `Top ${challengeVerifiedResult.percentile}%`
-            : null;
+      if (
+        dailySubmissionStatus === 'completed' &&
+        dailyCompletionSummary
+      ) {
         return {
-          label: 'DAILY CHALLENGE VERIFIED',
-          detail: percentileLine ? `${rankLine} · ${percentileLine}` : rankLine,
+          label: 'DAILY BLAZE COMPLETE',
+          detail: 'Your official attempt is complete.',
           tone: 'ok' as const,
         };
       }
 
       if (
-        challengeVerificationStatus === 'submitting' ||
+        dailySubmissionStatus === 'submitting' ||
         submissionStatus === 'submitting' ||
         submissionStatus === 'idle'
       ) {
         return {
-          label: 'VERIFYING RESULT…',
-          detail: 'Checking your ranked attempt with the server…',
+          label: 'SUBMITTING RESULT…',
+          detail: 'Recording your official Daily Blaze attempt…',
           tone: 'pending' as const,
         };
       }
 
       if (
-        challengeVerificationStatus === 'rejected' ||
-        submissionStatus === 'rejected'
-      ) {
-        return {
-          label: 'RANKED ATTEMPT REJECTED',
-          detail:
-            challengeRejectionReason ?? 'Verification failed. No leaderboard score was stored.',
-          tone: 'warn' as const,
-        };
-      }
-
-      if (
-        challengeVerificationStatus === 'failed' ||
+        dailySubmissionStatus === 'failed' ||
         submissionStatus === 'failed'
       ) {
         return {
-          label: 'VERIFICATION FAILED',
-          detail: challengeRejectionReason ?? 'Connection lost. Retry when online.',
+          label: 'SUBMISSION FAILED',
+          detail:
+            dailySubmissionError ?? 'Could not submit your official result. Retry when online.',
           tone: 'warn' as const,
         };
       }
 
       return {
-        label: 'DAILY CHALLENGE RESULT',
-        detail: 'Awaiting server confirmation.',
+        label: 'DAILY BLAZE RESULT',
+        detail: 'Awaiting official submission.',
         tone: 'pending' as const,
       };
     }
@@ -403,10 +453,10 @@ export function ResultsScreen({ navigation, route }: ResultsScreenProps) {
       tone: 'local' as const,
     };
   }, [
-    challengeRejectionReason,
-    challengeVerificationStatus,
-    challengeVerifiedResult,
     dailyChallengeSession?.attemptType,
+    dailyCompletionSummary,
+    dailySubmissionError,
+    dailySubmissionStatus,
     eligibility,
     gameMode,
     submissionStatus,
@@ -485,6 +535,35 @@ export function ResultsScreen({ navigation, route }: ResultsScreenProps) {
     ).length;
   }, [dailyMissions]);
 
+  const dailyStatsRows = useMemo(() => {
+    if (gameMode !== 'dailyChallenge') {
+      return null;
+    }
+    const summary = dailyCompletionSummary;
+    const exact21 =
+      summary?.exact21Count ?? dailyExact21Count;
+    const fiveCard =
+      summary?.fiveCardClearCount ?? dailyFiveCardClearCount;
+    const bustTotal = summary?.bustCount ?? busts;
+    return [
+      {
+        label: 'SCORE',
+        value: (summary?.score ?? score).toLocaleString(),
+        gold: true,
+      },
+      { label: 'EXACT 21', value: exact21.toLocaleString() },
+      { label: 'FIVE CARD CLEARS', value: fiveCard.toLocaleString() },
+      { label: 'BUSTS', value: bustTotal.toLocaleString(), danger: bustTotal >= 3 },
+    ];
+  }, [
+    busts,
+    dailyCompletionSummary,
+    dailyExact21Count,
+    dailyFiveCardClearCount,
+    gameMode,
+    score,
+  ]);
+
   const statsRows = useMemo(
     () => [
       {
@@ -524,6 +603,13 @@ export function ResultsScreen({ navigation, route }: ResultsScreenProps) {
     }
     restartGame();
     navigation.replace('Game');
+  };
+
+  const playSolo = () => {
+    if (gameMode === 'dailyChallenge') {
+      clearDailyChallengeMode();
+    }
+    navigation.navigate('Game');
   };
 
   const returnHome = () => {
@@ -681,10 +767,36 @@ export function ResultsScreen({ navigation, route }: ResultsScreenProps) {
           </View>
 
           <ResultsTable
-            rows={statsRows}
+            rows={dailyStatsRows ?? statsRows}
             highlightedRow={isNewHighScore ? 'HIGH SCORE' : undefined}
             compact
           />
+
+          {gameMode === 'dailyChallenge' &&
+          dailyChallengeSession?.attemptType === 'ranked' &&
+          dailySubmissionStatus === 'completed' ? (
+            <BlazePanel style={styles.dailyMetaPanel}>
+              {dailyCompletionSummary?.dailyRank != null ||
+              myDailyEntry?.rank != null ? (
+                <Text style={styles.dailyMetaLine} accessibilityRole="text">
+                  DAILY RANK #
+                  {dailyCompletionSummary?.dailyRank ?? myDailyEntry?.rank}
+                </Text>
+              ) : rankLookupFailed ? (
+                <Text style={styles.dailyMetaMuted}>
+                  RESULT SAVED — Leaderboard temporarily unavailable.
+                </Text>
+              ) : null}
+              {dailyCompletionSummary?.currentStreak != null ? (
+                <Text
+                  style={styles.dailyMetaLine}
+                  accessibilityLabel={`Daily streak ${dailyCompletionSummary.currentStreak} days`}
+                >
+                  DAILY STREAK 🔥 {dailyCompletionSummary.currentStreak}
+                </Text>
+              ) : null}
+            </BlazePanel>
+          ) : null}
 
           {v1_1RewardsOn && matchId && gameOverReason !== 'quit' ? (
             <BlazePanel style={styles.rewardsPanel}>
@@ -856,16 +968,24 @@ export function ResultsScreen({ navigation, route }: ResultsScreenProps) {
               </>
             ) : gameMode === 'dailyChallenge' ? (
               <>
+                {isDailyLeaderboardEnabled() ? (
+                  <BlazeButton
+                    label="VIEW LEADERBOARD"
+                    onPress={() => navigation.navigate('DailyChallengeLeaderboard')}
+                    accessibilityLabel="View Daily Blaze leaderboard"
+                  />
+                ) : null}
                 <BlazeButton
-                  label="VIEW LEADERBOARD"
-                  onPress={() => navigation.navigate('DailyChallengeLeaderboard')}
-                  disabled={submissionStatus !== 'verified'}
-                  accessibilityLabel="View daily challenge leaderboard"
-                />
-                <BlazeButton
-                  label="RETURN TO CHALLENGE"
+                  label="VIEW DAILY CHALLENGE"
                   variant="secondary"
                   onPress={playAgain}
+                  accessibilityLabel="View Daily Blaze challenge"
+                />
+                <BlazeButton
+                  label="PLAY SOLO"
+                  variant="ghost"
+                  onPress={playSolo}
+                  accessibilityLabel="Play solo mode"
                 />
               </>
             ) : (
@@ -906,6 +1026,24 @@ export function ResultsScreen({ navigation, route }: ResultsScreenProps) {
             onContinue={acknowledgeLevelUp}
           />
         ) : null}
+
+        <StreakMilestoneModal
+          visible={milestoneModal != null}
+          milestone={milestoneModal ?? 0}
+          claiming={claimBusy}
+          reduceMotion={reduceMotion}
+          onDismiss={() => setMilestoneModal(null)}
+          onClaim={() => {
+            if (milestoneModal == null) {
+              return;
+            }
+            setClaimBusy(true);
+            void claimStreakReward(milestoneModal)
+              .then(() => setMilestoneModal(null))
+              .catch(() => undefined)
+              .finally(() => setClaimBusy(false));
+          }}
+        />
       </View>
     </BlazeScreenBackground>
   );
@@ -1080,5 +1218,21 @@ const styles = StyleSheet.create({
   },
   pressed: {
     opacity: 0.88,
+  },
+  dailyMetaPanel: {
+    gap: 4,
+    alignItems: 'center',
+  },
+  dailyMetaLine: {
+    color: kitColors.fire.gold,
+    fontFamily: kitTypography.families.condensed,
+    fontWeight: '700',
+    fontSize: 14,
+    letterSpacing: 0.6,
+  },
+  dailyMetaMuted: {
+    color: kitColors.text.secondary,
+    fontSize: 12,
+    textAlign: 'center',
   },
 });
