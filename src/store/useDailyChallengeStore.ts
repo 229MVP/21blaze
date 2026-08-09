@@ -26,6 +26,7 @@ import type {
 import { supabase } from '../lib/supabase';
 import { trackEvent } from '../monetization/analytics';
 import { useDailyLeaderboardStore } from './useDailyLeaderboardStore';
+import { useProgressionStore } from './useProgressionStore';
 import {
   clearPersistedDailyChallengeSession,
   loadPersistedDailyChallengeSession,
@@ -431,6 +432,7 @@ export const useDailyChallengeStore = create<DailyChallengeStore>((set, get) => 
       await clearPersistedDailyChallengeSession();
       useDailyLeaderboardStore.getState().invalidateCache();
       void useDailyLeaderboardStore.getState().loadStreakStatus({ refresh: true });
+      void useProgressionStore.getState().hydrateProgression();
 
       const rankedAttempt: DailyChallengeRankedAttempt = {
         id: session.attemptId,
