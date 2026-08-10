@@ -511,6 +511,12 @@ export function SettingsScreen({ navigation }: SettingsScreenProps) {
                     onPress={() => navigation.navigate('AsyncDuelDiagnostics')}
                   />
                 ) : null}
+                {__DEV__ ? (
+                  <SettingsActionRow
+                    label="LIVE PVP HARNESS (DEV)"
+                    onPress={() => navigation.navigate('LivePvpHarness')}
+                  />
+                ) : null}
                 {isThemePreviewDevEnabled() ? (
                   <SettingsActionRow
                     label="OPEN THEME PREVIEW"

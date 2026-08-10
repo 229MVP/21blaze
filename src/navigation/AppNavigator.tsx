@@ -25,6 +25,7 @@ import { DailyRewardScreen } from '../screens/DailyRewardScreen';
 import { BlazeUIKitPreviewScreen } from '../screens/dev/BlazeUIKitPreviewScreen';
 import { DailyChallengeDiagnosticsScreen } from '../screens/dev/DailyChallengeDiagnosticsScreen';
 import { AsyncDuelDiagnosticsScreen } from '../screens/dev/AsyncDuelDiagnosticsScreen';
+import { LivePvpHarnessScreen } from '../screens/dev/LivePvpHarnessScreen';
 import { FeedbackScreen } from '../screens/FeedbackScreen';
 import { GameScreen } from '../screens/GameScreen';
 import { HighScoresScreen } from '../screens/HighScoresScreen';
@@ -147,6 +148,7 @@ export function AppNavigator() {
             name="AsyncDuelDiagnostics"
             component={AsyncDuelDiagnosticsScreen}
           />
+          <Stack.Screen name="LivePvpHarness" component={LivePvpHarnessScreen} />
         </>
       ) : null}
       {isThemePreviewDevEnabled() ? (
