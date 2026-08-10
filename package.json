@@ -1,6 +1,6 @@
 {
   "name": "21-blaze",
-  "version": "1.3.0",
+  "version": "1.4.0",
   "main": "index.ts",
   "dependencies": {
     "@expo-google-fonts/anton": "^0.4.2",
@@ -68,6 +68,7 @@
     "test:async-duel-phase1": "npx tsx src/asyncDuel/asyncDuelPhase1SelfTest.ts",
     "test:async-duel-phase2": "npx tsx src/asyncDuel/asyncDuelPhase2SelfTest.ts",
     "test:async-duel-phase3": "npx tsx src/asyncDuel/asyncDuelPhase3SelfTest.ts",
+    "test:async-duel-release": "npx tsx src/asyncDuel/asyncDuelReleaseFreezeSelfTest.ts",
     "test:daily-challenge-live": "npx tsx scripts/dailyChallengeLiveVerification.ts",
     "validate:visual-assets": "npx tsx scripts/validate-visual-assets.mjs"
   },

@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 
 import { mapAsyncDuelErrorMessage } from '../asyncDuel/asyncDuelErrorMap';
@@ -5,6 +6,7 @@ import { BlazeButton } from '../components/buttons/BlazeButton';
 import { ScreenHeader } from '../components/Navigation/ScreenHeader';
 import { ScreenContainer } from '../components/ScreenContainer';
 import type { AsyncDuelConfirmChallengeScreenProps } from '../navigation/navigationTypes';
+import { getAsyncDuelOpsStatus } from '../services/duelNotificationService';
 import { useAsyncDuelStore } from '../store/useAsyncDuelStore';
 import { useGameStore } from '../store/useGameStore';
 import { colors } from '../theme/colors';
@@ -21,6 +23,21 @@ export function AsyncDuelConfirmChallengeScreen({
   const errorMessage = useAsyncDuelStore((s) => s.errorMessage);
   const prepareAsyncDuelGame = useGameStore((s) => s.prepareAsyncDuelGame);
   const pending = createStatus === 'pending';
+  const [creationEnabled, setCreationEnabled] = useState(true);
+  const [opsLoaded, setOpsLoaded] = useState(false);
+
+  useEffect(() => {
+    void getAsyncDuelOpsStatus()
+      .then((status) => {
+        setCreationEnabled(status.creationEnabled && status.configActive);
+      })
+      .catch(() => {
+        setCreationEnabled(false);
+      })
+      .finally(() => {
+        setOpsLoaded(true);
+      });
+  }, []);
 
   return (
     <ScreenContainer style={styles.container} intensity="normal" padded={false}>
@@ -34,12 +51,17 @@ export function AsyncDuelConfirmChallengeScreen({
         <Text style={styles.body}>
           Your challenge appears after you finish your run.
         </Text>
+        {opsLoaded && !creationEnabled ? (
+          <Text style={styles.error}>
+            New challenges are temporarily unavailable. Try again later.
+          </Text>
+        ) : null}
         {errorMessage ? (
           <Text style={styles.error}>{mapAsyncDuelErrorMessage(errorMessage)}</Text>
         ) : null}
         <BlazeButton
           title={pending ? 'STARTING…' : 'START DUEL'}
-          disabled={pending}
+          disabled={pending || !creationEnabled}
           loading={pending}
           onPress={() => {
             void (async () => {

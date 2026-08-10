@@ -12,6 +12,7 @@ import { BlazeButton } from '../components/buttons/BlazeButton';
 import { ScreenHeader } from '../components/Navigation/ScreenHeader';
 import { ScreenContainer } from '../components/ScreenContainer';
 import type { AsyncDuelResultScreenProps } from '../navigation/navigationTypes';
+import { getAsyncDuelOpsStatus } from '../services/duelNotificationService';
 import { useAsyncDuelStore } from '../store/useAsyncDuelStore';
 import { useAuthStore } from '../store/useAuthStore';
 import { useDuelNotificationStore } from '../store/useDuelNotificationStore';
@@ -35,11 +36,19 @@ export function AsyncDuelResultScreen({ navigation, route }: AsyncDuelResultScre
   const rematchError = useDuelNotificationStore((s) => s.errorMessage);
   const prepareAsyncDuelGame = useGameStore((s) => s.prepareAsyncDuelGame);
   const [confirmRematch, setConfirmRematch] = useState(false);
+  const [rematchEnabled, setRematchEnabled] = useState(true);
 
   useEffect(() => {
     void loadDetails(duelId);
     void loadResult(duelId);
     void loadSeriesSummary(duelId);
+    void getAsyncDuelOpsStatus()
+      .then((status) => {
+        setRematchEnabled(status.rematchEnabled && status.creationEnabled && status.configActive);
+      })
+      .catch(() => {
+        setRematchEnabled(false);
+      });
   }, [duelId, loadDetails, loadResult, loadSeriesSummary]);
 
   const challenger = selectedDetails?.challenger as
@@ -66,7 +75,10 @@ export function AsyncDuelResultScreen({ navigation, route }: AsyncDuelResultScre
       ? lastCompletion?.opponentResult?.score
       : lastCompletion?.challengerResult?.score;
 
-  if (!lastCompletion && !errorMessage) {
+  const resultMatchesRoute =
+    lastCompletion != null && String(lastCompletion.duelId) === String(duelId);
+
+  if ((!resultMatchesRoute && !errorMessage) || (!lastCompletion && !errorMessage)) {
     return (
       <ScreenContainer style={styles.container} intensity="normal" padded={false}>
         <View style={styles.inner}>
@@ -77,7 +89,7 @@ export function AsyncDuelResultScreen({ navigation, route }: AsyncDuelResultScre
     );
   }
 
-  if (errorMessage && !lastCompletion) {
+  if (errorMessage && !resultMatchesRoute) {
     return (
       <ScreenContainer style={styles.container} intensity="normal" padded={false}>
         <View style={styles.inner}>
@@ -159,7 +171,9 @@ export function AsyncDuelResultScreen({ navigation, route }: AsyncDuelResultScre
           </Text>
         ) : null}
 
-        {!confirmRematch ? (
+        {!rematchEnabled ? (
+          <Text style={styles.body}>Rematches are temporarily unavailable.</Text>
+        ) : !confirmRematch ? (
           <BlazeButton title="PLAY REMATCH" onPress={() => setConfirmRematch(true)} fullWidth />
         ) : (
           <>
@@ -178,6 +192,13 @@ export function AsyncDuelResultScreen({ navigation, route }: AsyncDuelResultScre
                 void (async () => {
                   const session = await startRematch(duelId);
                   if (!session) {
+                    return;
+                  }
+                  if (session.resumed) {
+                    // Existing rematch child is no longer a fresh challenger start.
+                    navigation.replace('AsyncDuelChallengeDetails', {
+                      duelId: session.duelId,
+                    });
                     return;
                   }
                   await prepareAsyncDuelGame(session);
