@@ -1,24 +1,25 @@
 import { supabase } from '../lib/supabase';
 import type {
   AsyncDuelCompletionResult,
+  AsyncDuelDetails,
   AsyncDuelErrorCode,
   AsyncDuelGameResult,
   AsyncDuelHistoryItem,
   AsyncDuelInboxItem,
   AsyncDuelStartResult,
 } from '../asyncDuel/asyncDuelTypes';
+import { AsyncDuelServiceError } from '../asyncDuel/asyncDuelServiceError';
+export { AsyncDuelServiceError } from '../asyncDuel/asyncDuelServiceError';
+import {
+  parseAsyncDuelCompletion,
+  parseAsyncDuelDetails,
+  parseAsyncDuelHistoryItem,
+  parseAsyncDuelInboxItem,
+  parseAsyncDuelStart,
+  parsePagedItems,
+} from '../asyncDuel/asyncDuelProtocol';
 
 const TIMEOUT_MS = 12000;
-
-export class AsyncDuelServiceError extends Error {
-  readonly code: AsyncDuelErrorCode;
-
-  constructor(code: AsyncDuelErrorCode, message?: string) {
-    super(message ?? code);
-    this.name = 'AsyncDuelServiceError';
-    this.code = code;
-  }
-}
 
 function withTimeout<T>(promise: Promise<T>, label: string): Promise<T> {
   return new Promise<T>((resolve, reject) => {
@@ -87,26 +88,10 @@ async function rpcJson(
   return data;
 }
 
-function parseStart(data: Record<string, unknown>): AsyncDuelStartResult {
-  return {
-    duelId: String(data.duelId),
-    attemptId: String(data.attemptId),
-    seed: String(data.seed),
-    rulesVersion: String(data.rulesVersion),
-    deckVersion: String(data.deckVersion),
-    durationSeconds: Number(data.durationSeconds),
-    bustLimit: Number(data.bustLimit),
-    status: data.status as AsyncDuelStartResult['status'],
-    expiresAt: String(data.expiresAt),
-    participantRole: data.participantRole as AsyncDuelStartResult['participantRole'],
-    alreadyStarted: Boolean(data.alreadyStarted),
-    opponentId: data.opponentId != null ? String(data.opponentId) : undefined,
-  };
-}
-
 /**
  * Client service foundation — no full UI.
- * Resume policy: start/opponent start returns existing attempt on retry;
+ * Resume policy: create returns existing active duel on retry;
+ * start/opponent start returns existing attempt on retry;
  * complete is idempotent for already-completed attempts.
  * Never trusts client-supplied seed/rules/winner.
  */
@@ -115,7 +100,7 @@ export async function createAsyncDuel(opponentId: string): Promise<AsyncDuelStar
     throw new AsyncDuelServiceError('PLAYER_NOT_FOUND');
   }
   const data = await rpcJson('create_async_duel', { p_opponent_id: opponentId });
-  return parseStart(data);
+  return parseAsyncDuelStart(data);
 }
 
 export async function getAsyncDuelInbox(options?: {
@@ -126,12 +111,7 @@ export async function getAsyncDuelInbox(options?: {
     p_limit: options?.limit ?? 20,
     p_offset: options?.offset ?? 0,
   });
-  const items = Array.isArray(data.items) ? (data.items as AsyncDuelInboxItem[]) : [];
-  return {
-    items,
-    limit: Number(data.limit ?? 20),
-    offset: Number(data.offset ?? 0),
-  };
+  return parsePagedItems(data, 'inbox', parseAsyncDuelInboxItem);
 }
 
 export async function startAsyncDuelOpponentAttempt(
@@ -140,7 +120,7 @@ export async function startAsyncDuelOpponentAttempt(
   const data = await rpcJson('start_async_duel_opponent_attempt', {
     p_duel_id: duelId,
   });
-  return parseStart(data);
+  return parseAsyncDuelStart(data);
 }
 
 export async function completeAsyncDuelAttempt(
@@ -160,16 +140,21 @@ export async function completeAsyncDuelAttempt(
     p_deck_version: result.deckVersion,
     p_submission_version: result.submissionVersion ?? null,
   });
-  return data as unknown as AsyncDuelCompletionResult;
+  return parseAsyncDuelCompletion(data);
 }
 
 export async function declineAsyncDuel(
   duelId: string,
 ): Promise<{ duelId: string; status: string; alreadyDeclined?: boolean }> {
   const data = await rpcJson('decline_async_duel', { p_duel_id: duelId });
+  const id = data.duelId;
+  const status = data.status;
+  if (typeof id !== 'string' || typeof status !== 'string') {
+    throw new AsyncDuelServiceError('UNKNOWN', 'Invalid decline response');
+  }
   return {
-    duelId: String(data.duelId),
-    status: String(data.status),
+    duelId: id,
+    status,
     alreadyDeclined: Boolean(data.alreadyDeclined),
   };
 }
@@ -178,24 +163,26 @@ export async function cancelAsyncDuel(
   duelId: string,
 ): Promise<{ duelId: string; status: string; alreadyCancelled?: boolean }> {
   const data = await rpcJson('cancel_async_duel', { p_duel_id: duelId });
+  const id = data.duelId;
+  const status = data.status;
+  if (typeof id !== 'string' || typeof status !== 'string') {
+    throw new AsyncDuelServiceError('UNKNOWN', 'Invalid cancel response');
+  }
   return {
-    duelId: String(data.duelId),
-    status: String(data.status),
+    duelId: id,
+    status,
     alreadyCancelled: Boolean(data.alreadyCancelled),
   };
 }
 
-export async function getAsyncDuelDetails(
-  duelId: string,
-): Promise<Record<string, unknown>> {
-  return rpcJson('get_async_duel_details', { p_duel_id: duelId });
+export async function getAsyncDuelDetails(duelId: string): Promise<AsyncDuelDetails> {
+  const data = await rpcJson('get_async_duel_details', { p_duel_id: duelId });
+  return parseAsyncDuelDetails(data);
 }
 
-export async function getAsyncDuelResult(
-  duelId: string,
-): Promise<AsyncDuelCompletionResult> {
+export async function getAsyncDuelResult(duelId: string): Promise<AsyncDuelCompletionResult> {
   const data = await rpcJson('get_async_duel_result', { p_duel_id: duelId });
-  return data as unknown as AsyncDuelCompletionResult;
+  return parseAsyncDuelCompletion(data);
 }
 
 export async function getAsyncDuelHistory(options?: {
@@ -206,7 +193,42 @@ export async function getAsyncDuelHistory(options?: {
     p_limit: options?.limit ?? 20,
     p_offset: options?.offset ?? 0,
   });
-  const items = Array.isArray(data.items) ? (data.items as AsyncDuelHistoryItem[]) : [];
+  return parsePagedItems(data, 'history', parseAsyncDuelHistoryItem);
+}
+
+export type AsyncDuelOpponentSearchItem = {
+  userId: string;
+  displayName: string;
+  profileFrameId: string | null;
+  level: number;
+  eligible: boolean;
+};
+
+export async function searchAsyncDuelOpponents(input: {
+  query: string;
+  limit?: number;
+  offset?: number;
+}): Promise<{ items: AsyncDuelOpponentSearchItem[]; limit: number; offset: number }> {
+  const data = await rpcJson('search_async_duel_opponents', {
+    p_query: input.query,
+    p_limit: input.limit ?? 20,
+    p_offset: input.offset ?? 0,
+  });
+  if (!Array.isArray(data.items)) {
+    throw new AsyncDuelServiceError('UNKNOWN', 'Invalid opponent search items');
+  }
+  const items = data.items.map((raw) => {
+    if (!isRecord(raw)) {
+      throw new AsyncDuelServiceError('UNKNOWN', 'Invalid opponent row');
+    }
+    return {
+      userId: String(raw.userId ?? ''),
+      displayName: String(raw.displayName ?? 'Blaze Player'),
+      profileFrameId: raw.profileFrameId == null ? null : String(raw.profileFrameId),
+      level: Number(raw.level ?? 0),
+      eligible: Boolean(raw.eligible),
+    };
+  });
   return {
     items,
     limit: Number(data.limit ?? 20),

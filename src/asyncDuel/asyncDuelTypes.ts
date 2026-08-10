@@ -128,6 +128,31 @@ export type AsyncDuelStartResult = {
   participantRole: AsyncDuelParticipantRole;
   alreadyStarted?: boolean;
   opponentId?: string;
+  /** Server returned existing active duel after create retry (lost response). */
+  resumedExisting?: boolean;
+};
+
+/** Participant-safe duel snapshot — no seed, no private profile fields. */
+export type AsyncDuelDetails = {
+  duelId: string;
+  status: AsyncDuelStatus;
+  participantRole: AsyncDuelParticipantRole;
+  outcome: AsyncDuelOutcome | null;
+  winnerUserId: string | null;
+  decidingField: AsyncDuelDecidingField | null;
+  challenger: AsyncDuelPublicParticipant;
+  opponent: AsyncDuelPublicParticipant;
+  rulesVersion: string;
+  deckVersion: string;
+  durationSeconds: number;
+  bustLimit: number;
+  createdAt: string;
+  expiresAt: string;
+  settledAt: string | null;
+  challengerAttemptStatus: AsyncDuelAttemptStatus | null;
+  opponentAttemptStatus: AsyncDuelAttemptStatus | null;
+  challengerScore: number | null;
+  opponentScore: number | null;
 };
 
 export type AsyncDuelCompletionResult = {

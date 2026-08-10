@@ -5,8 +5,8 @@
  *
  * Challenger start:
  * - create_async_duel creates duel + challenger attempt transactionally.
- * - Network timeout after success: client should call get_async_duel_details /
- *   history and resume the existing started attempt — do not create again.
+ * - Network timeout after success: retry create returns the same active duel
+ *   (`resumedExisting`) with seed — do not create again.
  * - Active competitive attempts ARE resumable in Phase 1 (same account only).
  *
  * Opponent start:

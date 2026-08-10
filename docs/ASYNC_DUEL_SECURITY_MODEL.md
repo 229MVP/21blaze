@@ -10,7 +10,7 @@
 | Attempt count | Unique indexes: one challenger + one opponent per duel |
 | Results | Validated in `complete_async_duel_attempt` |
 | Winner / outcome | `compare_async_duel_results` inside settlement transaction |
-| Expiration | Server `now()` via `expire_async_duels` |
+| Expiration | Server time only — `expire_async_duels` callable by **service_role** only (0016); internal RPCs call with `now()` |
 
 The mobile client may submit only opponent id (create) or attempt id + result counters (complete). It must never submit challenger id, seed, rules, winner, or outcome.
 
@@ -74,6 +74,7 @@ No XP or Blaze Coin grants in Phase 1.
 
 ## Idempotency
 
+- **Create (challenger):** retry returns existing active duel for same opponent (`resumedExisting: true`) — lost-response / double-tap safe (0016)
 - Opponent start: unique constraint + exception handler
 - Completion: completed attempt returns existing settlement/result
 - Decline/cancel: already-terminal returns success with flag
@@ -84,6 +85,10 @@ No XP or Blaze Coin grants in Phase 1.
 - Max active duels between a pair
 - Creation cooldown seconds
 - Creation kill switch: `async_duel_creation_enabled`
+
+## Client response validation (Phase 1.5)
+
+`src/asyncDuel/asyncDuelProtocol.ts` validates all Async Duel RPC payloads at runtime. Malformed responses throw `AsyncDuelServiceError` — never coerced to `"undefined"` strings or untyped `Record` objects.
 
 ## Why Phase 1 is not cheat-proof
 

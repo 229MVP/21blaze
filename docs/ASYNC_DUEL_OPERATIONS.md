@@ -25,10 +25,13 @@ Or set `"active": false` inside `async_duel_config`.
 
 ## Expiration
 
-- Call `SELECT public.expire_async_duels();` periodically (cron / scheduled Edge Function).
-- Inbox and start RPCs also invoke expiration opportunistically.
-- Statuses flipped to `expired`: `challenger_playing`, `awaiting_opponent`, `opponent_playing` when `expires_at <= now()`.
+- **Scheduled:** `SELECT public.expire_async_duels();` via cron / Edge Function using **service_role** (not authenticated clients).
+- **0016 hardening:** `expire_async_duels` is revoked from `authenticated` and `anon`. Parameter `p_now` is clamped to `<= now()` for defense in depth.
+- Inbox and start RPCs invoke expiration opportunistically as the function owner with `now()`.
+- Statuses flipped to `expired`: `challenger_playing`, `awaiting_opponent`, `opponent_playing` when `expires_at <= effective_now`.
 - Expired duels grant no rewards and cannot start or settle as completed.
+
+**Known vulnerability (0015 only):** If `0016` is not applied, authenticated users could call `expire_async_duels` with a future timestamp. Apply `0016` before enabling Async Duel in production.
 
 ## Inspect stuck duels (read-only)
 
@@ -65,8 +68,15 @@ WHERE id = '<duel-uuid>'
 ## Migration deployment
 
 1. Apply `0015_v1_4_phase1_async_duel_foundation.sql` after v1.3 migrations.
-2. Verify grants: authenticated can execute create/start/complete/decline/cancel/inbox/history/details/result.
-3. Confirm RLS enabled; no INSERT/UPDATE for authenticated.
+2. Apply `0016_v1_4_async_duel_security_hardening.sql` (required before production Async Duel).
+3. Verify grants: authenticated can execute create/start/complete/decline/cancel/inbox/history/details/result — **not** `expire_async_duels`.
+4. Confirm RLS enabled; no INSERT/UPDATE for authenticated; table SELECT revoked.
+
+## Create retry / timeout recovery
+
+If `create_async_duel` succeeds server-side but the client times out, retrying create with the same opponent returns the existing active duel (`resumedExisting: true`) with seed and attempt id. Do not treat timeout as failure without checking inbox or retrying create.
+
+See `src/asyncDuel/asyncDuelResumePolicy.ts`.
 
 ## Rollback considerations
 
