@@ -89,7 +89,7 @@ export function GameScreen({ navigation }: GameScreenProps) {
   const cardsPlayed = useGameStore((state) => state.cardsPlayed);
   const gameMode = useGameStore((state) => state.gameMode);
   const dailyChallengeSession = useGameStore((state) => state.dailyChallengeSession);
-  const clearDailyChallengeMode = useGameStore((state) => state.clearDailyChallengeMode);
+  const asyncDuelSession = useGameStore((state) => state.asyncDuelSession);
 
   useInterstitialScreenTracking(
     gameMode === 'dailyChallenge' ? 'dailyChallenge' : 'gameplay',
@@ -124,7 +124,8 @@ export function GameScreen({ navigation }: GameScreenProps) {
 
   useEffect(() => {
     const current = useGameStore.getState();
-    if (current.gameMode === 'dailyChallenge') {
+    // Mode-bound sessions are prepared before navigation — never replace their seed.
+    if (current.gameMode === 'dailyChallenge' || current.gameMode === 'asyncDuel') {
       return;
     }
     if (
@@ -321,20 +322,35 @@ export function GameScreen({ navigation }: GameScreenProps) {
   };
 
   const isDailyChallenge = gameMode === 'dailyChallenge';
+  const isAsyncDuel = gameMode === 'asyncDuel';
   const isDailyRanked =
     isDailyChallenge && dailyChallengeSession?.attemptType === 'ranked';
-  const challengeLabel =
-    dailyChallengeSession?.attemptType === 'ranked'
+  const hideRestart = isDailyRanked || isAsyncDuel;
+  const challengeLabel = isAsyncDuel
+    ? `ASYNC DUEL · vs ${asyncDuelSession?.opponentDisplayName ?? 'Opponent'}`
+    : dailyChallengeSession?.attemptType === 'ranked'
       ? 'DAILY RANKED'
       : dailyChallengeSession?.attemptType === 'practice'
         ? 'DAILY PRACTICE'
         : null;
-  const countdownTitle = isDailyChallenge ? 'DAILY CHALLENGE' : 'GET READY!';
-  const countdownSubtitle = isDailyChallenge
-    ? dailyChallengeSession?.attemptType === 'ranked'
-      ? 'RANKED ATTEMPT'
-      : 'PRACTICE'
-    : undefined;
+  const targetScoreLabel =
+    isAsyncDuel &&
+    asyncDuelSession?.participantRole === 'opponent' &&
+    asyncDuelSession.targetScore != null
+      ? `TARGET ${asyncDuelSession.targetScore.toLocaleString()}`
+      : null;
+  const countdownTitle = isAsyncDuel
+    ? 'ASYNC DUEL'
+    : isDailyChallenge
+      ? 'DAILY CHALLENGE'
+      : 'GET READY!';
+  const countdownSubtitle = isAsyncDuel
+    ? `vs ${asyncDuelSession?.opponentDisplayName ?? 'Opponent'}`
+    : isDailyChallenge
+      ? dailyChallengeSession?.attemptType === 'ranked'
+        ? 'RANKED ATTEMPT'
+        : 'PRACTICE'
+      : undefined;
   const isCountdown = timerStatus === 'countdown';
   const isPaused = timerStatus === 'paused';
   const canPlay =
@@ -421,6 +437,14 @@ export function GameScreen({ navigation }: GameScreenProps) {
           <View style={styles.timerBlock}>
             {challengeLabel ? (
               <Text style={styles.challengeLabel}>{challengeLabel}</Text>
+            ) : null}
+            {targetScoreLabel ? (
+              <Text
+                style={styles.challengeLabel}
+                accessibilityLabel={`Score to beat ${asyncDuelSession?.targetScore}`}
+              >
+                {targetScoreLabel}
+              </Text>
             ) : null}
             {showFinalBlaze ? (
               <Text style={styles.finalBlaze}>FINAL BLAZE</Text>
@@ -510,7 +534,7 @@ export function GameScreen({ navigation }: GameScreenProps) {
               onResume={handleResume}
               onRestart={requestRestartConfirm}
               onQuit={requestQuitConfirm}
-              hideRestart={isDailyRanked}
+              hideRestart={hideRestart}
             />
           </View>
 
@@ -521,7 +545,7 @@ export function GameScreen({ navigation }: GameScreenProps) {
               label: 'RESTART',
               onPress: requestRestartConfirm,
               variant: 'danger',
-              disabled: isDailyRanked,
+              disabled: hideRestart,
               accessibilityLabel: 'Restart game',
             }}
             secondaryAction={{

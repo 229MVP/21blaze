@@ -40,7 +40,9 @@ import {
   submitOnlineMatch,
 } from '../services/onlineMatchService';
 import type { DailyChallengeSession } from '../game/challenge/types';
+import type { AsyncDuelSession } from '../asyncDuel/asyncDuelSession';
 import { useDailyChallengeStore } from './useDailyChallengeStore';
+import { useAsyncDuelStore } from './useAsyncDuelStore';
 import { clearHighScore, saveHighScore } from '../storage/highScoreStorage';
 import { createMatchId } from '../utils/createMatchId';
 import { useScoreHistoryStore } from './useScoreHistoryStore';
@@ -49,6 +51,7 @@ type GameStore = GameState &
   OnlineMatchState & {
     gameMode: GameMode;
     dailyChallengeSession: DailyChallengeSession | null;
+    asyncDuelSession: AsyncDuelSession | null;
     dailyChallengeFirstMoveRecorded: boolean;
     dailyExact21Count: number;
     dailyFiveCardClearCount: number;
@@ -62,10 +65,12 @@ type GameStore = GameState &
     resetHighScore: () => Promise<void>;
     prepareAndStartGame: () => Promise<void>;
     prepareDailyChallengeGame: (session: DailyChallengeSession) => Promise<void>;
+    prepareAsyncDuelGame: (session: AsyncDuelSession) => Promise<void>;
     startGame: () => void;
     restartGame: () => void;
     resetGame: () => void;
     clearDailyChallengeMode: () => void;
+    clearAsyncDuelMode: () => void;
     beginStartCountdown: () => void;
     updateStartCountdown: (value: number) => void;
     beginTimedGame: (now: number) => void;
@@ -223,6 +228,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
   ...IDLE_ONLINE_MATCH_STATE,
   gameMode: 'solo',
   dailyChallengeSession: null,
+  asyncDuelSession: null,
   dailyChallengeFirstMoveRecorded: false,
   dailyExact21Count: 0,
   dailyFiveCardClearCount: 0,
@@ -300,6 +306,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
       ...resetOnlineFields(),
       gameMode: 'dailyChallenge',
       dailyChallengeSession: session,
+      asyncDuelSession: null,
       dailyChallengeFirstMoveRecorded: false,
       highScore: get().highScore,
       isPreparingMatch: true,
@@ -316,10 +323,59 @@ export const useGameStore = create<GameStore>((set, get) => ({
       ...next,
       gameMode: 'dailyChallenge',
       dailyChallengeSession: session,
+      asyncDuelSession: null,
       dailyChallengeFirstMoveRecorded: false,
       dailyExact21Count: 0,
       dailyFiveCardClearCount: 0,
       eligibility: session.attemptType === 'ranked' ? 'verified' : 'localOnly',
+      onlineMatchId: session.attemptId,
+      deckSeed: null,
+      startedAtServer: session.serverStartTime,
+      expiresAtServer: session.expiresAt,
+      submissionStatus: 'idle',
+      rejectionReason: null,
+      moveLog: [],
+      officialResult: null,
+      isPreparingMatch: false,
+      isProcessingMove: false,
+      lastMoveEvent: null,
+    });
+  },
+
+  prepareAsyncDuelGame: async (session) => {
+    if (get().isPreparingMatch) {
+      return;
+    }
+
+    set({
+      ...idleGameState,
+      ...resetOnlineFields(),
+      gameMode: 'asyncDuel',
+      dailyChallengeSession: null,
+      asyncDuelSession: session,
+      dailyChallengeFirstMoveRecorded: false,
+      highScore: get().highScore,
+      isPreparingMatch: true,
+      isProcessingMove: false,
+      lastMoveEvent: null,
+      status: 'idle',
+      timerStatus: 'ready',
+    });
+
+    const next = withFreshMatchState(
+      createInitialGameStateFromAuthoritativeSeed(session.authoritativeSeed),
+    );
+    set({
+      ...next,
+      // Server-stored duration is authoritative for both participants.
+      timeRemainingSeconds: session.durationSeconds,
+      gameMode: 'asyncDuel',
+      dailyChallengeSession: null,
+      asyncDuelSession: session,
+      dailyChallengeFirstMoveRecorded: false,
+      dailyExact21Count: 0,
+      dailyFiveCardClearCount: 0,
+      eligibility: 'verified',
       onlineMatchId: session.attemptId,
       deckSeed: null,
       startedAtServer: session.serverStartTime,
@@ -344,12 +400,21 @@ export const useGameStore = create<GameStore>((set, get) => ({
     });
   },
 
+  clearAsyncDuelMode: () => {
+    set({
+      gameMode: 'solo',
+      asyncDuelSession: null,
+      dailyExact21Count: 0,
+      dailyFiveCardClearCount: 0,
+    });
+  },
+
   startGame: () => {
     void get().prepareAndStartGame();
   },
 
   restartGame: () => {
-    if (get().gameMode === 'dailyChallenge') {
+    if (get().gameMode === 'dailyChallenge' || get().gameMode === 'asyncDuel') {
       return;
     }
     void get().prepareAndStartGame();
@@ -361,6 +426,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
       ...resetOnlineFields(),
       gameMode: 'solo',
       dailyChallengeSession: null,
+      asyncDuelSession: null,
       dailyChallengeFirstMoveRecorded: false,
       dailyExact21Count: 0,
       dailyFiveCardClearCount: 0,
@@ -487,7 +553,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
     }
 
     const nextHighScore =
-      current.gameMode === 'dailyChallenge'
+      current.gameMode === 'dailyChallenge' || current.gameMode === 'asyncDuel'
         ? current.highScore
         : maybePersistHighScore(current.score, current.highScore);
 
@@ -525,6 +591,82 @@ export const useGameStore = create<GameStore>((set, get) => ({
 
   submitVerifiedMatchIfNeeded: async () => {
     const current = get();
+
+    if (current.gameMode === 'asyncDuel') {
+      const session = current.asyncDuelSession;
+      if (!session) {
+        return;
+      }
+
+      const reason = current.gameOverReason;
+      if (
+        reason === null ||
+        reason === 'quit' ||
+        (reason !== 'timeExpired' && reason !== 'busts' && reason !== 'deckEmpty')
+      ) {
+        return;
+      }
+
+      if (
+        current.submissionStatus === 'submitting' ||
+        current.submissionStatus === 'verified'
+      ) {
+        return;
+      }
+
+      set({ submissionStatus: 'submitting', rejectionReason: null });
+
+      try {
+        const elapsedMs = calculateElapsedGameMilliseconds(
+          Date.now(),
+          current.gameStartedAt ?? Date.now(),
+          current.totalPausedMilliseconds,
+        );
+
+        const result = await useAsyncDuelStore.getState().submitCompletion({
+          attemptId: session.attemptId,
+          score: current.score,
+          exact21Count: current.dailyExact21Count,
+          fiveCardClearCount: current.dailyFiveCardClearCount,
+          bustCount: current.busts,
+          cardsPlayed: current.cardsPlayed,
+          lanesCleared: current.clearedLanes,
+          completionMs: elapsedMs,
+          rulesVersion: session.rulesVersion,
+          deckVersion: session.deckVersion,
+        });
+
+        if (result) {
+          set({
+            submissionStatus: 'verified',
+            officialResult: {
+              score: current.score,
+              lanesCleared: current.clearedLanes,
+              cardsPlayed: current.cardsPlayed,
+              busts: current.busts,
+              timeRemainingSeconds: current.timeRemainingSeconds,
+              gameOverReason: reason as Exclude<GameOverReason, 'quit'>,
+            },
+            rejectionReason: null,
+          });
+          return;
+        }
+
+        set({
+          submissionStatus: 'failed',
+          rejectionReason:
+            useAsyncDuelStore.getState().errorMessage ??
+            'Async Duel submission failed.',
+        });
+      } catch (error) {
+        set({
+          submissionStatus: 'failed',
+          rejectionReason:
+            error instanceof Error ? error.message : 'Async Duel submission failed.',
+        });
+      }
+      return;
+    }
 
     if (current.gameMode === 'dailyChallenge') {
       const session = current.dailyChallengeSession;
@@ -711,6 +853,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
       ...resetOnlineFields(),
       gameMode: 'solo',
       dailyChallengeSession: null,
+      asyncDuelSession: null,
       dailyChallengeFirstMoveRecorded: false,
       dailyExact21Count: 0,
       dailyFiveCardClearCount: 0,

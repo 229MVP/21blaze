@@ -54,6 +54,7 @@ import {
 } from '../store/useScoreHistoryStore';
 import { useGameStore } from '../store/useGameStore';
 import { useDailyChallengeStore } from '../store/useDailyChallengeStore';
+import { useAsyncDuelStore } from '../store/useAsyncDuelStore';
 import { useProgressionStore } from '../store/useProgressionStore';
 import { useWalletStore } from '../store/useWalletStore';
 import {
@@ -109,7 +110,9 @@ export function ResultsScreen({ navigation, route }: ResultsScreenProps) {
   );
   const gameMode = useGameStore((state) => state.gameMode);
   const dailyChallengeSession = useGameStore((state) => state.dailyChallengeSession);
+  const asyncDuelSession = useGameStore((state) => state.asyncDuelSession);
   const clearDailyChallengeMode = useGameStore((state) => state.clearDailyChallengeMode);
+  const clearAsyncDuelMode = useGameStore((state) => state.clearAsyncDuelMode);
   const dailyExact21Count = useGameStore((state) => state.dailyExact21Count);
   const dailyFiveCardClearCount = useGameStore((state) => state.dailyFiveCardClearCount);
   const dailyCompletionSummary = useDailyChallengeStore((state) => state.completionSummary);
@@ -200,13 +203,50 @@ export function ResultsScreen({ navigation, route }: ResultsScreenProps) {
     void submitVerifiedMatchIfNeeded();
   }, [submitVerifiedMatchIfNeeded]);
 
+  // After Async Duel submission settles, leave the interim Results screen.
+  useEffect(() => {
+    if (gameMode !== 'asyncDuel' || submissionStatus !== 'verified') {
+      return;
+    }
+    const completion = useAsyncDuelStore.getState().lastCompletion;
+    const duelId = asyncDuelSession?.duelId;
+    if (!duelId) {
+      return;
+    }
+    if (completion?.settled || completion?.status === 'completed') {
+      navigation.replace('AsyncDuelResult', { duelId });
+      return;
+    }
+    if (
+      completion?.status === 'awaiting_opponent' ||
+      asyncDuelSession?.participantRole === 'challenger'
+    ) {
+      navigation.replace('AsyncDuelChallengeSent');
+    }
+  }, [
+    asyncDuelSession?.duelId,
+    asyncDuelSession?.participantRole,
+    gameMode,
+    navigation,
+    submissionStatus,
+  ]);
+
   useEffect(() => {
     if (gameMode === 'dailyChallenge') {
       trackEvent('daily_challenge_result_viewed', {
         attemptType: dailyChallengeSession?.attemptType ?? 'unknown',
       });
     }
-  }, [dailyChallengeSession?.attemptType, gameMode]);
+    if (gameMode === 'asyncDuel') {
+      trackEvent('duel_result_viewed', {
+        role: asyncDuelSession?.participantRole ?? 'unknown',
+      });
+    }
+  }, [
+    asyncDuelSession?.participantRole,
+    dailyChallengeSession?.attemptType,
+    gameMode,
+  ]);
 
   useEffect(() => {
     if (
@@ -244,7 +284,14 @@ export function ResultsScreen({ navigation, route }: ResultsScreenProps) {
   useEffect(() => {
     // Version 1.1A supersedes the flat 1.0 solo-coin formula with its own
     // reward flow (see the effect below) — never grant both for one match.
-    if (!matchId || gameOverReason === 'quit' || v1_1RewardsOn) {
+    // Async Duel and Daily Challenge must never grant Solo rewards.
+    if (
+      gameMode === 'asyncDuel' ||
+      gameMode === 'dailyChallenge' ||
+      !matchId ||
+      gameOverReason === 'quit' ||
+      v1_1RewardsOn
+    ) {
       return;
     }
     void (async () => {
@@ -271,6 +318,7 @@ export function ResultsScreen({ navigation, route }: ResultsScreenProps) {
     })();
   }, [
     claimSoloMatchReward,
+    gameMode,
     gameOverReason,
     matchId,
     progressionEnabled,
@@ -280,6 +328,9 @@ export function ResultsScreen({ navigation, route }: ResultsScreenProps) {
   ]);
 
   useEffect(() => {
+    if (gameMode === 'asyncDuel' || gameMode === 'dailyChallenge') {
+      return;
+    }
     const decision = shouldSyncV1_1Reward({
       v1_1RewardsOn,
       matchId,
@@ -297,6 +348,7 @@ export function ResultsScreen({ navigation, route }: ResultsScreenProps) {
   }, [
     claimV1_1Reward,
     eligibility,
+    gameMode,
     gameOverReason,
     markV1_1RewardLocal,
     matchId,
@@ -325,6 +377,18 @@ export function ResultsScreen({ navigation, route }: ResultsScreenProps) {
   }, [highScoreFeedbackKey, isNewHighScore]);
 
   const { title, subtitle } = useMemo(() => {
+    if (gameMode === 'asyncDuel') {
+      if (submissionStatus === 'submitting' || submissionStatus === 'idle') {
+        return { title: 'VERIFYING…', subtitle: 'SUBMITTING DUEL RESULT' };
+      }
+      if (submissionStatus === 'failed') {
+        return { title: 'SUBMISSION ISSUE', subtitle: 'COULD NOT VERIFY' };
+      }
+      if (asyncDuelSession?.participantRole === 'challenger') {
+        return { title: 'CHALLENGE SENT', subtitle: 'WAITING FOR OPPONENT' };
+      }
+      return { title: 'DUEL COMPLETE', subtitle: 'OFFICIAL RESULT' };
+    }
     if (
       gameMode === 'dailyChallenge' &&
       dailyChallengeSession?.attemptType === 'ranked' &&
@@ -340,6 +404,7 @@ export function ResultsScreen({ navigation, route }: ResultsScreenProps) {
     }
     return getResultCopy(gameOverReason, isNewHighScore);
   }, [
+    asyncDuelSession?.participantRole,
     dailyChallengeSession?.attemptType,
     dailySubmissionStatus,
     gameMode,
@@ -361,6 +426,43 @@ export function ResultsScreen({ navigation, route }: ResultsScreenProps) {
         : `LOCAL RANK #${localRank}`;
 
   const verification = useMemo(() => {
+    if (gameMode === 'asyncDuel') {
+      if (submissionStatus === 'verified') {
+        return {
+          label:
+            asyncDuelSession?.participantRole === 'challenger'
+              ? 'CHALLENGE SENT'
+              : 'DUEL SETTLED',
+          detail:
+            asyncDuelSession?.participantRole === 'challenger'
+              ? 'Your opponent will receive the same deck and rules.'
+              : 'Official result recorded by the server.',
+          tone: 'ok' as const,
+        };
+      }
+      if (submissionStatus === 'submitting' || submissionStatus === 'idle') {
+        return {
+          label: 'VERIFYING RESULT…',
+          detail: 'Confirming your Async Duel attempt with the server…',
+          tone: 'pending' as const,
+        };
+      }
+      if (submissionStatus === 'failed') {
+        return {
+          label: 'VERIFICATION FAILED',
+          detail:
+            useGameStore.getState().rejectionReason ??
+            'Could not submit your duel result. Retry when online.',
+          tone: 'warn' as const,
+        };
+      }
+      return {
+        label: 'ASYNC DUEL',
+        detail: 'Awaiting official submission.',
+        tone: 'pending' as const,
+      };
+    }
+
     if (gameMode === 'dailyChallenge') {
       if (dailyChallengeSession?.attemptType === 'practice') {
         return {
@@ -453,6 +555,7 @@ export function ResultsScreen({ navigation, route }: ResultsScreenProps) {
       tone: 'local' as const,
     };
   }, [
+    asyncDuelSession?.participantRole,
     dailyChallengeSession?.attemptType,
     dailyCompletionSummary,
     dailySubmissionError,
@@ -463,7 +566,7 @@ export function ResultsScreen({ navigation, route }: ResultsScreenProps) {
   ]);
 
   const xpSummary = useMemo(() => {
-    if (!progressionEnabled) {
+    if (!progressionEnabled || gameMode === 'asyncDuel' || gameMode === 'dailyChallenge') {
       return null;
     }
     if (eligibility === 'localOnly' || gameOverReason === 'quit') {
@@ -508,6 +611,7 @@ export function ResultsScreen({ navigation, route }: ResultsScreenProps) {
     };
   }, [
     eligibility,
+    gameMode,
     gameOverReason,
     progression,
     progressionEnabled,
@@ -517,6 +621,7 @@ export function ResultsScreen({ navigation, route }: ResultsScreenProps) {
 
   const showCoinsPanel =
     isMonetizationBetaEnabled() &&
+    gameMode === 'solo' &&
     gameOverReason !== 'quit' &&
     Boolean(matchId);
 
@@ -596,6 +701,11 @@ export function ResultsScreen({ navigation, route }: ResultsScreenProps) {
   );
 
   const playAgain = () => {
+    if (gameMode === 'asyncDuel') {
+      clearAsyncDuelMode();
+      navigation.navigate('AsyncDuelHub');
+      return;
+    }
     if (gameMode === 'dailyChallenge') {
       clearDailyChallengeMode();
       navigation.navigate('DailyChallenge');
@@ -606,6 +716,9 @@ export function ResultsScreen({ navigation, route }: ResultsScreenProps) {
   };
 
   const playSolo = () => {
+    if (gameMode === 'asyncDuel') {
+      clearAsyncDuelMode();
+    }
     if (gameMode === 'dailyChallenge') {
       clearDailyChallengeMode();
     }
@@ -613,6 +726,9 @@ export function ResultsScreen({ navigation, route }: ResultsScreenProps) {
   };
 
   const returnHome = () => {
+    if (gameMode === 'asyncDuel') {
+      clearAsyncDuelMode();
+    }
     if (gameMode === 'dailyChallenge') {
       clearDailyChallengeMode();
     }
@@ -798,7 +914,10 @@ export function ResultsScreen({ navigation, route }: ResultsScreenProps) {
             </BlazePanel>
           ) : null}
 
-          {v1_1RewardsOn && matchId && gameOverReason !== 'quit' ? (
+          {v1_1RewardsOn &&
+          gameMode === 'solo' &&
+          matchId &&
+          gameOverReason !== 'quit' ? (
             <BlazePanel style={styles.rewardsPanel}>
               {v1_1RewardStatus === 'syncing' ? (
                 <Text style={styles.syncLabel}>SYNCING REWARDS…</Text>
@@ -947,7 +1066,30 @@ export function ResultsScreen({ navigation, route }: ResultsScreenProps) {
           ) : null}
 
           <View style={styles.actions}>
-            {gameMode === 'dailyChallenge' &&
+            {gameMode === 'asyncDuel' ? (
+              <>
+                <BlazeButton
+                  label={
+                    submissionStatus === 'failed' ? 'RETRY SUBMIT' : 'BACK TO DUELS'
+                  }
+                  loading={submissionStatus === 'submitting'}
+                  onPress={() => {
+                    if (submissionStatus === 'failed') {
+                      void submitVerifiedMatchIfNeeded();
+                      return;
+                    }
+                    clearAsyncDuelMode();
+                    navigation.navigate('AsyncDuelHub');
+                  }}
+                  accessibilityLabel="Back to Async Duel hub"
+                />
+                <BlazeButton
+                  label="HOME"
+                  variant="secondary"
+                  onPress={returnHome}
+                />
+              </>
+            ) : gameMode === 'dailyChallenge' &&
             dailyChallengeSession?.attemptType === 'practice' ? (
               <>
                 {rankedAttemptScore != null ? (

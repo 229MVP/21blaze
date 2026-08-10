@@ -23,6 +23,7 @@ import { XpProgressBar } from '../components/Progression/XpProgressBar';
 import { SvgRoot as Svg } from '../components/svg/SvgRoot';
 import { BlazeButton } from '../components/ui/BlazeButton';
 import {
+  isAsyncDuelEnabled,
   isDailyChallengeEnabled,
   isDailyMissionsEnabled,
   isDailyRewardsEnabled,
@@ -63,6 +64,7 @@ import { useWalletStore } from '../store/useWalletStore';
 import { DailyBlazeHomeCard } from '../components/dailyChallenge/DailyBlazeHomeCard';
 import { getUtcChallengeDate } from '../challenge/utcChallengeDate';
 import { useDailyChallengeStore } from '../store/useDailyChallengeStore';
+import { useAsyncDuelStore } from '../store/useAsyncDuelStore';
 import { hasSeenWhatsNew, markWhatsNewSeen } from '../services/whatsNewService';
 import { colors as kitColors, spacing as kitSpacing } from '../theme/uiKit';
 
@@ -159,6 +161,9 @@ export function HomeScreen({ navigation, route }: HomeScreenProps) {
   const dailyErrorMessage = useDailyChallengeStore((state) => state.errorMessage);
   const dailyIsStarting = useDailyChallengeStore((state) => state.isStarting);
   const resumeDailyRanked = useDailyChallengeStore((state) => state.resumeRankedAttempt);
+  const asyncDuelEnabled = isAsyncDuelEnabled();
+  const asyncInboxCount = useAsyncDuelStore((state) => state.inboxCount);
+  const refreshAsyncDuelHub = useAsyncDuelStore((state) => state.refreshHub);
   const dailyChallengeEnabled = isDailyChallengeEnabled();
 
   const [dailyCountdownMs, setDailyCountdownMs] = useState(Date.now());
@@ -257,6 +262,13 @@ export function HomeScreen({ navigation, route }: HomeScreenProps) {
     }
     void hydrateDailyChallenge(authStatus === 'online');
   }, [authStatus, dailyChallengeEnabled, hydrateDailyChallenge]);
+
+  useEffect(() => {
+    if (!asyncDuelEnabled || authStatus !== 'online') {
+      return;
+    }
+    void refreshAsyncDuelHub();
+  }, [asyncDuelEnabled, authStatus, refreshAsyncDuelHub]);
 
   useEffect(() => {
     if (!dailyChallengeEnabled) {
@@ -537,6 +549,38 @@ export function HomeScreen({ navigation, route }: HomeScreenProps) {
                 }}
                 primaryBusy={dailyIsStarting}
               />
+            ) : null}
+            {asyncDuelEnabled ? (
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel={
+                  asyncInboxCount > 0
+                    ? `Async Duel. ${asyncInboxCount} challenges. Open duel hub.`
+                    : 'Async Duel. Challenge another player.'
+                }
+                onPress={() => navigation.navigate('AsyncDuelHub')}
+                style={({ pressed }) => [
+                  styles.asyncDuelEntry,
+                  pressed && styles.pressed,
+                ]}
+              >
+                <View style={styles.asyncDuelHeaderRow}>
+                  <Text style={styles.asyncDuelTitle}>ASYNC DUEL</Text>
+                  {asyncInboxCount > 0 ? (
+                    <View style={styles.asyncDuelBadge}>
+                      <Text style={styles.asyncDuelBadgeText}>
+                        {asyncInboxCount}{' '}
+                        {asyncInboxCount === 1 ? 'CHALLENGE' : 'CHALLENGES'}
+                      </Text>
+                    </View>
+                  ) : null}
+                </View>
+                <Text style={styles.asyncDuelBody}>
+                  Challenge another player. Same deck. Same timer. Highest score
+                  wins.
+                </Text>
+                <Text style={styles.asyncDuelCta}>DUEL</Text>
+              </Pressable>
             ) : null}
             {showGuestProgressionHint ? (
               <Text style={styles.guestProgressionHint}>
@@ -903,6 +947,55 @@ const styles = StyleSheet.create({
     color: kitColors.text.muted,
     fontFamily: 'RobotoCondensed_400Regular',
     fontSize: 12,
+  },
+  asyncDuelEntry: {
+    width: '100%',
+    paddingVertical: 12,
+    paddingHorizontal: kitSpacing.md,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: 'rgba(255,138,0,0.4)',
+    backgroundColor: 'rgba(0,0,0,0.48)',
+    gap: 6,
+  },
+  asyncDuelHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 8,
+  },
+  asyncDuelTitle: {
+    color: kitColors.fire.gold,
+    fontFamily: 'Anton_400Regular',
+    fontSize: 18,
+    letterSpacing: 1,
+  },
+  asyncDuelBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: 'rgba(255,182,41,0.55)',
+    backgroundColor: 'rgba(255,101,0,0.18)',
+  },
+  asyncDuelBadgeText: {
+    color: kitColors.fire.gold,
+    fontFamily: 'RobotoCondensed_700Bold',
+    fontSize: 10,
+    letterSpacing: 0.8,
+  },
+  asyncDuelBody: {
+    color: kitColors.text.secondary,
+    fontFamily: 'RobotoCondensed_400Regular',
+    fontSize: 13,
+    lineHeight: 18,
+  },
+  asyncDuelCta: {
+    color: kitColors.fire.orange,
+    fontFamily: 'RobotoCondensed_700Bold',
+    fontSize: 13,
+    letterSpacing: 1.2,
+    marginTop: 2,
   },
   pressed: {
     opacity: 0.88,

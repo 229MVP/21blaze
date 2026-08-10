@@ -1320,6 +1320,21 @@ export type Database = {
         };
         Returns: number;
       };
+      search_async_duel_opponents: {
+        Args: {
+          p_query: string;
+          p_limit?: number;
+          p_offset?: number;
+        };
+        Returns: Json;
+      };
+      get_async_duel_active: {
+        Args: {
+          p_limit?: number;
+          p_offset?: number;
+        };
+        Returns: Json;
+      };
     };
     Enums: Record<string, never>;
     CompositeTypes: Record<string, never>;

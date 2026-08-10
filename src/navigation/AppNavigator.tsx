@@ -2,11 +2,18 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createNavigationContainerRef } from '@react-navigation/native';
 
 import {
+  isAsyncDuelEnabled,
   isDailyChallengeEnabled,
   isPurchaseDiagnosticsEnabled,
   isThemePreviewDevEnabled,
   isV1_1LockerEnabled,
 } from '../config/featureFlags';
+import { AsyncDuelChallengeDetailsScreen } from '../screens/AsyncDuelChallengeDetailsScreen';
+import { AsyncDuelChallengeSentScreen } from '../screens/AsyncDuelChallengeSentScreen';
+import { AsyncDuelConfirmChallengeScreen } from '../screens/AsyncDuelConfirmChallengeScreen';
+import { AsyncDuelHubScreen } from '../screens/AsyncDuelHubScreen';
+import { AsyncDuelResultScreen } from '../screens/AsyncDuelResultScreen';
+import { AsyncDuelSelectOpponentScreen } from '../screens/AsyncDuelSelectOpponentScreen';
 import { BlazeLockerScreen } from '../screens/BlazeLockerScreen';
 import { BlazeStoreScreen } from '../screens/BlazeStoreScreen';
 import { CreateLiveRoomScreen } from '../screens/CreateLiveRoomScreen';
@@ -93,6 +100,28 @@ export function AppNavigator() {
             name="DailyChallengeLeaderboard"
             component={DailyChallengeLeaderboardScreen}
           />
+        </>
+      ) : null}
+      {isAsyncDuelEnabled() ? (
+        <>
+          <Stack.Screen name="AsyncDuelHub" component={AsyncDuelHubScreen} />
+          <Stack.Screen
+            name="AsyncDuelSelectOpponent"
+            component={AsyncDuelSelectOpponentScreen}
+          />
+          <Stack.Screen
+            name="AsyncDuelConfirmChallenge"
+            component={AsyncDuelConfirmChallengeScreen}
+          />
+          <Stack.Screen
+            name="AsyncDuelChallengeDetails"
+            component={AsyncDuelChallengeDetailsScreen}
+          />
+          <Stack.Screen
+            name="AsyncDuelChallengeSent"
+            component={AsyncDuelChallengeSentScreen}
+          />
+          <Stack.Screen name="AsyncDuelResult" component={AsyncDuelResultScreen} />
         </>
       ) : null}
       <Stack.Screen name="Feedback" component={FeedbackScreen} />
