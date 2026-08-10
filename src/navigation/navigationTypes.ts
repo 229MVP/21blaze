@@ -40,6 +40,15 @@ export type RootStackParamList = {
   DailyMissions: undefined;
   DailyChallenge: undefined;
   DailyChallengeLeaderboard: undefined;
+  AsyncDuelHub: undefined;
+  AsyncDuelSelectOpponent: undefined;
+  AsyncDuelConfirmChallenge: {
+    opponentId: string;
+    opponentDisplayName: string;
+  };
+  AsyncDuelChallengeDetails: { duelId: string };
+  AsyncDuelChallengeSent: undefined;
+  AsyncDuelResult: { duelId: string };
   PurchaseDiagnostics: undefined;
   Feedback: undefined;
   /** Development-only UI kit gallery. Registered only when __DEV__ is true. */
@@ -147,6 +156,30 @@ export type DailyChallengeScreenProps = NativeStackScreenProps<
 export type DailyChallengeLeaderboardScreenProps = NativeStackScreenProps<
   RootStackParamList,
   'DailyChallengeLeaderboard'
+>;
+export type AsyncDuelHubScreenProps = NativeStackScreenProps<
+  RootStackParamList,
+  'AsyncDuelHub'
+>;
+export type AsyncDuelSelectOpponentScreenProps = NativeStackScreenProps<
+  RootStackParamList,
+  'AsyncDuelSelectOpponent'
+>;
+export type AsyncDuelConfirmChallengeScreenProps = NativeStackScreenProps<
+  RootStackParamList,
+  'AsyncDuelConfirmChallenge'
+>;
+export type AsyncDuelChallengeDetailsScreenProps = NativeStackScreenProps<
+  RootStackParamList,
+  'AsyncDuelChallengeDetails'
+>;
+export type AsyncDuelChallengeSentScreenProps = NativeStackScreenProps<
+  RootStackParamList,
+  'AsyncDuelChallengeSent'
+>;
+export type AsyncDuelResultScreenProps = NativeStackScreenProps<
+  RootStackParamList,
+  'AsyncDuelResult'
 >;
 export type PurchaseDiagnosticsScreenProps = NativeStackScreenProps<
   RootStackParamList,

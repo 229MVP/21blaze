@@ -5,6 +5,7 @@ import type {
   AsyncDuelGameResult,
   AsyncDuelHistoryItem,
   AsyncDuelInboxItem,
+  AsyncDuelPublicParticipant,
   AsyncDuelStartResult,
 } from '../asyncDuel/asyncDuelTypes';
 
@@ -207,6 +208,65 @@ export async function getAsyncDuelHistory(options?: {
     p_offset: options?.offset ?? 0,
   });
   const items = Array.isArray(data.items) ? (data.items as AsyncDuelHistoryItem[]) : [];
+  return {
+    items,
+    limit: Number(data.limit ?? 20),
+    offset: Number(data.offset ?? 0),
+  };
+}
+
+export type AsyncDuelOpponentSearchItem = {
+  userId: string;
+  displayName: string;
+  profileFrameId: string | null;
+  level: number;
+  eligible: boolean;
+};
+
+export type AsyncDuelActiveItem = {
+  duelId: string;
+  status: string;
+  participantRole: 'challenger' | 'opponent';
+  opponent: AsyncDuelPublicParticipant;
+  challengerScore: number | null;
+  opponentScore: number | null;
+  challengerAttemptStatus: string | null;
+  opponentAttemptStatus: string | null;
+  expiresAt: string;
+  createdAt: string;
+  updatedAt: string;
+  targetScoreVisibility: boolean;
+};
+
+export async function searchAsyncDuelOpponents(input: {
+  query: string;
+  limit?: number;
+  offset?: number;
+}): Promise<{ items: AsyncDuelOpponentSearchItem[]; limit: number; offset: number }> {
+  const data = await rpcJson('search_async_duel_opponents', {
+    p_query: input.query,
+    p_limit: input.limit ?? 20,
+    p_offset: input.offset ?? 0,
+  });
+  const items = Array.isArray(data.items)
+    ? (data.items as AsyncDuelOpponentSearchItem[])
+    : [];
+  return {
+    items,
+    limit: Number(data.limit ?? 20),
+    offset: Number(data.offset ?? 0),
+  };
+}
+
+export async function getAsyncDuelActive(options?: {
+  limit?: number;
+  offset?: number;
+}): Promise<{ items: AsyncDuelActiveItem[]; limit: number; offset: number }> {
+  const data = await rpcJson('get_async_duel_active', {
+    p_limit: options?.limit ?? 20,
+    p_offset: options?.offset ?? 0,
+  });
+  const items = Array.isArray(data.items) ? (data.items as AsyncDuelActiveItem[]) : [];
   return {
     items,
     limit: Number(data.limit ?? 20),

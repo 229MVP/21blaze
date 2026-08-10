@@ -6,12 +6,14 @@
 
 import { __resetDailyChallengeStoreForTests } from './useDailyChallengeStore';
 import { __resetDailyLeaderboardStoreForTests } from './useDailyLeaderboardStore';
+import { __resetAsyncDuelStoreForTests } from './useAsyncDuelStore';
 import { useProgressionStore } from './useProgressionStore';
 import { useWalletStore } from './useWalletStore';
 
 export function resetUserScopedStores(): void {
   __resetDailyChallengeStoreForTests();
   __resetDailyLeaderboardStoreForTests();
+  __resetAsyncDuelStoreForTests();
 
   useProgressionStore.setState({
     progression: null,
