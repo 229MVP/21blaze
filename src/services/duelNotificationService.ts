@@ -93,7 +93,10 @@ function mapNotification(raw: unknown): PlayerNotification | null {
     type !== 'DUEL_CHALLENGE_RECEIVED' &&
     type !== 'DUEL_COMPLETED' &&
     type !== 'DUEL_DECLINED' &&
-    type !== 'DUEL_EXPIRED'
+    type !== 'DUEL_EXPIRED' &&
+    type !== 'LIVE_MATCH_INVITE_RECEIVED' &&
+    type !== 'LIVE_MATCH_RESULT_READY' &&
+    type !== 'LIVE_MATCH_CANCELLED'
   ) {
     return null;
   }
@@ -110,11 +113,13 @@ function mapNotification(raw: unknown): PlayerNotification | null {
       typeof bodyData.challengerScore === 'number' ? bodyData.challengerScore : undefined,
     outcome: typeof bodyData.outcome === 'string' ? bodyData.outcome : undefined,
     duelId: typeof bodyData.duelId === 'string' ? bodyData.duelId : undefined,
+    matchId: typeof bodyData.matchId === 'string' ? bodyData.matchId : undefined,
   };
   return {
     id: String(raw.id),
     notificationType: type as PlayerNotificationType,
     duelId: raw.duelId == null ? null : String(raw.duelId),
+    matchId: raw.matchId == null ? null : String(raw.matchId),
     titleKey: String(raw.titleKey ?? type),
     bodyData: safeBody,
     deepLinkData: parseNotificationDeepLink(raw.deepLinkData),

@@ -99,3 +99,17 @@ See `LiveMatchErrorCode` in `src/livePvp/livePvpTypes.ts`.
 ## Compatibility
 
 Bump `protocolVersion` in `live_pvp_config` for breaking envelope changes. In-flight matches keep snapshotted protocol/rules/deck versions.
+
+
+## Phase 2 client behavior
+
+- **Channel coordinator** (`livePvpMatchCoordinator`): one private channel per `(userId, matchId)`; survives screen remounts; teardown on terminal leave, logout, account switch.
+- **Auth refresh**: `TOKEN_REFRESHED` → `realtime.setAuth` + snapshot refetch; never log JWTs.
+- **Presence**: advisory connection only; debounced via full sync; never forfeit authority.
+- **Ready UI**: calls `set_live_pvp_ready` only after subscribed + snapshot; irreversible Ready button removal.
+- **Countdown**: render from `scheduledStartAt` + clock offset; skip elapsed numbers; do not restart local 3-2-1 after lobby.
+- **Progress**: coordinator scheduler at configured cadence; sequence monotonic; opponent progress provisional until settlement.
+- **Background**: official timer does not pause; foreground resnapshots via Hub/focus and game sync.
+- **Process death**: Phase 2 does **not** ship a fake Resume; follow timeout/forfeit settlement. See `LIVE_PVP_PHASE_2_QA.md`.
+- **Notifications**: `LIVE_MATCH_INVITE_RECEIVED` / `LIVE_MATCH_RESULT_READY` / `LIVE_MATCH_CANCELLED` with matchId deep links; stale opens resolve current server state.
+- **Hub RPC**: `get_live_pvp_hub` participant-safe sections + attentionCount.

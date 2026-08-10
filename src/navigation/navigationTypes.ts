@@ -49,6 +49,16 @@ export type RootStackParamList = {
   AsyncDuelChallengeDetails: { duelId: string };
   AsyncDuelChallengeSent: undefined;
   AsyncDuelResult: { duelId: string };
+  LivePvpHub: undefined;
+  LivePvpSelectOpponent: undefined;
+  LivePvpConfirmChallenge: {
+    opponentId: string;
+    opponentDisplayName: string;
+  };
+  LivePvpWaitingRoom: { matchId: string };
+  LivePvpInviteDetails: { matchId: string };
+  LivePvpLobby: { matchId: string };
+  LivePvpResult: { matchId: string };
   Notifications: undefined;
   PurchaseDiagnostics: undefined;
   Feedback: undefined;
@@ -204,4 +214,32 @@ export type ThemePreviewScreenProps = NativeStackScreenProps<
 export type LivePvpHarnessScreenProps = NativeStackScreenProps<
   RootStackParamList,
   'LivePvpHarness'
+>;
+export type LivePvpHubScreenProps = NativeStackScreenProps<
+  RootStackParamList,
+  'LivePvpHub'
+>;
+export type LivePvpSelectOpponentScreenProps = NativeStackScreenProps<
+  RootStackParamList,
+  'LivePvpSelectOpponent'
+>;
+export type LivePvpConfirmChallengeScreenProps = NativeStackScreenProps<
+  RootStackParamList,
+  'LivePvpConfirmChallenge'
+>;
+export type LivePvpWaitingRoomScreenProps = NativeStackScreenProps<
+  RootStackParamList,
+  'LivePvpWaitingRoom'
+>;
+export type LivePvpInviteDetailsScreenProps = NativeStackScreenProps<
+  RootStackParamList,
+  'LivePvpInviteDetails'
+>;
+export type LivePvpLobbyScreenProps = NativeStackScreenProps<
+  RootStackParamList,
+  'LivePvpLobby'
+>;
+export type LivePvpResultScreenProps = NativeStackScreenProps<
+  RootStackParamList,
+  'LivePvpResult'
 >;

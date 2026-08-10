@@ -4,6 +4,7 @@ import { createNavigationContainerRef } from '@react-navigation/native';
 import {
   isAsyncDuelEnabled,
   isDailyChallengeEnabled,
+  isLivePvpEnabled,
   isPurchaseDiagnosticsEnabled,
   isThemePreviewDevEnabled,
   isV1_1LockerEnabled,
@@ -14,6 +15,13 @@ import { AsyncDuelConfirmChallengeScreen } from '../screens/AsyncDuelConfirmChal
 import { AsyncDuelHubScreen } from '../screens/AsyncDuelHubScreen';
 import { AsyncDuelResultScreen } from '../screens/AsyncDuelResultScreen';
 import { AsyncDuelSelectOpponentScreen } from '../screens/AsyncDuelSelectOpponentScreen';
+import { LivePvpConfirmChallengeScreen } from '../screens/LivePvpConfirmChallengeScreen';
+import { LivePvpHubScreen } from '../screens/LivePvpHubScreen';
+import { LivePvpInviteDetailsScreen } from '../screens/LivePvpInviteDetailsScreen';
+import { LivePvpLobbyScreen } from '../screens/LivePvpLobbyScreen';
+import { LivePvpResultScreen } from '../screens/LivePvpResultScreen';
+import { LivePvpSelectOpponentScreen } from '../screens/LivePvpSelectOpponentScreen';
+import { LivePvpWaitingRoomScreen } from '../screens/LivePvpWaitingRoomScreen';
 import { NotificationsScreen } from '../screens/NotificationsScreen';
 import { BlazeLockerScreen } from '../screens/BlazeLockerScreen';
 import { BlazeStoreScreen } from '../screens/BlazeStoreScreen';
@@ -125,6 +133,32 @@ export function AppNavigator() {
           />
           <Stack.Screen name="AsyncDuelResult" component={AsyncDuelResultScreen} />
           <Stack.Screen name="Notifications" component={NotificationsScreen} />
+        </>
+      ) : null}
+      {isLivePvpEnabled() ? (
+        <>
+          <Stack.Screen name="LivePvpHub" component={LivePvpHubScreen} />
+          <Stack.Screen
+            name="LivePvpSelectOpponent"
+            component={LivePvpSelectOpponentScreen}
+          />
+          <Stack.Screen
+            name="LivePvpConfirmChallenge"
+            component={LivePvpConfirmChallengeScreen}
+          />
+          <Stack.Screen
+            name="LivePvpWaitingRoom"
+            component={LivePvpWaitingRoomScreen}
+          />
+          <Stack.Screen
+            name="LivePvpInviteDetails"
+            component={LivePvpInviteDetailsScreen}
+          />
+          <Stack.Screen name="LivePvpLobby" component={LivePvpLobbyScreen} />
+          <Stack.Screen name="LivePvpResult" component={LivePvpResultScreen} />
+          {!isAsyncDuelEnabled() ? (
+            <Stack.Screen name="Notifications" component={NotificationsScreen} />
+          ) : null}
         </>
       ) : null}
       <Stack.Screen name="Feedback" component={FeedbackScreen} />

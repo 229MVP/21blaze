@@ -8,6 +8,7 @@ import { __resetDailyChallengeStoreForTests } from './useDailyChallengeStore';
 import { __resetDailyLeaderboardStoreForTests } from './useDailyLeaderboardStore';
 import { __resetAsyncDuelStoreForTests } from './useAsyncDuelStore';
 import { __resetDuelNotificationStoreForTests } from './useDuelNotificationStore';
+import { __resetLivePvpStoreForTests } from './useLivePvpStore';
 import { useProgressionStore } from './useProgressionStore';
 import { useWalletStore } from './useWalletStore';
 import { revokeCurrentDevicePushToken } from '../notifications/pushRegistration';
@@ -17,6 +18,7 @@ export function resetUserScopedStores(): void {
   __resetDailyLeaderboardStoreForTests();
   __resetAsyncDuelStoreForTests();
   __resetDuelNotificationStoreForTests();
+  __resetLivePvpStoreForTests();
   void revokeCurrentDevicePushToken();
 
   useProgressionStore.setState({

@@ -41,8 +41,11 @@ import {
 } from '../services/onlineMatchService';
 import type { DailyChallengeSession } from '../game/challenge/types';
 import type { AsyncDuelSession } from '../asyncDuel/asyncDuelSession';
+import type { LivePvpSession } from '../livePvp/livePvpSession';
 import { useDailyChallengeStore } from './useDailyChallengeStore';
 import { useAsyncDuelStore } from './useAsyncDuelStore';
+import { useLivePvpStore, submitLiveMatchProgress } from './useLivePvpStore';
+import { livePvpMatchCoordinator } from '../livePvp/livePvpCoordinator';
 import { clearHighScore, saveHighScore } from '../storage/highScoreStorage';
 import { createMatchId } from '../utils/createMatchId';
 import { useScoreHistoryStore } from './useScoreHistoryStore';
@@ -52,6 +55,7 @@ type GameStore = GameState &
     gameMode: GameMode;
     dailyChallengeSession: DailyChallengeSession | null;
     asyncDuelSession: AsyncDuelSession | null;
+    livePvpSession: LivePvpSession | null;
     dailyChallengeFirstMoveRecorded: boolean;
     dailyExact21Count: number;
     dailyFiveCardClearCount: number;
@@ -66,11 +70,13 @@ type GameStore = GameState &
     prepareAndStartGame: () => Promise<void>;
     prepareDailyChallengeGame: (session: DailyChallengeSession) => Promise<void>;
     prepareAsyncDuelGame: (session: AsyncDuelSession) => Promise<void>;
+    prepareLivePvpGame: (session: LivePvpSession) => Promise<void>;
     startGame: () => void;
     restartGame: () => void;
     resetGame: () => void;
     clearDailyChallengeMode: () => void;
     clearAsyncDuelMode: () => void;
+    clearLivePvpMode: () => void;
     beginStartCountdown: () => void;
     updateStartCountdown: (value: number) => void;
     beginTimedGame: (now: number) => void;
@@ -229,6 +235,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
   gameMode: 'solo',
   dailyChallengeSession: null,
   asyncDuelSession: null,
+  livePvpSession: null,
   dailyChallengeFirstMoveRecorded: false,
   dailyExact21Count: 0,
   dailyFiveCardClearCount: 0,
@@ -307,6 +314,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
       gameMode: 'dailyChallenge',
       dailyChallengeSession: session,
       asyncDuelSession: null,
+      livePvpSession: null,
       dailyChallengeFirstMoveRecorded: false,
       highScore: get().highScore,
       isPreparingMatch: true,
@@ -324,6 +332,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
       gameMode: 'dailyChallenge',
       dailyChallengeSession: session,
       asyncDuelSession: null,
+      livePvpSession: null,
       dailyChallengeFirstMoveRecorded: false,
       dailyExact21Count: 0,
       dailyFiveCardClearCount: 0,
@@ -390,6 +399,103 @@ export const useGameStore = create<GameStore>((set, get) => ({
     });
   },
 
+  prepareLivePvpGame: async (session) => {
+    if (get().isPreparingMatch) {
+      return;
+    }
+
+    set({
+      ...idleGameState,
+      ...resetOnlineFields(),
+      gameMode: 'livePvp',
+      dailyChallengeSession: null,
+      asyncDuelSession: null,
+      livePvpSession: session,
+      dailyChallengeFirstMoveRecorded: false,
+      highScore: get().highScore,
+      isPreparingMatch: true,
+      isProcessingMove: false,
+      lastMoveEvent: null,
+      status: 'idle',
+      timerStatus: 'ready',
+    });
+
+    const next = withFreshMatchState(
+      createInitialGameStateFromAuthoritativeSeed(session.authoritativeSeed),
+    );
+    set({
+      ...next,
+      timeRemainingSeconds: session.durationSeconds,
+      gameMode: 'livePvp',
+      dailyChallengeSession: null,
+      asyncDuelSession: null,
+      livePvpSession: session,
+      dailyChallengeFirstMoveRecorded: false,
+      dailyExact21Count: 0,
+      dailyFiveCardClearCount: 0,
+      eligibility: 'verified',
+      onlineMatchId: session.attemptId,
+      deckSeed: null,
+      startedAtServer: session.scheduledStartAt,
+      expiresAtServer: session.gameplayDeadlineAt,
+      submissionStatus: 'idle',
+      rejectionReason: null,
+      moveLog: [],
+      officialResult: null,
+      isPreparingMatch: false,
+      isProcessingMove: false,
+      lastMoveEvent: null,
+    });
+
+    // Live lobby already rendered the server countdown. Enter running (or catch up)
+    // from the authoritative schedule — never restart a local 3-2-1.
+    const startMs = Date.parse(session.scheduledStartAt);
+    const deadlineMs = Date.parse(session.gameplayDeadlineAt);
+    const serverNow = livePvpMatchCoordinator.estimatedServerNowMs();
+    if (Number.isFinite(startMs) && Number.isFinite(deadlineMs) && serverNow >= startMs) {
+      const remainingMs = Math.max(0, deadlineMs - serverNow);
+      const remainingSeconds = Math.ceil(remainingMs / 1000);
+      if (remainingSeconds <= 0) {
+        set({
+          timerStatus: 'expired',
+          timeRemainingSeconds: 0,
+          gameStartedAt: startMs,
+          startCountdownValue: 0,
+        });
+        get().endGame('timeExpired');
+      } else {
+        set({
+          timerStatus: 'running',
+          timeRemainingSeconds: Math.min(session.durationSeconds, remainingSeconds),
+          gameStartedAt: startMs,
+          startCountdownValue: 0,
+          totalPausedMilliseconds: 0,
+          pauseStartedAt: null,
+        });
+        livePvpMatchCoordinator.startProgressScheduler(async (sequence, fingerprint) => {
+          const current = get();
+          if (current.gameMode !== 'livePvp' || !current.livePvpSession) {
+            return;
+          }
+          const parts = fingerprint.split('|');
+          await submitLiveMatchProgress(current.livePvpSession.matchId, {
+            sequence,
+            score: Number(parts[0] ?? current.score),
+            exact21Count: Number(parts[1] ?? current.dailyExact21Count),
+            fiveCardClearCount: Number(parts[2] ?? current.dailyFiveCardClearCount),
+            bustCount: Number(parts[3] ?? current.busts),
+            cardsPlayed: Number(parts[4] ?? current.cardsPlayed),
+            lanesCleared: Number(parts[5] ?? current.clearedLanes),
+            clientElapsedMs: Math.max(
+              0,
+              livePvpMatchCoordinator.estimatedServerNowMs() - startMs,
+            ),
+          });
+        });
+      }
+    }
+  },
+
   clearDailyChallengeMode: () => {
     set({
       gameMode: 'solo',
@@ -404,6 +510,17 @@ export const useGameStore = create<GameStore>((set, get) => ({
     set({
       gameMode: 'solo',
       asyncDuelSession: null,
+      livePvpSession: null,
+      dailyExact21Count: 0,
+      dailyFiveCardClearCount: 0,
+    });
+  },
+
+  clearLivePvpMode: () => {
+    livePvpMatchCoordinator.stopProgressScheduler();
+    set({
+      gameMode: 'solo',
+      livePvpSession: null,
       dailyExact21Count: 0,
       dailyFiveCardClearCount: 0,
     });
@@ -414,7 +531,11 @@ export const useGameStore = create<GameStore>((set, get) => ({
   },
 
   restartGame: () => {
-    if (get().gameMode === 'dailyChallenge' || get().gameMode === 'asyncDuel') {
+    if (
+      get().gameMode === 'dailyChallenge' ||
+      get().gameMode === 'asyncDuel' ||
+      get().gameMode === 'livePvp'
+    ) {
       return;
     }
     void get().prepareAndStartGame();
@@ -427,6 +548,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
       gameMode: 'solo',
       dailyChallengeSession: null,
       asyncDuelSession: null,
+      livePvpSession: null,
       dailyChallengeFirstMoveRecorded: false,
       dailyExact21Count: 0,
       dailyFiveCardClearCount: 0,
@@ -488,6 +610,31 @@ export const useGameStore = create<GameStore>((set, get) => ({
       return;
     }
 
+    if (current.gameMode === 'livePvp' && current.livePvpSession) {
+      const deadlineMs = Date.parse(current.livePvpSession.gameplayDeadlineAt);
+      const serverNow = livePvpMatchCoordinator.estimatedServerNowMs(now);
+      const remainingMs = Math.max(0, deadlineMs - serverNow);
+      const remaining = Math.ceil(remainingMs / 1000);
+      livePvpMatchCoordinator.queueProgress(
+        [
+          current.score,
+          current.dailyExact21Count,
+          current.dailyFiveCardClearCount,
+          current.busts,
+          current.cardsPlayed,
+          current.clearedLanes,
+        ].join('|'),
+      );
+      if (remaining <= 0) {
+        get().endGame('timeExpired');
+        return;
+      }
+      if (remaining !== current.timeRemainingSeconds) {
+        set({ timeRemainingSeconds: remaining });
+      }
+      return;
+    }
+
     const elapsed = calculateElapsedGameMilliseconds(
       now,
       current.gameStartedAt,
@@ -510,6 +657,11 @@ export const useGameStore = create<GameStore>((set, get) => ({
 
   pauseGame: (now) => {
     const current = get();
+
+    // Official Live PvP timer must not pause for background or local UX.
+    if (current.gameMode === 'livePvp') {
+      return;
+    }
 
     if (
       current.status !== 'playing' ||
@@ -553,7 +705,9 @@ export const useGameStore = create<GameStore>((set, get) => ({
     }
 
     const nextHighScore =
-      current.gameMode === 'dailyChallenge' || current.gameMode === 'asyncDuel'
+      current.gameMode === 'dailyChallenge' ||
+      current.gameMode === 'asyncDuel' ||
+      current.gameMode === 'livePvp'
         ? current.highScore
         : maybePersistHighScore(current.score, current.highScore);
 
@@ -591,6 +745,79 @@ export const useGameStore = create<GameStore>((set, get) => ({
 
   submitVerifiedMatchIfNeeded: async () => {
     const current = get();
+
+    if (current.gameMode === 'livePvp') {
+      const session = current.livePvpSession;
+      if (!session) {
+        return;
+      }
+
+      const reason = current.gameOverReason;
+      if (
+        reason === null ||
+        reason === 'quit' ||
+        (reason !== 'timeExpired' && reason !== 'busts' && reason !== 'deckEmpty')
+      ) {
+        return;
+      }
+
+      if (
+        current.submissionStatus === 'submitting' ||
+        current.submissionStatus === 'verified'
+      ) {
+        return;
+      }
+
+      livePvpMatchCoordinator.stopProgressScheduler();
+      set({ submissionStatus: 'submitting', rejectionReason: null });
+
+      try {
+        const elapsedMs = calculateElapsedGameMilliseconds(
+          Date.now(),
+          current.gameStartedAt ?? Date.now(),
+          current.totalPausedMilliseconds,
+        );
+
+        const result = await useLivePvpStore.getState().submitCompletion(session, {
+          score: current.score,
+          exact21Count: current.dailyExact21Count,
+          fiveCardClearCount: current.dailyFiveCardClearCount,
+          bustCount: current.busts,
+          cardsPlayed: current.cardsPlayed,
+          lanesCleared: current.clearedLanes,
+          completionMs: elapsedMs,
+        });
+
+        if (result) {
+          set({
+            submissionStatus: 'verified',
+            officialResult: {
+              score: current.score,
+              lanesCleared: current.clearedLanes,
+              cardsPlayed: current.cardsPlayed,
+              busts: current.busts,
+              timeRemainingSeconds: current.timeRemainingSeconds,
+              gameOverReason: reason as Exclude<GameOverReason, 'quit'>,
+            },
+            rejectionReason: null,
+          });
+          return;
+        }
+
+        set({
+          submissionStatus: 'failed',
+          rejectionReason:
+            useLivePvpStore.getState().errorMessage ?? 'Live PvP submission failed.',
+        });
+      } catch (error) {
+        set({
+          submissionStatus: 'failed',
+          rejectionReason:
+            error instanceof Error ? error.message : 'Live PvP submission failed.',
+        });
+      }
+      return;
+    }
 
     if (current.gameMode === 'asyncDuel') {
       const session = current.asyncDuelSession;
@@ -854,6 +1081,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
       gameMode: 'solo',
       dailyChallengeSession: null,
       asyncDuelSession: null,
+      livePvpSession: null,
       dailyChallengeFirstMoveRecorded: false,
       dailyExact21Count: 0,
       dailyFiveCardClearCount: 0,

@@ -184,3 +184,93 @@ export async function forfeitLiveMatch(matchId: string): Promise<LiveMatchSnapsh
 export async function reconcileLiveMatch(matchId: string): Promise<LiveMatchSnapshot> {
   return getLiveMatchSnapshot(matchId);
 }
+
+export type LivePvpHubItem = {
+  matchId: string;
+  status: string;
+  participantRole: 'challenger' | 'opponent';
+  opponent: { userId: string; displayName: string; profileFrameId?: string | null };
+  expiresAt: string;
+  scheduledStartAt: string | null;
+  gameplayDeadlineAt: string | null;
+  youReady: boolean;
+  opponentReady: boolean;
+  outcome: string | null;
+  winnerUserId: string | null;
+  completionReason: string | null;
+  createdAt: string;
+  updatedAt: string;
+  stateVersion: number;
+};
+
+export type LivePvpHubSection = 'incoming' | 'active' | 'recent';
+
+export async function getLiveMatchHub(options?: {
+  section?: LivePvpHubSection;
+  limit?: number;
+  offset?: number;
+}): Promise<{
+  section: LivePvpHubSection;
+  items: LivePvpHubItem[];
+  attentionCount: number;
+  serverNow: string;
+}> {
+  const data = await rpcJson('get_live_pvp_hub', {
+    p_section: options?.section ?? 'incoming',
+    p_limit: options?.limit ?? 20,
+    p_offset: options?.offset ?? 0,
+  });
+  const items = Array.isArray(data.items)
+    ? data.items.map((raw) => {
+        const row = raw as Record<string, unknown>;
+        const opponent = (row.opponent ?? {}) as Record<string, unknown>;
+        return {
+          matchId: String(row.matchId),
+          status: String(row.status),
+          participantRole:
+            row.participantRole === 'opponent' ? 'opponent' : 'challenger',
+          opponent: {
+            userId: String(opponent.userId ?? ''),
+            displayName: String(opponent.displayName ?? 'Blaze Player'),
+            profileFrameId:
+              opponent.profileFrameId == null
+                ? null
+                : String(opponent.profileFrameId),
+          },
+          expiresAt: String(row.expiresAt ?? ''),
+          scheduledStartAt:
+            row.scheduledStartAt == null ? null : String(row.scheduledStartAt),
+          gameplayDeadlineAt:
+            row.gameplayDeadlineAt == null ? null : String(row.gameplayDeadlineAt),
+          youReady: Boolean(row.youReady),
+          opponentReady: Boolean(row.opponentReady),
+          outcome: row.outcome == null ? null : String(row.outcome),
+          winnerUserId: row.winnerUserId == null ? null : String(row.winnerUserId),
+          completionReason:
+            row.completionReason == null ? null : String(row.completionReason),
+          createdAt: String(row.createdAt ?? ''),
+          updatedAt: String(row.updatedAt ?? ''),
+          stateVersion: Number(row.stateVersion ?? 0),
+        } satisfies LivePvpHubItem;
+      })
+    : [];
+  return {
+    section: String(data.section ?? 'incoming') as LivePvpHubSection,
+    items,
+    attentionCount: Number(data.attentionCount ?? 0),
+    serverNow: String(data.serverNow ?? new Date().toISOString()),
+  };
+}
+
+export async function getLivePvpOpsStatus(): Promise<{
+  creationEnabled: boolean;
+  configActive: boolean;
+  protocolVersion: string;
+}> {
+  const data = await rpcJson('get_live_pvp_ops_status');
+  return {
+    creationEnabled: Boolean(data.creationEnabled),
+    configActive: Boolean(data.configActive),
+    protocolVersion: String(data.protocolVersion ?? '1'),
+  };
+}

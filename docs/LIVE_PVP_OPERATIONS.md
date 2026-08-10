@@ -110,3 +110,12 @@ Log matchId / eventId / error codes only — never seeds, tokens, or service-rol
 - [ ] Decide whether to disable public Realtime access (after audit)
 - [ ] Schedule `finalize_live_pvp_deadlines`
 - [ ] Confirm service-role key not in mobile bundle
+
+
+## Phase 2 operations
+
+- Apply migration `20260810151826_v1_5_phase2_live_pvp_playable.sql` after Phase 1.
+- Client flag `EXPO_PUBLIC_ENABLE_LIVE_PVP` still defaults false.
+- Server creation kill switch via `get_live_pvp_ops_status` / config flags.
+- Manual two-device matrix: `docs/LIVE_PVP_PHASE_2_QA.md` (do not mark unrun cases Pass).
+- Dev harness remains available under Settings when `__DEV__`.

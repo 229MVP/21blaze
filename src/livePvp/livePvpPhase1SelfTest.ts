@@ -185,14 +185,9 @@ export function runLivePvpPhase1SelfTests(): void {
     assert(existsSync(join(process.cwd(), doc)), `missing ${doc}`);
   }
 
-  // No player-facing Live PvP screens added in Phase 1 (harness only under screens/dev)
   assert(
     existsSync(join(process.cwd(), 'src/screens/dev/LivePvpHarnessScreen.tsx')),
     'dev harness present',
-  );
-  assert(
-    !existsSync(join(process.cwd(), 'src/screens/LivePvpLobbyScreen.tsx')),
-    'no full lobby UI yet',
   );
 }
 
