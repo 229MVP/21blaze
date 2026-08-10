@@ -22,6 +22,7 @@ import { SvgRoot as Svg } from '../components/svg/SvgRoot';
 import { BlazeButton } from '../components/ui/BlazeButton';
 import { BlazePanel } from '../components/ui/BlazePanel';
 import {
+  isAsyncDuelEnabled,
   isPurchaseDiagnosticsEnabled,
   isStorePurchasesEnabled,
   isThemePreviewDevEnabled,
@@ -33,10 +34,15 @@ import {
 } from '../monetization/adConsentService';
 import type { RootStackParamList } from '../navigation/navigationTypes';
 import {
+  requestPushPermissionWithContext,
+  registerCurrentDevicePushToken,
+} from '../notifications/pushRegistration';
+import {
   CARD_STYLE_LABELS,
   CARD_STYLES,
   type CardStyle,
 } from '../settings/types';
+import { useDuelNotificationStore } from '../store/useDuelNotificationStore';
 import { useGameStore } from '../store/useGameStore';
 import {
   useHasRemoveAdsEntitlement,
@@ -114,6 +120,10 @@ export function SettingsScreen({ navigation }: SettingsScreenProps) {
   const restoreStatus = usePurchaseStore((s) => s.restoreStatus);
   const restoreBusy = restoreStatus === 'restoring';
   const purchasesEnabled = isStorePurchasesEnabled();
+  const asyncDuelOn = isAsyncDuelEnabled();
+  const notificationPrefs = useDuelNotificationStore((s) => s.preferences);
+  const loadNotificationPrefs = useDuelNotificationStore((s) => s.loadPreferences);
+  const saveNotificationPrefs = useDuelNotificationStore((s) => s.savePreferences);
 
   const [cardModalVisible, setCardModalVisible] = useState(false);
   const [pendingCardStyle, setPendingCardStyle] = useState<CardStyle>(
@@ -122,10 +132,17 @@ export function SettingsScreen({ navigation }: SettingsScreenProps) {
   const [confirmKind, setConfirmKind] = useState<
     'highScore' | 'settings' | null
   >(null);
+  const [pushBusy, setPushBusy] = useState(false);
 
   useEffect(() => {
     void hydrateSettings();
   }, [hydrateSettings]);
+
+  useEffect(() => {
+    if (asyncDuelOn) {
+      void loadNotificationPrefs();
+    }
+  }, [asyncDuelOn, loadNotificationPrefs]);
 
   const openCardModal = () => {
     setPendingCardStyle(settings.cardStyle);
@@ -212,6 +229,89 @@ export function SettingsScreen({ navigation }: SettingsScreenProps) {
                   onValueChange={setReducedMotionEnabled}
                 />
               </BlazePanel>
+
+              {asyncDuelOn ? (
+                <>
+                  <Text style={styles.sectionLabel}>DUEL NOTIFICATIONS</Text>
+                  <BlazePanel padding={0} style={styles.panel}>
+                    <SettingsToggleRow
+                      label="CHALLENGE ALERTS (IN-APP)"
+                      value={notificationPrefs?.duelChallengesInApp ?? true}
+                      onValueChange={(value) => {
+                        void saveNotificationPrefs({ duelChallengesInApp: value });
+                      }}
+                    />
+                    <SettingsToggleRow
+                      label="CHALLENGE PUSH"
+                      description="Requires device permission."
+                      value={notificationPrefs?.duelChallengesPush ?? true}
+                      onValueChange={(value) => {
+                        void saveNotificationPrefs({ duelChallengesPush: value });
+                      }}
+                    />
+                    <SettingsToggleRow
+                      label="RESULT ALERTS (IN-APP)"
+                      value={notificationPrefs?.duelResultsInApp ?? true}
+                      onValueChange={(value) => {
+                        void saveNotificationPrefs({ duelResultsInApp: value });
+                      }}
+                    />
+                    <SettingsToggleRow
+                      label="RESULT PUSH"
+                      value={notificationPrefs?.duelResultsPush ?? true}
+                      onValueChange={(value) => {
+                        void saveNotificationPrefs({ duelResultsPush: value });
+                      }}
+                    />
+                    <SettingsToggleRow
+                      label="STATUS ALERTS (IN-APP)"
+                      value={notificationPrefs?.duelStatusInApp ?? true}
+                      onValueChange={(value) => {
+                        void saveNotificationPrefs({ duelStatusInApp: value });
+                      }}
+                    />
+                    <SettingsToggleRow
+                      label="STATUS PUSH"
+                      value={notificationPrefs?.duelStatusPush ?? true}
+                      onValueChange={(value) => {
+                        void saveNotificationPrefs({ duelStatusPush: value });
+                      }}
+                    />
+                    <SettingsActionRow
+                      label="ENABLE PUSH NOTIFICATIONS"
+                      value={pushBusy ? 'WORKING…' : undefined}
+                      disabled={pushBusy}
+                      onPress={() => {
+                        if (pushBusy) {
+                          return;
+                        }
+                        void (async () => {
+                          setPushBusy(true);
+                          const permission = await requestPushPermissionWithContext();
+                          if (permission === 'granted' || permission === 'provisional') {
+                            const result = await registerCurrentDevicePushToken();
+                            if (!result.ok) {
+                              Alert.alert(
+                                'Push not ready',
+                                result.reason ===
+                                  'expo-notifications is not installed. Add the package and configure Expo push credentials to enable delivery.'
+                                  ? 'Push delivery requires Expo notifications configuration. In-app alerts still work.'
+                                  : 'Could not register this device for push. In-app alerts still work.',
+                              );
+                            }
+                          } else if (permission === 'denied') {
+                            Alert.alert(
+                              'Notifications disabled',
+                              'You can enable notifications later in system settings. In-app alerts still work.',
+                            );
+                          }
+                          setPushBusy(false);
+                        })();
+                      }}
+                    />
+                  </BlazePanel>
+                </>
+              ) : null}
 
               <Text style={styles.sectionLabel}>APPEARANCE</Text>
               <BlazePanel padding={0} style={styles.panel}>

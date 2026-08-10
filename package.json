@@ -67,6 +67,7 @@
     "test:v1.3-release": "npx tsx src/challenge/v1_3ReleaseSelfTest.ts",
     "test:async-duel-phase1": "npx tsx src/asyncDuel/asyncDuelPhase1SelfTest.ts",
     "test:async-duel-phase2": "npx tsx src/asyncDuel/asyncDuelPhase2SelfTest.ts",
+    "test:async-duel-phase3": "npx tsx src/asyncDuel/asyncDuelPhase3SelfTest.ts",
     "test:daily-challenge-live": "npx tsx scripts/dailyChallengeLiveVerification.ts",
     "validate:visual-assets": "npx tsx scripts/validate-visual-assets.mjs"
   },

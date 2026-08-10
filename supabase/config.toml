@@ -57,3 +57,6 @@ verify_jwt = true
 
 [functions.daily-challenge]
 verify_jwt = true
+
+[functions.async-duel-push-dispatch]
+verify_jwt = false
