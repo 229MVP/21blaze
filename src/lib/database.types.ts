@@ -1426,6 +1426,94 @@ export type Database = {
         Args: Record<string, never>;
         Returns: boolean;
       };
+      create_live_pvp_invite: {
+        Args: {
+          p_opponent_id: string;
+        };
+        Returns: Json;
+      };
+      accept_live_pvp_match: {
+        Args: {
+          p_match_id: string;
+        };
+        Returns: Json;
+      };
+      decline_live_pvp_match: {
+        Args: {
+          p_match_id: string;
+        };
+        Returns: Json;
+      };
+      cancel_live_pvp_match: {
+        Args: {
+          p_match_id: string;
+        };
+        Returns: Json;
+      };
+      set_live_pvp_ready: {
+        Args: {
+          p_match_id: string;
+        };
+        Returns: Json;
+      };
+      get_live_pvp_snapshot: {
+        Args: {
+          p_match_id: string;
+        };
+        Returns: Json;
+      };
+      get_live_pvp_server_time: {
+        Args: Record<string, never>;
+        Returns: Json;
+      };
+      submit_live_pvp_progress: {
+        Args: {
+          p_match_id: string;
+          p_sequence: number;
+          p_score: number;
+          p_exact_21_count: number;
+          p_five_card_clear_count: number;
+          p_bust_count: number;
+          p_cards_played: number;
+          p_lanes_cleared: number;
+          p_client_elapsed_ms: number;
+        };
+        Returns: Json;
+      };
+      complete_live_pvp_attempt: {
+        Args: {
+          p_match_id: string;
+          p_score: number;
+          p_exact_21_count: number;
+          p_five_card_clear_count: number;
+          p_bust_count: number;
+          p_cards_played: number;
+          p_lanes_cleared: number;
+          p_completion_ms: number;
+          p_rules_version: string;
+          p_deck_version: string;
+          p_submission_version?: string | null;
+        };
+        Returns: Json;
+      };
+      forfeit_live_pvp_match: {
+        Args: {
+          p_match_id: string;
+        };
+        Returns: Json;
+      };
+      finalize_live_pvp_deadlines: {
+        Args: {
+          p_limit?: number;
+        };
+        Returns: Json;
+      };
+      is_live_pvp_participant: {
+        Args: {
+          p_topic: string;
+        };
+        Returns: boolean;
+      };
     };
     Enums: Record<string, never>;
     CompositeTypes: Record<string, never>;

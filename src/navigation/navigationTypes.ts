@@ -59,6 +59,8 @@ export type RootStackParamList = {
   /** Development-only Daily Challenge RPC diagnostics. Registered only when __DEV__ is true. */
   DailyChallengeDiagnostics: undefined;
   AsyncDuelDiagnostics: undefined;
+  /** Development-only Live PvP protocol harness. Registered only when __DEV__ is true. */
+  LivePvpHarness: undefined;
 };
 
 export type HomeScreenProps = NativeStackScreenProps<RootStackParamList, 'Home'>;
@@ -198,4 +200,8 @@ export type BlazeUIKitPreviewScreenProps = NativeStackScreenProps<
 export type ThemePreviewScreenProps = NativeStackScreenProps<
   RootStackParamList,
   'ThemePreview'
+>;
+export type LivePvpHarnessScreenProps = NativeStackScreenProps<
+  RootStackParamList,
+  'LivePvpHarness'
 >;

@@ -225,3 +225,11 @@ export function isDailyLeaderboardEnabled(): boolean {
 export function isAsyncDuelEnabled(): boolean {
   return envFlag('EXPO_PUBLIC_ENABLE_ASYNC_DUEL', false);
 }
+
+/**
+ * Version 1.5 Phase 1 Live PvP foundation.
+ * Defaults OFF — no full player-facing UI. Harness remains __DEV__-only.
+ */
+export function isLivePvpEnabled(): boolean {
+  return envFlag('EXPO_PUBLIC_ENABLE_LIVE_PVP', false);
+}
