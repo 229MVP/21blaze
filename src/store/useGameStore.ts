@@ -42,6 +42,12 @@ import {
 import type { DailyChallengeSession } from '../game/challenge/types';
 import type { AsyncDuelSession } from '../asyncDuel/asyncDuelSession';
 import type { LivePvpSession } from '../livePvp/livePvpSession';
+import { buildLivePvpCheckpoint, applyLivePvpCheckpointToGameState } from '../livePvp/livePvpCheckpoint';
+import {
+  clearLivePvpCheckpoint,
+  saveLivePvpCheckpoint,
+  type LivePvpCheckpoint,
+} from '../livePvp/livePvpCheckpointStorage';
 import { useDailyChallengeStore } from './useDailyChallengeStore';
 import { useAsyncDuelStore } from './useAsyncDuelStore';
 import { useLivePvpStore, submitLiveMatchProgress } from './useLivePvpStore';
@@ -49,6 +55,7 @@ import { livePvpMatchCoordinator } from '../livePvp/livePvpCoordinator';
 import { clearHighScore, saveHighScore } from '../storage/highScoreStorage';
 import { createMatchId } from '../utils/createMatchId';
 import { useScoreHistoryStore } from './useScoreHistoryStore';
+import { useAuthStore } from './useAuthStore';
 
 type GameStore = GameState &
   OnlineMatchState & {
@@ -71,6 +78,10 @@ type GameStore = GameState &
     prepareDailyChallengeGame: (session: DailyChallengeSession) => Promise<void>;
     prepareAsyncDuelGame: (session: AsyncDuelSession) => Promise<void>;
     prepareLivePvpGame: (session: LivePvpSession) => Promise<void>;
+    prepareLivePvpGameFromCheckpoint: (
+      session: LivePvpSession,
+      checkpoint: LivePvpCheckpoint,
+    ) => Promise<void>;
     startGame: () => void;
     restartGame: () => void;
     resetGame: () => void;
@@ -90,6 +101,28 @@ type GameStore = GameState &
     getCardsRemaining: () => number;
     submitVerifiedMatchIfNeeded: () => Promise<void>;
   };
+
+function maybePersistLivePvpCheckpoint(state: GameStore): void {
+  if (state.gameMode !== 'livePvp' || !state.livePvpSession) {
+    return;
+  }
+  const userId = useAuthStore.getState().user?.id;
+  if (!userId) {
+    return;
+  }
+  const seq = livePvpMatchCoordinator.getProgressSequence();
+  void saveLivePvpCheckpoint(
+    buildLivePvpCheckpoint({
+      userId,
+      session: state.livePvpSession,
+      game: toGameSlice(state),
+      exact21Count: state.dailyExact21Count,
+      fiveCardClearCount: state.dailyFiveCardClearCount,
+      lastAcceptedProgressSequence: Math.max(0, seq - 1),
+      lastAttemptedProgressSequence: seq,
+    }),
+  );
+}
 
 const idleGameState: GameState = {
   status: 'idle',
@@ -496,6 +529,60 @@ export const useGameStore = create<GameStore>((set, get) => ({
     }
   },
 
+  prepareLivePvpGameFromCheckpoint: async (session, checkpoint) => {
+    await get().prepareLivePvpGame(session);
+    const current = get();
+    if (current.gameMode !== 'livePvp' || !current.livePvpSession) {
+      return;
+    }
+    const restored = applyLivePvpCheckpointToGameState(checkpoint, toGameSlice(current));
+    set({
+      ...restored,
+      dailyExact21Count: checkpoint.engine.exact21Count,
+      dailyFiveCardClearCount: checkpoint.engine.fiveCardClearCount,
+    });
+    livePvpMatchCoordinator.syncProgressSequenceFromSnapshot(
+      {
+        matchId: session.matchId,
+        myLatestProgressSequence: checkpoint.lastAcceptedProgressSequence,
+        progress: [],
+        status: 'active',
+        stateVersion: 0,
+        protocolVersion: session.protocolVersion,
+        realtimeTopic: '',
+        participantRole: session.participantRole,
+        challenger: { userId: '', displayName: '' },
+        opponent: { userId: '', displayName: session.opponentDisplayName },
+        challengerReady: true,
+        opponentReady: true,
+        scheduledStartAt: session.scheduledStartAt,
+        gameplayDeadlineAt: session.gameplayDeadlineAt,
+        submissionGraceUntil: session.submissionGraceUntil,
+        expiresAt: session.gameplayDeadlineAt,
+        rulesVersion: session.rulesVersion,
+        deckVersion: session.deckVersion,
+        durationSeconds: session.durationSeconds,
+        bustLimit: session.bustLimit,
+        seed: session.authoritativeSeed,
+        seedAvailable: true,
+        outcome: null,
+        winnerUserId: null,
+        decidingField: null,
+        completionReason: null,
+        settledAt: null,
+        myAttempt: {
+          attemptId: session.attemptId,
+          status: 'active',
+          score: restored.score,
+          completedAt: null,
+        },
+        serverNow: new Date().toISOString(),
+        gameplayEligible: true,
+      },
+      useAuthStore.getState().user?.id ?? checkpoint.userId,
+    );
+  },
+
   clearDailyChallengeMode: () => {
     set({
       gameMode: 'solo',
@@ -518,6 +605,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
 
   clearLivePvpMode: () => {
     livePvpMatchCoordinator.stopProgressScheduler();
+    void clearLivePvpCheckpoint();
     set({
       gameMode: 'solo',
       livePvpSession: null,
@@ -632,6 +720,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
       if (remaining !== current.timeRemainingSeconds) {
         set({ timeRemainingSeconds: remaining });
       }
+      maybePersistLivePvpCheckpoint(get());
       return;
     }
 
@@ -789,6 +878,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
         });
 
         if (result) {
+          void clearLivePvpCheckpoint();
           set({
             submissionStatus: 'verified',
             officialResult: {
@@ -1157,6 +1247,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
       dailyExact21Count: current.dailyExact21Count + exact21Delta,
       dailyFiveCardClearCount: current.dailyFiveCardClearCount + fiveCardDelta,
     });
+    maybePersistLivePvpCheckpoint(get());
 
     if (nextState.busts >= MAX_BUSTS) {
       get().endGame('busts');

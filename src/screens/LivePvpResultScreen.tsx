@@ -21,6 +21,8 @@ export function LivePvpResultScreen({ navigation, route }: LivePvpResultScreenPr
   const matchId = route.params.matchId;
   const snapshot = useLivePvpStore((s) => s.snapshot);
   const errorMessage = useLivePvpStore((s) => s.errorMessage);
+  const createRematch = useLivePvpStore((s) => s.createRematch);
+  const mutationStatus = useLivePvpStore((s) => s.mutationStatus);
   const refreshSnapshot = useLivePvpStore((s) => s.refreshSnapshot);
   const leaveMatchChannel = useLivePvpStore((s) => s.leaveMatchChannel);
   const joinMatchChannel = useLivePvpStore((s) => s.joinMatchChannel);
@@ -111,6 +113,23 @@ export function LivePvpResultScreen({ navigation, route }: LivePvpResultScreenPr
                 </Text>
               </View>
             </View>
+            <BlazeButton
+              title="REMATCH"
+              variant="secondary"
+              disabled={mutationStatus === 'pending'}
+              onPress={async () => {
+                const rematch = await createRematch(matchId);
+                if (!rematch) {
+                  return;
+                }
+                if (rematch.participantRole === 'challenger') {
+                  navigation.replace('LivePvpWaitingRoom', { matchId: rematch.matchId });
+                } else {
+                  navigation.replace('LivePvpInviteDetails', { matchId: rematch.matchId });
+                }
+              }}
+              fullWidth
+            />
             <BlazeButton
               title="DONE"
               onPress={() => navigation.replace('LivePvpHub')}

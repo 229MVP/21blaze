@@ -29,18 +29,23 @@ function readRepo(rel: string): string {
   return readFileSync(join(process.cwd(), rel), 'utf8');
 }
 
+const TEST_MATCH_ID = '11111111-1111-4111-8111-111111111111';
+const TEST_ATTEMPT_ID = '22222222-2222-4222-8222-222222222222';
+const TEST_USER_CHALLENGER = '33333333-3333-4333-8333-333333333333';
+const TEST_USER_OPPONENT = '44444444-4444-4444-8444-444444444444';
+
 function baseSnapshot(
   overrides: Partial<LiveMatchSnapshot> = {},
 ): LiveMatchSnapshot {
   return {
-    matchId: 'match-1',
+    matchId: TEST_MATCH_ID,
     status: 'lobby',
     stateVersion: 1,
     protocolVersion: '1',
-    realtimeTopic: 'live-pvp:match-1',
+    realtimeTopic: `live-pvp:${TEST_MATCH_ID}`,
     participantRole: 'challenger',
-    challenger: { userId: 'u1', displayName: 'You' },
-    opponent: { userId: 'u2', displayName: 'BlazeKing' },
+    challenger: { userId: TEST_USER_CHALLENGER, displayName: 'You' },
+    opponent: { userId: TEST_USER_OPPONENT, displayName: 'BlazeKing' },
     challengerReady: false,
     opponentReady: false,
     scheduledStartAt: null,
@@ -58,7 +63,13 @@ function baseSnapshot(
     decidingField: null,
     completionReason: null,
     settledAt: null,
-    myAttempt: { attemptId: 'a1', status: 'pending', score: null, completedAt: null },
+    myAttempt: {
+      attemptId: TEST_ATTEMPT_ID,
+      status: 'pending',
+      score: null,
+      completedAt: null,
+    },
+    myLatestProgressSequence: 0,
     progress: [],
     serverNow: new Date().toISOString(),
     gameplayEligible: false,
@@ -117,10 +128,15 @@ export function runLivePvpPhase2SelfTests(): void {
     outcome: 'challenger_win',
     completionReason: 'normal',
     decidingField: 'score',
-    myAttempt: { attemptId: 'a1', status: 'completed', score: 15420, completedAt: null },
+    myAttempt: {
+      attemptId: TEST_ATTEMPT_ID,
+      status: 'completed',
+      score: 15420,
+      completedAt: null,
+    },
     progress: [
       {
-        userId: 'u1',
+        userId: TEST_USER_CHALLENGER,
         sequence: 2,
         score: 15420,
         exact21Count: 1,
@@ -130,7 +146,7 @@ export function runLivePvpPhase2SelfTests(): void {
         lanesCleared: 5,
       },
       {
-        userId: 'u2',
+        userId: TEST_USER_OPPONENT,
         sequence: 2,
         score: 14980,
         exact21Count: 0,
@@ -272,8 +288,9 @@ export function runLivePvpPhase2SelfTests(): void {
   const hub = readRepo('src/screens/LivePvpHubScreen.tsx');
   assert(hub.includes('temporarily unavailable') || hub.includes('Temporarily unavailable') || hub.includes('creationEnabled'), 'ops kill switch UX');
 
-  // Process-death: no fake Resume for Live
-  assert(!hub.toLowerCase().includes('resume live'), 'no fake resume CTA on hub');
+  // Phase 3: Resume only when checkpoint reconciled (not a fake always-on CTA)
+  assert(hub.includes('resumeMatchId'), 'hub gates resume on reconciled checkpoint');
+  assert(hub.includes('RESUME LIVE MATCH'), 'resume CTA when checkpoint valid');
 }
 
 runLivePvpPhase2SelfTests();

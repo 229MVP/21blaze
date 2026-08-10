@@ -31,6 +31,8 @@ On `TOKEN_REFRESHED`, call `supabase.realtime.setAuth(access_token)`.
 
 `get_live_pvp_snapshot` returns participant-safe state. Seed is present only when `seedAvailable` (countdown+).
 
+Phase 3 adds `myLatestProgressSequence` — caller's last accepted progress row only (for reconnect/process-death sequence recovery). Opponent private submission metadata is not exposed beyond provisional progress display scores.
+
 ## State version
 
 Monotonic `state_version` on match. Clients:
