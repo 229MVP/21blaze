@@ -288,12 +288,14 @@ export const useAsyncDuelStore = create<AsyncDuelStore>((set, get) => ({
 
   loadResult: async (duelId) => {
     try {
+      // Clear stale settlement from a previous duel before loading.
+      set({ lastCompletion: null, errorMessage: null });
       const result = await getAsyncDuelResult(duelId);
       set({ lastCompletion: result });
       trackEvent('duel_result_viewed');
       return result;
     } catch (error) {
-      set({ errorMessage: errMessage(error) });
+      set({ errorMessage: errMessage(error), lastCompletion: null });
       return null;
     }
   },

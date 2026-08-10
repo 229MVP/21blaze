@@ -38,6 +38,35 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
+function mapError(error: { message?: string; details?: string; code?: string } | null): never {
+  const message = `${error?.message ?? ''} ${error?.details ?? ''}`.toUpperCase();
+  const codes = [
+    'SELF_CHALLENGE',
+    'PLAYER_NOT_FOUND',
+    'PLAYER_NOT_ELIGIBLE',
+    'ACTIVE_DUEL_LIMIT',
+    'DUPLICATE_ACTIVE_DUEL',
+    'DUEL_NOT_FOUND',
+    'NOT_PARTICIPANT',
+    'INVALID_DUEL_STATE',
+    'ALREADY_STARTED',
+    'ALREADY_COMPLETED',
+    'DECLINED',
+    'EXPIRED',
+    'INVALID_RESULT',
+    'ASYNC_DUEL_DISABLED',
+  ] as const;
+  for (const code of codes) {
+    if (message.includes(code)) {
+      throw new AsyncDuelServiceError(code);
+    }
+  }
+  if (/not_authenticated/i.test(message)) {
+    throw new AsyncDuelServiceError('NOT_AUTHENTICATED');
+  }
+  throw new AsyncDuelServiceError('UNKNOWN', error?.message ?? 'Async Duel request failed.');
+}
+
 async function rpcJson(
   name: string,
   args: Record<string, unknown> = {},
@@ -47,32 +76,7 @@ async function rpcJson(
     name,
   );
   if (error) {
-    const message = `${error.message ?? ''} ${error.details ?? ''}`.toUpperCase();
-    if (/not_authenticated/i.test(message)) {
-      throw new AsyncDuelServiceError('NOT_AUTHENTICATED');
-    }
-    if (message.includes('NOT_PARTICIPANT')) {
-      throw new AsyncDuelServiceError('NOT_PARTICIPANT');
-    }
-    if (message.includes('DUEL_NOT_FOUND')) {
-      throw new AsyncDuelServiceError('DUEL_NOT_FOUND');
-    }
-    if (message.includes('DUPLICATE_ACTIVE_DUEL')) {
-      throw new AsyncDuelServiceError('DUPLICATE_ACTIVE_DUEL');
-    }
-    if (message.includes('ACTIVE_DUEL_LIMIT')) {
-      throw new AsyncDuelServiceError('ACTIVE_DUEL_LIMIT');
-    }
-    if (message.includes('INVALID_DUEL_STATE')) {
-      throw new AsyncDuelServiceError('INVALID_DUEL_STATE');
-    }
-    if (message.includes('PLAYER_NOT_FOUND')) {
-      throw new AsyncDuelServiceError('PLAYER_NOT_FOUND');
-    }
-    if (message.includes('PLAYER_NOT_ELIGIBLE')) {
-      throw new AsyncDuelServiceError('PLAYER_NOT_ELIGIBLE');
-    }
-    throw new AsyncDuelServiceError('UNKNOWN', error.message ?? `${name} failed`);
+    mapError(error);
   }
   if (!isRecord(data)) {
     throw new AsyncDuelServiceError('UNKNOWN', `${name} returned invalid payload`);
@@ -275,6 +279,23 @@ export async function createAsyncDuelRematch(
     rematchOfDuelId: String(data.rematchOfDuelId),
     seriesRootDuelId: String(data.seriesRootDuelId),
     alreadyExisted: Boolean(data.alreadyExisted),
+  };
+}
+
+export type AsyncDuelOpsStatus = {
+  creationEnabled: boolean;
+  rematchEnabled: boolean;
+  pushEnabled: boolean;
+  configActive: boolean;
+};
+
+export async function getAsyncDuelOpsStatus(): Promise<AsyncDuelOpsStatus> {
+  const data = await rpcJson('get_async_duel_ops_status');
+  return {
+    creationEnabled: Boolean(data.creationEnabled),
+    rematchEnabled: Boolean(data.rematchEnabled),
+    pushEnabled: Boolean(data.pushEnabled),
+    configActive: Boolean(data.configActive),
   };
 }
 

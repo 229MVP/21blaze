@@ -1408,6 +1408,24 @@ export type Database = {
         };
         Returns: Json;
       };
+      get_async_duel_ops_status: {
+        Args: Record<string, never>;
+        Returns: Json;
+      };
+      diagnose_async_duel_integrity: {
+        Args: {
+          p_limit?: number;
+        };
+        Returns: Json;
+      };
+      async_duel_push_enabled: {
+        Args: Record<string, never>;
+        Returns: boolean;
+      };
+      async_duel_rematch_enabled: {
+        Args: Record<string, never>;
+        Returns: boolean;
+      };
     };
     Enums: Record<string, never>;
     CompositeTypes: Record<string, never>;

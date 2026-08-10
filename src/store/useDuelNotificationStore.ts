@@ -209,6 +209,9 @@ export const useDuelNotificationStore = create<NotificationStore>((set, get) => 
       const result = await createAsyncDuelRematch(sourceDuelId);
       set({ rematchStatus: 'success' });
       trackEvent('duel_rematch_started', { alreadyExisted: result.alreadyExisted });
+      const pastFreshStart =
+        Boolean(result.alreadyStarted) ||
+        (result.status !== 'challenger_playing' && result.alreadyExisted);
       return {
         duelId: result.duelId,
         attemptId: result.attemptId,
@@ -225,7 +228,7 @@ export const useDuelNotificationStore = create<NotificationStore>((set, get) => 
           get().seriesSummary?.headToHead.otherDisplayName ??
           'Opponent',
         targetScore: null,
-        resumed: Boolean(result.alreadyExisted && result.alreadyStarted),
+        resumed: pastFreshStart,
       };
     } catch (error) {
       set({ rematchStatus: 'error', errorMessage: errCode(error) });

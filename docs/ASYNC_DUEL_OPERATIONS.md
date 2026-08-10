@@ -1,5 +1,7 @@
 # Async Duel Operations (v1.4 Phase 1)
 
+> **Superseded for release ops:** see [`V1_4_ASYNC_DUEL_OPERATIONS.md`](./V1_4_ASYNC_DUEL_OPERATIONS.md) for kill switches (creation / rematch / push), integrity diagnostics, and freeze deployment order. This file remains as Phase 1 reference.
+
 ## Configuration
 
 Stored in `app_configuration`:

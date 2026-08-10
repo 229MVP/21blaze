@@ -1,4 +1,4 @@
-import { useCallback, useEffect } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   AppState,
@@ -25,6 +25,7 @@ import { trackEvent } from '../monetization/analytics';
 import type { AsyncDuelHubScreenProps } from '../navigation/navigationTypes';
 import { useAsyncDuelStore } from '../store/useAsyncDuelStore';
 import { useAuthStore } from '../store/useAuthStore';
+import { getAsyncDuelOpsStatus } from '../services/duelNotificationService';
 import { colors } from '../theme/colors';
 import { radius } from '../theme/radius';
 import { spacing } from '../theme/spacing';
@@ -51,10 +52,25 @@ export function AsyncDuelHubScreen({ navigation }: AsyncDuelHubScreenProps) {
   const isLoadingHub = useAsyncDuelStore((s) => s.isLoadingHub);
   const errorMessage = useAsyncDuelStore((s) => s.errorMessage);
   const refreshHub = useAsyncDuelStore((s) => s.refreshHub);
+  const [creationEnabled, setCreationEnabled] = useState(true);
+  const [opsStatusLoaded, setOpsStatusLoaded] = useState(false);
+
+  const refreshOpsStatus = useCallback(async () => {
+    try {
+      const status = await getAsyncDuelOpsStatus();
+      setCreationEnabled(status.creationEnabled && status.configActive);
+    } catch {
+      // Fail closed for new creation UX; inbox/history still load via refreshHub.
+      setCreationEnabled(false);
+    } finally {
+      setOpsStatusLoaded(true);
+    }
+  }, []);
 
   const refresh = useCallback(() => {
     void refreshHub();
-  }, [refreshHub]);
+    void refreshOpsStatus();
+  }, [refreshHub, refreshOpsStatus]);
 
   useFocusEffect(
     useCallback(() => {
@@ -112,11 +128,22 @@ export function AsyncDuelHubScreen({ navigation }: AsyncDuelHubScreenProps) {
         <ScreenHeader title="DUEL HUB" />
         <Text style={styles.subtitle}>Same deck. Same timer. Highest score wins.</Text>
 
-        <BlazeButton
-          title="CHALLENGE PLAYER"
-          onPress={() => navigation.navigate('AsyncDuelSelectOpponent')}
-          fullWidth
-        />
+        {opsStatusLoaded && !creationEnabled ? (
+          <Text
+            style={styles.unavailable}
+            accessibilityRole="text"
+            accessibilityLabel="New challenges are temporarily unavailable. Existing duels remain playable."
+          >
+            New challenges are temporarily unavailable. Existing duels and history remain available.
+          </Text>
+        ) : (
+          <BlazeButton
+            title="CHALLENGE PLAYER"
+            onPress={() => navigation.navigate('AsyncDuelSelectOpponent')}
+            fullWidth
+            accessibilityLabel="Challenge player"
+          />
+        )}
 
         <View style={styles.tabs}>
           {(['incoming', 'active', 'history'] as const).map((tab) => (
@@ -307,5 +334,11 @@ const styles = StyleSheet.create({
   cardMeta: { ...typography.body, color: colors.textSecondary, fontSize: 13 },
   link: { fontFamily: fontFamilies.bodyBold, color: colors.primary, marginTop: 4 },
   empty: { ...typography.body, color: colors.textSecondary, textAlign: 'center' },
+  unavailable: {
+    ...typography.body,
+    color: colors.gold,
+    textAlign: 'center',
+    paddingVertical: spacing.sm,
+  },
   error: { ...typography.body, color: colors.danger ?? '#FF6B6B', textAlign: 'center' },
 });
