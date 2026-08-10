@@ -216,6 +216,8 @@ export function runLivePvpReleaseSelfTests(): void {
   assert(appJson.includes('"versionCode": 902'), 'android versionCode 902');
   assert(appJson.includes('withAndroidKotlinGradle.js'), 'kotlin plugin');
   assert(appJson.includes('"kotlinVersion": "2.3.0"'), 'kotlin 2.3.0');
+  // GADApplicationIdentifier resolved at build via app.config.js
+  assert(!appJson.includes('GADApplicationIdentifier'), 'static ios admob id removed from app.json');
   assert(appJson.includes('"rcVersion": "1.5.0"'), 'rcVersion 1.5.0');
 
   const easJson = readRepo('eas.json');

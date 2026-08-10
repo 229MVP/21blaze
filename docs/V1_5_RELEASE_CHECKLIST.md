@@ -53,8 +53,19 @@ Record exact results in `V1_5_RELEASE_VALIDATION_REPORT.md`.
 
 ## Release decision
 
-- [ ] Decision: `READY FOR TWO-DEVICE RC QA` / `READY WITH DOCUMENTED RISKS` / `NOT READY`
-- [ ] Owner + date in validation report
+- [ ] Decision: `PRODUCTION CANDIDATE` / `READY WITH DOCUMENTED RISKS` / `NOT READY`
+- [ ] Owner + date in `V1_5_RC_VALIDATION_REPORT.md`
+
+## RC validation (2026-08-10)
+
+- [x] Expo Doctor passes (SDK 57 alignment)
+- [x] AdMob production blocker resolved in code
+- [x] Permission audit (no microphone)
+- [ ] Staging database validation
+- [ ] Two-device QA
+- [ ] Soak test
+- [ ] Rollback drill on staging
+- Current RC decision: **NOT READY — BLOCKERS REMAIN** (see `docs/V1_5_RC_VALIDATION_REPORT.md`)
 
 ## Rollback (summary)
 
