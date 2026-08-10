@@ -1335,6 +1335,79 @@ export type Database = {
         };
         Returns: Json;
       };
+      create_async_duel_rematch: {
+        Args: {
+          p_source_duel_id: string;
+        };
+        Returns: Json;
+      };
+      get_player_notifications: {
+        Args: {
+          p_limit?: number;
+          p_offset?: number;
+        };
+        Returns: Json;
+      };
+      get_unread_notification_count: {
+        Args: Record<string, never>;
+        Returns: Json;
+      };
+      mark_notification_read: {
+        Args: {
+          p_notification_id: string;
+        };
+        Returns: Json;
+      };
+      mark_all_notifications_read: {
+        Args: Record<string, never>;
+        Returns: Json;
+      };
+      get_notification_preferences: {
+        Args: Record<string, never>;
+        Returns: Json;
+      };
+      update_notification_preferences: {
+        Args: {
+          p_prefs: Json;
+        };
+        Returns: Json;
+      };
+      register_device_push_token: {
+        Args: {
+          p_token: string;
+          p_platform: string;
+          p_environment: string;
+        };
+        Returns: Json;
+      };
+      revoke_device_push_token: {
+        Args: {
+          p_token: string;
+        };
+        Returns: Json;
+      };
+      get_player_duel_record: {
+        Args: {
+          p_profile_id: string;
+        };
+        Returns: Json;
+      };
+      get_my_duel_record: {
+        Args: Record<string, never>;
+        Returns: Json;
+      };
+      get_head_to_head_record: {
+        Args: {
+          p_other_player_id: string;
+        };
+        Returns: Json;
+      };
+      get_async_duel_series_summary: {
+        Args: {
+          p_duel_id: string;
+        };
+        Returns: Json;
+      };
     };
     Enums: Record<string, never>;
     CompositeTypes: Record<string, never>;

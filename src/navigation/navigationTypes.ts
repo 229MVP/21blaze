@@ -49,6 +49,7 @@ export type RootStackParamList = {
   AsyncDuelChallengeDetails: { duelId: string };
   AsyncDuelChallengeSent: undefined;
   AsyncDuelResult: { duelId: string };
+  Notifications: undefined;
   PurchaseDiagnostics: undefined;
   Feedback: undefined;
   /** Development-only UI kit gallery. Registered only when __DEV__ is true. */
@@ -180,6 +181,10 @@ export type AsyncDuelChallengeSentScreenProps = NativeStackScreenProps<
 export type AsyncDuelResultScreenProps = NativeStackScreenProps<
   RootStackParamList,
   'AsyncDuelResult'
+>;
+export type NotificationsScreenProps = NativeStackScreenProps<
+  RootStackParamList,
+  'Notifications'
 >;
 export type PurchaseDiagnosticsScreenProps = NativeStackScreenProps<
   RootStackParamList,

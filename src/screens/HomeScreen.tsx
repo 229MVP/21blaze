@@ -65,6 +65,7 @@ import { DailyBlazeHomeCard } from '../components/dailyChallenge/DailyBlazeHomeC
 import { getUtcChallengeDate } from '../challenge/utcChallengeDate';
 import { useDailyChallengeStore } from '../store/useDailyChallengeStore';
 import { useAsyncDuelStore } from '../store/useAsyncDuelStore';
+import { useDuelNotificationStore } from '../store/useDuelNotificationStore';
 import { hasSeenWhatsNew, markWhatsNewSeen } from '../services/whatsNewService';
 import { colors as kitColors, spacing as kitSpacing } from '../theme/uiKit';
 
@@ -164,6 +165,10 @@ export function HomeScreen({ navigation, route }: HomeScreenProps) {
   const asyncDuelEnabled = isAsyncDuelEnabled();
   const asyncInboxCount = useAsyncDuelStore((state) => state.inboxCount);
   const refreshAsyncDuelHub = useAsyncDuelStore((state) => state.refreshHub);
+  const unreadNotifications = useDuelNotificationStore((state) => state.unreadCount);
+  const refreshUnreadNotifications = useDuelNotificationStore(
+    (state) => state.refreshUnreadCount,
+  );
   const dailyChallengeEnabled = isDailyChallengeEnabled();
 
   const [dailyCountdownMs, setDailyCountdownMs] = useState(Date.now());
@@ -268,7 +273,8 @@ export function HomeScreen({ navigation, route }: HomeScreenProps) {
       return;
     }
     void refreshAsyncDuelHub();
-  }, [asyncDuelEnabled, authStatus, refreshAsyncDuelHub]);
+    void refreshUnreadNotifications();
+  }, [asyncDuelEnabled, authStatus, refreshAsyncDuelHub, refreshUnreadNotifications]);
 
   useEffect(() => {
     if (!dailyChallengeEnabled) {
@@ -580,6 +586,35 @@ export function HomeScreen({ navigation, route }: HomeScreenProps) {
                   wins.
                 </Text>
                 <Text style={styles.asyncDuelCta}>DUEL</Text>
+              </Pressable>
+            ) : null}
+            {asyncDuelEnabled ? (
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel={
+                  unreadNotifications > 0
+                    ? `Notifications. ${unreadNotifications} unread.`
+                    : 'Notifications'
+                }
+                onPress={() => navigation.navigate('Notifications')}
+                style={({ pressed }) => [
+                  styles.asyncDuelEntry,
+                  pressed && styles.pressed,
+                ]}
+              >
+                <View style={styles.asyncDuelHeaderRow}>
+                  <Text style={styles.asyncDuelTitle}>ALERTS</Text>
+                  {unreadNotifications > 0 ? (
+                    <View style={styles.asyncDuelBadge}>
+                      <Text style={styles.asyncDuelBadgeText}>
+                        {unreadNotifications} UNREAD
+                      </Text>
+                    </View>
+                  ) : null}
+                </View>
+                <Text style={styles.asyncDuelBody}>
+                  Duel challenges, results, and status updates.
+                </Text>
               </Pressable>
             ) : null}
             {showGuestProgressionHint ? (

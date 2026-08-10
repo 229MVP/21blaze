@@ -7,13 +7,17 @@
 import { __resetDailyChallengeStoreForTests } from './useDailyChallengeStore';
 import { __resetDailyLeaderboardStoreForTests } from './useDailyLeaderboardStore';
 import { __resetAsyncDuelStoreForTests } from './useAsyncDuelStore';
+import { __resetDuelNotificationStoreForTests } from './useDuelNotificationStore';
 import { useProgressionStore } from './useProgressionStore';
 import { useWalletStore } from './useWalletStore';
+import { revokeCurrentDevicePushToken } from '../notifications/pushRegistration';
 
 export function resetUserScopedStores(): void {
   __resetDailyChallengeStoreForTests();
   __resetDailyLeaderboardStoreForTests();
   __resetAsyncDuelStoreForTests();
+  __resetDuelNotificationStoreForTests();
+  void revokeCurrentDevicePushToken();
 
   useProgressionStore.setState({
     progression: null,

@@ -14,6 +14,7 @@ import { AsyncDuelConfirmChallengeScreen } from '../screens/AsyncDuelConfirmChal
 import { AsyncDuelHubScreen } from '../screens/AsyncDuelHubScreen';
 import { AsyncDuelResultScreen } from '../screens/AsyncDuelResultScreen';
 import { AsyncDuelSelectOpponentScreen } from '../screens/AsyncDuelSelectOpponentScreen';
+import { NotificationsScreen } from '../screens/NotificationsScreen';
 import { BlazeLockerScreen } from '../screens/BlazeLockerScreen';
 import { BlazeStoreScreen } from '../screens/BlazeStoreScreen';
 import { CreateLiveRoomScreen } from '../screens/CreateLiveRoomScreen';
@@ -122,6 +123,7 @@ export function AppNavigator() {
             component={AsyncDuelChallengeSentScreen}
           />
           <Stack.Screen name="AsyncDuelResult" component={AsyncDuelResultScreen} />
+          <Stack.Screen name="Notifications" component={NotificationsScreen} />
         </>
       ) : null}
       <Stack.Screen name="Feedback" component={FeedbackScreen} />

@@ -8,6 +8,7 @@ import { ScreenHeader } from '../components/Navigation/ScreenHeader';
 import { XpProgressBar } from '../components/Progression/XpProgressBar';
 import { ScreenContainer } from '../components/ScreenContainer';
 import {
+  isAsyncDuelEnabled,
   isDailyMissionsEnabled,
   isDailyRewardsEnabled,
   isMonetizationBetaEnabled,
@@ -18,8 +19,10 @@ import { getCosmetic } from '../cosmetics/catalog';
 import { useActiveProfileFrame } from '../cosmetics/useLockerCosmetics';
 import { trackEvent } from '../monetization/analytics';
 import type { PlayerProgressionScreenProps } from '../navigation/navigationTypes';
+import { formatRecordLine, formatWinRate } from '../asyncDuel/asyncDuelRecords';
 import { useAuthStore } from '../store/useAuthStore';
 import { useCosmeticStore } from '../store/useCosmeticStore';
+import { useDuelNotificationStore } from '../store/useDuelNotificationStore';
 import { useProgressionStore } from '../store/useProgressionStore';
 import { useRankedStore } from '../store/useRankedStore';
 import { colors } from '../theme/colors';
@@ -56,12 +59,18 @@ export function PlayerProgressionScreen({ navigation }: PlayerProgressionScreenP
   const error = useProgressionStore((state) => state.error);
   const hydrateProgression = useProgressionStore((state) => state.hydrateProgression);
   const loadProgressionHistory = useProgressionStore((state) => state.loadProgressionHistory);
+  const myRecord = useDuelNotificationStore((state) => state.myRecord);
+  const loadMyRecord = useDuelNotificationStore((state) => state.loadMyRecord);
+  const asyncDuelOn = isAsyncDuelEnabled();
 
   useEffect(() => {
     trackEvent('progression_profile_viewed');
     void hydrateProgression();
     void loadProgressionHistory(12);
-  }, [hydrateProgression, loadProgressionHistory]);
+    if (asyncDuelOn) {
+      void loadMyRecord();
+    }
+  }, [asyncDuelOn, hydrateProgression, loadMyRecord, loadProgressionHistory]);
 
   const titleKey = equipped.playerTitle;
   const titleName = titleKey ? getCosmetic(titleKey)?.displayName ?? titleKey : null;
@@ -178,6 +187,24 @@ export function PlayerProgressionScreen({ navigation }: PlayerProgressionScreenP
             onPress={() => navigation.navigate('HighScores')}
             fullWidth
           />
+          {asyncDuelOn && myRecord ? (
+            <View style={styles.duelRecord} accessibilityRole="text">
+              <Text style={styles.duelTitle}>DUEL RECORD</Text>
+              <Text style={styles.duelLine}>{formatRecordLine(myRecord)}</Text>
+              <Text style={styles.duelMeta}>
+                {myRecord.completedDuels} completed · Win rate {formatWinRate(myRecord.winRate)}
+              </Text>
+              <Text style={styles.duelMeta}>
+                Highest score: {myRecord.highestDuelScore.toLocaleString()}
+              </Text>
+              <BlazeButton
+                title="ASYNC DUELS"
+                variant="secondary"
+                onPress={() => navigation.navigate('AsyncDuelHub')}
+                fullWidth
+              />
+            </View>
+          ) : null}
           <BlazeButton
             title="BACK"
             variant="secondary"
@@ -317,5 +344,29 @@ const styles = StyleSheet.create({
   },
   actions: {
     gap: spacing.sm,
+  },
+  duelRecord: {
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: colors.blazeSubtle,
+    backgroundColor: colors.backgroundCard,
+    padding: spacing.md,
+    gap: spacing.xs,
+  },
+  duelTitle: {
+    fontFamily: fontFamilies.bodyBold,
+    color: colors.gold,
+    letterSpacing: 1.2,
+    fontSize: 12,
+  },
+  duelLine: {
+    fontFamily: fontFamilies.display,
+    fontSize: 28,
+    color: colors.textPrimary,
+  },
+  duelMeta: {
+    ...typography.body,
+    color: colors.textSecondary,
+    fontSize: 13,
   },
 });
