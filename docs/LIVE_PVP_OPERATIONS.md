@@ -54,7 +54,7 @@ LIMIT 50;
 SELECT public.finalize_live_pvp_deadlines(20);
 ```
 
-Schedule via cron / Edge Function. Safe to re-run. Prefer service_role for workers; authenticated grant exists for opportunistic bounded calls.
+Schedule deadline finalizer via cron / Edge Function with **service_role** only. Authenticated clients must not execute `finalize_live_pvp_deadlines` (revoked in v1.5 release-freeze migration `20260810185335`).
 
 ## Release stale active slots
 

@@ -1,6 +1,6 @@
 {
   "name": "21-blaze",
-  "version": "1.4.0",
+    "version": "1.5.0",
   "main": "index.ts",
   "dependencies": {
     "@expo-google-fonts/anton": "^0.4.2",
@@ -9,7 +9,7 @@
     "@react-native-async-storage/async-storage": "2.2.0",
     "@react-navigation/native": "^7.3.13",
     "@react-navigation/native-stack": "^7.18.5",
-    "@supabase/supabase-js": "^2.109.0",
+    "@supabase/supabase-js": "2.109.0",
     "babel-preset-expo": "~57.0.0",
     "expo": "~57.0.10",
     "expo-asset": "~57.0.7",
@@ -72,6 +72,7 @@
     "test:live-pvp-phase1": "npx tsx src/livePvp/livePvpPhase1SelfTest.ts",
     "test:live-pvp-phase2": "npx tsx src/livePvp/livePvpPhase2SelfTest.ts",
     "test:live-pvp-phase3": "npx tsx src/livePvp/livePvpPhase3SelfTest.ts",
+    "test:live-pvp-release": "npx tsx src/livePvp/livePvpReleaseSelfTest.ts",
     "test:daily-challenge-live": "npx tsx scripts/dailyChallengeLiveVerification.ts",
     "validate:visual-assets": "npx tsx scripts/validate-visual-assets.mjs"
   },

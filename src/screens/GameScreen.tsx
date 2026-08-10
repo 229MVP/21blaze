@@ -198,10 +198,18 @@ export function GameScreen({ navigation }: GameScreenProps) {
       const wasActive = appStateRef.current === 'active';
       appStateRef.current = nextState;
 
+      if (nextState === 'active' && !wasActive) {
+        const mode = useGameStore.getState().gameMode;
+        if (mode === 'livePvp') {
+          useLivePvpStore.getState().notifyMatchForeground();
+        }
+      }
+
       if (
         wasActive &&
         nextState !== 'active' &&
-        useGameStore.getState().timerStatus === 'running'
+        useGameStore.getState().timerStatus === 'running' &&
+        useGameStore.getState().gameMode !== 'livePvp'
       ) {
         pauseGame(Date.now());
       }

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, AppState, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { BlazeButton } from '../components/buttons/BlazeButton';
 import { ScreenHeader } from '../components/Navigation/ScreenHeader';
@@ -122,6 +122,7 @@ export function LivePvpLobbyScreen({ navigation, route }: LivePvpLobbyScreenProp
   const joinMatchChannel = useLivePvpStore((s) => s.joinMatchChannel);
   const setReady = useLivePvpStore((s) => s.setReady);
   const refreshSnapshot = useLivePvpStore((s) => s.refreshSnapshot);
+  const notifyMatchForeground = useLivePvpStore((s) => s.notifyMatchForeground);
   const prepareLivePvpGame = useGameStore((s) => s.prepareLivePvpGame);
   const prepareLivePvpGameFromCheckpoint = useGameStore(
     (s) => s.prepareLivePvpGameFromCheckpoint,
@@ -134,6 +135,16 @@ export function LivePvpLobbyScreen({ navigation, route }: LivePvpLobbyScreenProp
   useEffect(() => {
     void joinMatchChannel(matchId);
   }, [joinMatchChannel, matchId]);
+
+  useEffect(() => {
+    const sub = AppState.addEventListener('change', (state) => {
+      if (state === 'active') {
+        notifyMatchForeground();
+        void refreshSnapshot(matchId);
+      }
+    });
+    return () => sub.remove();
+  }, [matchId, notifyMatchForeground, refreshSnapshot]);
 
   useEffect(() => {
     const id = setInterval(() => setTick((t) => t + 1), 200);

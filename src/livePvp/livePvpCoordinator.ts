@@ -1,7 +1,13 @@
 import type { RealtimeChannel, SupabaseClient } from '@supabase/supabase-js';
 
 import { supabase } from '../lib/supabase';
-import { LIVE_PVP_CONFIG, livePvpTopicForMatch } from './livePvpConfig';
+import {
+  computeLivePvpBackoffDelayMs,
+  DEFAULT_LIVE_PVP_RECONNECT_BACKOFF,
+  shouldScheduleLivePvpReconnect,
+  type LivePvpReconnectBackoffConfig,
+  type LivePvpUnexpectedDisconnectReason,
+} from './livePvpReconnectPolicy';
 import { livePvpDiagnostics } from './livePvpDiagnostics';
 import {
   estimateServerClockOffset,
@@ -42,9 +48,7 @@ type Listener = {
   onClock?: (estimate: ClockOffsetEstimate | null) => void;
 };
 
-const MAX_RECONNECT_ATTEMPTS = 5;
-const RECONNECT_BASE_MS = 500;
-const RECONNECT_CAP_MS = 8000;
+import { LIVE_PVP_CONFIG, livePvpTopicForMatch } from './livePvpConfig';
 
 /**
  * One private channel per (userId, matchId). Survives screen remounts.
@@ -71,6 +75,11 @@ class LivePvpMatchCoordinator {
   private disposed = false;
   private reconnectChainId = 0;
   private reconnectInFlight: Promise<boolean> | null = null;
+  private intentionalLeave = false;
+  private subscribedOnce = false;
+  backoffConfig: LivePvpReconnectBackoffConfig = DEFAULT_LIVE_PVP_RECONNECT_BACKOFF;
+  sleepFn: (ms: number) => Promise<void> = (ms) =>
+    new Promise((resolve) => setTimeout(resolve, ms));
 
   getChannelStatus(): LivePvpAppChannelStatus {
     return this.status;
@@ -145,6 +154,51 @@ class LivePvpMatchCoordinator {
     livePvpDiagnostics.reconnectOutcome('cancelled');
   }
 
+  notifyForegroundActiveMatch(): void {
+    if (
+      shouldScheduleLivePvpReconnect({
+        disposed: this.disposed,
+        matchId: this.matchId,
+        userId: this.userId,
+        intentionalLeave: this.intentionalLeave,
+        snapshotStatus: this.snapshot?.status ?? null,
+      })
+    ) {
+      void this.scheduleReconnect('foreground');
+    }
+  }
+
+  private scheduleReconnect(reason: LivePvpUnexpectedDisconnectReason): void {
+    if (
+      !shouldScheduleLivePvpReconnect({
+        disposed: this.disposed,
+        matchId: this.matchId,
+        userId: this.userId,
+        intentionalLeave: this.intentionalLeave,
+        snapshotStatus: this.snapshot?.status ?? null,
+      })
+    ) {
+      return;
+    }
+    void this.reconnectWithBackoff(reason);
+  }
+
+  private handleUnexpectedDisconnect(
+    status: 'CHANNEL_ERROR' | 'TIMED_OUT' | 'CLOSED',
+    detail?: string,
+  ): void {
+    if (!this.subscribedOnce || this.intentionalLeave) {
+      return;
+    }
+    this.emitStatus(
+      status === 'TIMED_OUT' ? 'timed_out' : status === 'CLOSED' ? 'closed' : 'channel_error',
+      detail,
+    );
+    this.scheduleReconnect(
+      status === 'TIMED_OUT' ? 'timed_out' : status === 'CLOSED' ? 'closed' : 'channel_error',
+    );
+  }
+
   async ensureJoined(input: {
     userId: string;
     matchId: string;
@@ -161,6 +215,8 @@ class LivePvpMatchCoordinator {
       await this.leave({ reason: 'switch_match' });
     }
     this.disposed = false;
+    this.intentionalLeave = false;
+    this.subscribedOnce = false;
     this.userId = input.userId;
     this.matchId = input.matchId;
     this.key = nextKey;
@@ -254,6 +310,7 @@ class LivePvpMatchCoordinator {
           settled = true;
           clearTimeout(timer);
           livePvpDiagnostics.channelJoinLatency(Date.now() - joinStarted);
+          this.subscribedOnce = true;
           this.emitStatus('subscribed');
           if (LIVE_PVP_CONFIG.presenceEnabled) {
             try {
@@ -272,6 +329,7 @@ class LivePvpMatchCoordinator {
         }
         if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
           if (settled) {
+            this.handleUnexpectedDisconnect(status);
             return;
           }
           settled = true;
@@ -281,9 +339,17 @@ class LivePvpMatchCoordinator {
             err?.message ?? status,
           );
           reject(err ?? new Error('CHANNEL_AUTH_FAILED'));
+          return;
         }
         if (status === 'CLOSED') {
-          this.emitStatus('closed');
+          if (!settled) {
+            settled = true;
+            clearTimeout(timer);
+            this.emitStatus('closed');
+            reject(new Error('CHANNEL_CLOSED'));
+            return;
+          }
+          this.handleUnexpectedDisconnect('CLOSED');
         }
       });
     });
@@ -318,6 +384,9 @@ class LivePvpMatchCoordinator {
       this.emitSnapshot(snapshot);
       return snapshot;
     } catch {
+      if (this.subscribedOnce && !this.intentionalLeave) {
+        this.scheduleReconnect('snapshot_failed');
+      }
       return this.snapshot;
     }
   }
@@ -357,14 +426,14 @@ class LivePvpMatchCoordinator {
     this.emitStatus('recovered');
   }
 
-  async reconnectWithBackoff(reason: string): Promise<boolean> {
+  async reconnectWithBackoff(reason: LivePvpUnexpectedDisconnectReason): Promise<boolean> {
     if (this.reconnectInFlight) {
       return this.reconnectInFlight;
     }
     const chainId = ++this.reconnectChainId;
     this.reconnectInFlight = (async () => {
-      for (let attempt = 0; attempt < MAX_RECONNECT_ATTEMPTS; attempt += 1) {
-        if (chainId !== this.reconnectChainId || this.disposed) {
+      for (let attempt = 0; attempt < this.backoffConfig.maxAttempts; attempt += 1) {
+        if (chainId !== this.reconnectChainId || this.disposed || this.intentionalLeave) {
           livePvpDiagnostics.reconnectOutcome('cancelled');
           return false;
         }
@@ -380,9 +449,12 @@ class LivePvpMatchCoordinator {
           livePvpDiagnostics.reconnectOutcome('success');
           return true;
         } catch {
-          const exp = Math.min(RECONNECT_CAP_MS, RECONNECT_BASE_MS * 2 ** attempt);
-          const jitter = Math.floor(Math.random() * 250);
-          await new Promise((resolve) => setTimeout(resolve, exp + jitter));
+          const delay = computeLivePvpBackoffDelayMs(
+            attempt,
+            this.backoffConfig,
+            Math.floor(Math.random() * this.backoffConfig.jitterMaxMs),
+          );
+          await this.sleepFn(delay);
         }
       }
       livePvpDiagnostics.reconnectOutcome('failed');
@@ -444,6 +516,9 @@ class LivePvpMatchCoordinator {
   }
 
   async leave(options?: { reason?: string; soft?: boolean }): Promise<void> {
+    if (!options?.soft) {
+      this.intentionalLeave = true;
+    }
     this.stopProgressScheduler();
     this.authUnsub?.unsubscribe();
     this.authUnsub = null;
@@ -458,6 +533,7 @@ class LivePvpMatchCoordinator {
     }
     if (!options?.soft) {
       this.cancelReconnect();
+      this.subscribedOnce = false;
       this.key = null;
       this.matchId = null;
       this.userId = null;
@@ -481,4 +557,18 @@ export function __livePvpCoordinatorDebug(): {
     status: livePvpMatchCoordinator.getChannelStatus(),
     matchId: livePvpMatchCoordinator.getSnapshot()?.matchId ?? null,
   };
+}
+
+export function __setLivePvpReconnectSleepForTests(
+  sleepFn: ((ms: number) => Promise<void>) | null,
+): void {
+  livePvpMatchCoordinator.sleepFn =
+    sleepFn ?? ((ms) => new Promise((resolve) => setTimeout(resolve, ms)));
+}
+
+export function __setLivePvpReconnectBackoffForTests(
+  config: LivePvpReconnectBackoffConfig | null,
+): void {
+  livePvpMatchCoordinator.backoffConfig =
+    config ?? DEFAULT_LIVE_PVP_RECONNECT_BACKOFF;
 }

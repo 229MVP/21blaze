@@ -93,6 +93,7 @@ export function LivePvpHubScreen({ navigation }: LivePvpHubScreenProps) {
     const sub = AppState.addEventListener('change', (state) => {
       if (state === 'active') {
         refresh();
+        useLivePvpStore.getState().notifyMatchForeground();
       }
     });
     return () => sub.remove();
