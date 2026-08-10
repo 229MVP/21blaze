@@ -28,6 +28,7 @@ import {
   isDailyMissionsEnabled,
   isDailyRewardsEnabled,
   isLiveDuelEnabled,
+  isLivePvpEnabled,
   isMonetizationBetaEnabled,
   isRankedBetaEnabled,
   isStorePurchasesEnabled,
@@ -66,6 +67,7 @@ import { getUtcChallengeDate } from '../challenge/utcChallengeDate';
 import { useDailyChallengeStore } from '../store/useDailyChallengeStore';
 import { useAsyncDuelStore } from '../store/useAsyncDuelStore';
 import { useDuelNotificationStore } from '../store/useDuelNotificationStore';
+import { useLivePvpStore } from '../store/useLivePvpStore';
 import { hasSeenWhatsNew, markWhatsNewSeen } from '../services/whatsNewService';
 import { colors as kitColors, spacing as kitSpacing } from '../theme/uiKit';
 
@@ -163,8 +165,13 @@ export function HomeScreen({ navigation, route }: HomeScreenProps) {
   const dailyIsStarting = useDailyChallengeStore((state) => state.isStarting);
   const resumeDailyRanked = useDailyChallengeStore((state) => state.resumeRankedAttempt);
   const asyncDuelEnabled = isAsyncDuelEnabled();
+  const livePvpEnabled = isLivePvpEnabled();
   const asyncInboxCount = useAsyncDuelStore((state) => state.inboxCount);
   const refreshAsyncDuelHub = useAsyncDuelStore((state) => state.refreshHub);
+  const livePvpAttentionCount = useLivePvpStore((state) => state.attentionCount);
+  const livePvpCreationEnabled = useLivePvpStore((state) => state.creationEnabled);
+  const refreshLivePvpHub = useLivePvpStore((state) => state.refreshHub);
+  const refreshLivePvpOps = useLivePvpStore((state) => state.refreshOps);
   const unreadNotifications = useDuelNotificationStore((state) => state.unreadCount);
   const refreshUnreadNotifications = useDuelNotificationStore(
     (state) => state.refreshUnreadCount,
@@ -275,6 +282,21 @@ export function HomeScreen({ navigation, route }: HomeScreenProps) {
     void refreshAsyncDuelHub();
     void refreshUnreadNotifications();
   }, [asyncDuelEnabled, authStatus, refreshAsyncDuelHub, refreshUnreadNotifications]);
+
+  useEffect(() => {
+    if (!livePvpEnabled || authStatus !== 'online') {
+      return;
+    }
+    void refreshLivePvpOps();
+    void refreshLivePvpHub();
+    void refreshUnreadNotifications();
+  }, [
+    authStatus,
+    livePvpEnabled,
+    refreshLivePvpHub,
+    refreshLivePvpOps,
+    refreshUnreadNotifications,
+  ]);
 
   useEffect(() => {
     if (!dailyChallengeEnabled) {
@@ -588,7 +610,44 @@ export function HomeScreen({ navigation, route }: HomeScreenProps) {
                 <Text style={styles.asyncDuelCta}>DUEL</Text>
               </Pressable>
             ) : null}
-            {asyncDuelEnabled ? (
+            {livePvpEnabled ? (
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel={
+                  !livePvpCreationEnabled
+                    ? 'Live PvP. Temporarily unavailable.'
+                    : livePvpAttentionCount > 0
+                      ? `Live PvP. ${livePvpAttentionCount} items need attention. Open Live PvP hub.`
+                      : 'Live PvP. Go head-to-head in real time.'
+                }
+                onPress={() => navigation.navigate('LivePvpHub')}
+                style={({ pressed }) => [
+                  styles.asyncDuelEntry,
+                  pressed && styles.pressed,
+                ]}
+              >
+                <View style={styles.asyncDuelHeaderRow}>
+                  <Text style={styles.asyncDuelTitle}>LIVE PVP</Text>
+                  {livePvpAttentionCount > 0 && livePvpCreationEnabled ? (
+                    <View style={styles.asyncDuelBadge}>
+                      <Text style={styles.asyncDuelBadgeText}>
+                        {livePvpAttentionCount}{' '}
+                        {livePvpAttentionCount === 1 ? 'ALERT' : 'ALERTS'}
+                      </Text>
+                    </View>
+                  ) : null}
+                </View>
+                <Text style={styles.asyncDuelBody}>
+                  {livePvpCreationEnabled
+                    ? 'Go head-to-head in real time. Same deck. Same timer. One winner.'
+                    : 'Temporarily unavailable'}
+                </Text>
+                <Text style={styles.asyncDuelCta}>
+                  {livePvpCreationEnabled ? 'PLAY LIVE' : 'UNAVAILABLE'}
+                </Text>
+              </Pressable>
+            ) : null}
+            {asyncDuelEnabled || livePvpEnabled ? (
               <Pressable
                 accessibilityRole="button"
                 accessibilityLabel={

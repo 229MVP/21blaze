@@ -74,3 +74,12 @@ All `live_pvp_*` tables have RLS enabled and **no** client table grants. Mutatio
 Server does not reconstruct full card-action replay. Clients can inflate scores/counters within bounds. Competitive integrity for future public records will need stronger validation.
 
 **Live PvP Phase 1 is not cheat-proof.**
+
+
+## Phase 2 security notes
+
+- Client still cannot publish authoritative Broadcast.
+- Seed remains session-scoped; absent from notifications, analytics, and production logs.
+- Account switch clears Live store + coordinator.
+- No Live PvP rewards / XP / coins / public records.
+- Hub and snapshot RPCs remain the only participant read paths.

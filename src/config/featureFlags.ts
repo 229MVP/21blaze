@@ -227,8 +227,8 @@ export function isAsyncDuelEnabled(): boolean {
 }
 
 /**
- * Version 1.5 Phase 1 Live PvP foundation.
- * Defaults OFF — no full player-facing UI. Harness remains __DEV__-only.
+ * Version 1.5 Live PvP — Phase 2 playable client.
+ * Defaults OFF. Server kill switch remains authoritative.
  */
 export function isLivePvpEnabled(): boolean {
   return envFlag('EXPO_PUBLIC_ENABLE_LIVE_PVP', false);

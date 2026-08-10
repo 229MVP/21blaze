@@ -111,8 +111,10 @@ export function ResultsScreen({ navigation, route }: ResultsScreenProps) {
   const gameMode = useGameStore((state) => state.gameMode);
   const dailyChallengeSession = useGameStore((state) => state.dailyChallengeSession);
   const asyncDuelSession = useGameStore((state) => state.asyncDuelSession);
+  const livePvpSession = useGameStore((state) => state.livePvpSession);
   const clearDailyChallengeMode = useGameStore((state) => state.clearDailyChallengeMode);
   const clearAsyncDuelMode = useGameStore((state) => state.clearAsyncDuelMode);
+  const clearLivePvpMode = useGameStore((state) => state.clearLivePvpMode);
   const dailyExact21Count = useGameStore((state) => state.dailyExact21Count);
   const dailyFiveCardClearCount = useGameStore((state) => state.dailyFiveCardClearCount);
   const dailyCompletionSummary = useDailyChallengeStore((state) => state.completionSummary);
@@ -231,6 +233,18 @@ export function ResultsScreen({ navigation, route }: ResultsScreenProps) {
     submissionStatus,
   ]);
 
+  // Live PvP: never declare a local winner — route to authoritative result / waiting.
+  useEffect(() => {
+    if (gameMode !== 'livePvp' || submissionStatus !== 'verified') {
+      return;
+    }
+    const matchId = livePvpSession?.matchId;
+    if (!matchId) {
+      return;
+    }
+    navigation.replace('LivePvpResult', { matchId });
+  }, [gameMode, livePvpSession?.matchId, navigation, submissionStatus]);
+
   useEffect(() => {
     if (gameMode === 'dailyChallenge') {
       trackEvent('daily_challenge_result_viewed', {
@@ -242,10 +256,16 @@ export function ResultsScreen({ navigation, route }: ResultsScreenProps) {
         role: asyncDuelSession?.participantRole ?? 'unknown',
       });
     }
+    if (gameMode === 'livePvp') {
+      trackEvent('live_result_viewed', {
+        role: livePvpSession?.participantRole ?? 'unknown',
+      });
+    }
   }, [
     asyncDuelSession?.participantRole,
     dailyChallengeSession?.attemptType,
     gameMode,
+    livePvpSession?.participantRole,
   ]);
 
   useEffect(() => {
@@ -287,6 +307,7 @@ export function ResultsScreen({ navigation, route }: ResultsScreenProps) {
     // Async Duel and Daily Challenge must never grant Solo rewards.
     if (
       gameMode === 'asyncDuel' ||
+      gameMode === 'livePvp' ||
       gameMode === 'dailyChallenge' ||
       !matchId ||
       gameOverReason === 'quit' ||
@@ -328,7 +349,7 @@ export function ResultsScreen({ navigation, route }: ResultsScreenProps) {
   ]);
 
   useEffect(() => {
-    if (gameMode === 'asyncDuel' || gameMode === 'dailyChallenge') {
+    if (gameMode === 'asyncDuel' || gameMode === 'livePvp' || gameMode === 'dailyChallenge') {
       return;
     }
     const decision = shouldSyncV1_1Reward({
@@ -566,7 +587,7 @@ export function ResultsScreen({ navigation, route }: ResultsScreenProps) {
   ]);
 
   const xpSummary = useMemo(() => {
-    if (!progressionEnabled || gameMode === 'asyncDuel' || gameMode === 'dailyChallenge') {
+    if (!progressionEnabled || gameMode === 'asyncDuel' || gameMode === 'livePvp' || gameMode === 'dailyChallenge') {
       return null;
     }
     if (eligibility === 'localOnly' || gameOverReason === 'quit') {
@@ -706,6 +727,11 @@ export function ResultsScreen({ navigation, route }: ResultsScreenProps) {
       navigation.navigate('AsyncDuelHub');
       return;
     }
+    if (gameMode === 'livePvp') {
+      clearLivePvpMode();
+      navigation.navigate('LivePvpHub');
+      return;
+    }
     if (gameMode === 'dailyChallenge') {
       clearDailyChallengeMode();
       navigation.navigate('DailyChallenge');
@@ -719,6 +745,9 @@ export function ResultsScreen({ navigation, route }: ResultsScreenProps) {
     if (gameMode === 'asyncDuel') {
       clearAsyncDuelMode();
     }
+    if (gameMode === 'livePvp') {
+      clearLivePvpMode();
+    }
     if (gameMode === 'dailyChallenge') {
       clearDailyChallengeMode();
     }
@@ -728,6 +757,9 @@ export function ResultsScreen({ navigation, route }: ResultsScreenProps) {
   const returnHome = () => {
     if (gameMode === 'asyncDuel') {
       clearAsyncDuelMode();
+    }
+    if (gameMode === 'livePvp') {
+      clearLivePvpMode();
     }
     if (gameMode === 'dailyChallenge') {
       clearDailyChallengeMode();
@@ -1082,6 +1114,38 @@ export function ResultsScreen({ navigation, route }: ResultsScreenProps) {
                     navigation.navigate('AsyncDuelHub');
                   }}
                   accessibilityLabel="Back to Async Duel hub"
+                />
+                <BlazeButton
+                  label="HOME"
+                  variant="secondary"
+                  onPress={returnHome}
+                />
+              </>
+            ) : gameMode === 'livePvp' ? (
+              <>
+                <BlazeButton
+                  label={
+                    submissionStatus === 'failed'
+                      ? 'RETRY SUBMIT'
+                      : submissionStatus === 'submitting'
+                        ? 'VERIFYING…'
+                        : 'VIEW LIVE RESULT'
+                  }
+                  loading={submissionStatus === 'submitting'}
+                  onPress={() => {
+                    if (submissionStatus === 'failed') {
+                      void submitVerifiedMatchIfNeeded();
+                      return;
+                    }
+                    const matchId = livePvpSession?.matchId;
+                    clearLivePvpMode();
+                    if (matchId) {
+                      navigation.replace('LivePvpResult', { matchId });
+                      return;
+                    }
+                    navigation.navigate('LivePvpHub');
+                  }}
+                  accessibilityLabel="View Live PvP result"
                 />
                 <BlazeButton
                   label="HOME"

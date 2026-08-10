@@ -15,7 +15,7 @@ import { mapAsyncDuelErrorMessage } from '../asyncDuel/asyncDuelErrorMap';
 import { BlazeButton } from '../components/buttons/BlazeButton';
 import { ScreenHeader } from '../components/Navigation/ScreenHeader';
 import { ScreenContainer } from '../components/ScreenContainer';
-import { isAsyncDuelEnabled } from '../config/featureFlags';
+import { isAsyncDuelEnabled, isLivePvpEnabled } from '../config/featureFlags';
 import type { NotificationsScreenProps } from '../navigation/navigationTypes';
 import {
   formatNotificationBody,
@@ -62,28 +62,30 @@ export function NotificationsScreen({ navigation }: NotificationsScreenProps) {
     void refreshNotifications();
   }, [refreshNotifications]);
 
+  const notificationsEnabled = isAsyncDuelEnabled() || isLivePvpEnabled();
+
   useFocusEffect(
     useCallback(() => {
-      if (authStatus === 'online' && isAsyncDuelEnabled()) {
+      if (authStatus === 'online' && notificationsEnabled) {
         refresh();
       }
-    }, [authStatus, refresh]),
+    }, [authStatus, notificationsEnabled, refresh]),
   );
 
   useEffect(() => {
     const sub = AppState.addEventListener('change', (state) => {
-      if (state === 'active' && authStatus === 'online' && isAsyncDuelEnabled()) {
+      if (state === 'active' && authStatus === 'online' && notificationsEnabled) {
         refresh();
       }
     });
     return () => sub.remove();
-  }, [authStatus, refresh]);
+  }, [authStatus, notificationsEnabled, refresh]);
 
-  if (!isAsyncDuelEnabled()) {
+  if (!notificationsEnabled) {
     return (
       <ScreenContainer style={styles.container} intensity="normal" padded={false}>
         <ScreenHeader title="NOTIFICATIONS" />
-        <Text style={styles.empty}>Async Duel notifications are not enabled.</Text>
+        <Text style={styles.empty}>Competitive notifications are not enabled.</Text>
       </ScreenContainer>
     );
   }
@@ -181,13 +183,27 @@ export function NotificationsScreen({ navigation }: NotificationsScreenProps) {
                     return;
                   }
                   if (link.screen === 'AsyncDuelResult') {
-                    navigation.navigate('AsyncDuelResult', { duelId: link.duelId });
+                    navigation.navigate('AsyncDuelResult', { duelId: link.duelId! });
                     return;
                   }
                   if (link.screen === 'AsyncDuelChallengeDetails') {
                     navigation.navigate('AsyncDuelChallengeDetails', {
-                      duelId: link.duelId,
+                      duelId: link.duelId!,
                     });
+                    return;
+                  }
+                  if (link.screen === 'LivePvpInviteDetails' && link.matchId) {
+                    navigation.navigate('LivePvpInviteDetails', {
+                      matchId: link.matchId,
+                    });
+                    return;
+                  }
+                  if (link.screen === 'LivePvpResult' && link.matchId) {
+                    navigation.navigate('LivePvpResult', { matchId: link.matchId });
+                    return;
+                  }
+                  if (link.screen === 'LivePvpHub') {
+                    navigation.navigate('LivePvpHub');
                     return;
                   }
                   navigation.navigate('AsyncDuelHub');

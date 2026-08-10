@@ -1,5 +1,5 @@
 /**
- * Central registry for Async Duel notification types.
+ * Central registry for competitive notification types (Async Duel + Live PvP).
  * Screens must not invent titles, recipients, or deep-link destinations.
  */
 
@@ -7,7 +7,10 @@ export type PlayerNotificationType =
   | 'DUEL_CHALLENGE_RECEIVED'
   | 'DUEL_COMPLETED'
   | 'DUEL_DECLINED'
-  | 'DUEL_EXPIRED';
+  | 'DUEL_EXPIRED'
+  | 'LIVE_MATCH_INVITE_RECEIVED'
+  | 'LIVE_MATCH_RESULT_READY'
+  | 'LIVE_MATCH_CANCELLED';
 
 export type NotificationPreferenceCategory =
   | 'duel_challenges'
@@ -17,11 +20,15 @@ export type NotificationPreferenceCategory =
 export type NotificationDeepLinkScreen =
   | 'AsyncDuelChallengeDetails'
   | 'AsyncDuelResult'
-  | 'AsyncDuelHub';
+  | 'AsyncDuelHub'
+  | 'LivePvpInviteDetails'
+  | 'LivePvpResult'
+  | 'LivePvpHub';
 
 export type NotificationDeepLink = {
   screen: NotificationDeepLinkScreen;
-  duelId: string;
+  duelId?: string;
+  matchId?: string;
 };
 
 export type PlayerNotificationBodyData = {
@@ -29,12 +36,14 @@ export type PlayerNotificationBodyData = {
   challengerScore?: number;
   outcome?: string;
   duelId?: string;
+  matchId?: string;
 };
 
 export type PlayerNotification = {
   id: string;
   notificationType: PlayerNotificationType;
   duelId: string | null;
+  matchId: string | null;
   titleKey: string;
   bodyData: PlayerNotificationBodyData;
   deepLinkData: NotificationDeepLink | null;
@@ -83,6 +92,7 @@ type RegistryEntry = {
   deepLinkScreen: NotificationDeepLinkScreen;
   preferenceCategory: NotificationPreferenceCategory;
   dedupePattern: string;
+  entity: 'duel' | 'live_match';
 };
 
 export const DUEL_NOTIFICATION_REGISTRY: Record<PlayerNotificationType, RegistryEntry> = {
@@ -95,6 +105,7 @@ export const DUEL_NOTIFICATION_REGISTRY: Record<PlayerNotificationType, Registry
     deepLinkScreen: 'AsyncDuelChallengeDetails',
     preferenceCategory: 'duel_challenges',
     dedupePattern: 'duel_challenge_received:{duelId}:{recipientUserId}',
+    entity: 'duel',
   },
   DUEL_COMPLETED: {
     key: 'DUEL_COMPLETED',
@@ -105,6 +116,7 @@ export const DUEL_NOTIFICATION_REGISTRY: Record<PlayerNotificationType, Registry
     deepLinkScreen: 'AsyncDuelResult',
     preferenceCategory: 'duel_results',
     dedupePattern: 'duel_completed:{duelId}:{recipientUserId}',
+    entity: 'duel',
   },
   DUEL_DECLINED: {
     key: 'DUEL_DECLINED',
@@ -115,21 +127,56 @@ export const DUEL_NOTIFICATION_REGISTRY: Record<PlayerNotificationType, Registry
     deepLinkScreen: 'AsyncDuelChallengeDetails',
     preferenceCategory: 'duel_status',
     dedupePattern: 'duel_declined:{duelId}:{recipientUserId}',
+    entity: 'duel',
   },
   DUEL_EXPIRED: {
     key: 'DUEL_EXPIRED',
     intendedRecipient: 'both_participants',
     inAppTitle: 'CHALLENGE EXPIRED',
-    inAppBody: 'A duel challenge has expired.',
+    inAppBody: 'A duel invitation expired.',
     pushEligible: false,
     deepLinkScreen: 'AsyncDuelChallengeDetails',
     preferenceCategory: 'duel_status',
     dedupePattern: 'duel_expired:{duelId}:{recipientUserId}',
+    entity: 'duel',
+  },
+  LIVE_MATCH_INVITE_RECEIVED: {
+    key: 'LIVE_MATCH_INVITE_RECEIVED',
+    intendedRecipient: 'opponent',
+    inAppTitle: 'LIVE CHALLENGE',
+    inAppBody: '{name} wants to play now.',
+    pushEligible: true,
+    deepLinkScreen: 'LivePvpInviteDetails',
+    preferenceCategory: 'duel_challenges',
+    dedupePattern: 'live_match_invite:{matchId}:{recipientUserId}',
+    entity: 'live_match',
+  },
+  LIVE_MATCH_RESULT_READY: {
+    key: 'LIVE_MATCH_RESULT_READY',
+    intendedRecipient: 'both_participants',
+    inAppTitle: 'LIVE RESULT',
+    inAppBody: 'Your Live match with {name} is ready.',
+    pushEligible: true,
+    deepLinkScreen: 'LivePvpResult',
+    preferenceCategory: 'duel_results',
+    dedupePattern: 'live_match_result:{matchId}:{recipientUserId}',
+    entity: 'live_match',
+  },
+  LIVE_MATCH_CANCELLED: {
+    key: 'LIVE_MATCH_CANCELLED',
+    intendedRecipient: 'both_participants',
+    inAppTitle: 'LIVE CANCELLED',
+    inAppBody: 'A Live challenge was cancelled.',
+    pushEligible: true,
+    deepLinkScreen: 'LivePvpHub',
+    preferenceCategory: 'duel_status',
+    dedupePattern: 'live_match_cancelled:{matchId}:{recipientUserId}',
+    entity: 'live_match',
   },
 };
 
 export function formatNotificationTitle(type: PlayerNotificationType): string {
-  return DUEL_NOTIFICATION_REGISTRY[type]?.inAppTitle ?? 'DUEL UPDATE';
+  return DUEL_NOTIFICATION_REGISTRY[type]?.inAppTitle ?? 'UPDATE';
 }
 
 export function formatNotificationBody(
@@ -153,6 +200,8 @@ export function parseNotificationDeepLink(
   const record = value as Record<string, unknown>;
   const screen = record.screen;
   const duelId = record.duelId;
+  const matchId = record.matchId;
+
   if (
     (screen === 'AsyncDuelChallengeDetails' ||
       screen === 'AsyncDuelResult' ||
@@ -162,5 +211,21 @@ export function parseNotificationDeepLink(
   ) {
     return { screen, duelId };
   }
+
+  if (
+    (screen === 'LivePvpInviteDetails' ||
+      screen === 'LivePvpResult' ||
+      screen === 'LivePvpHub') &&
+    typeof matchId === 'string' &&
+    matchId.length > 0
+  ) {
+    return { screen, matchId };
+  }
+
+  // Hub-only live deep link without match id
+  if (screen === 'LivePvpHub') {
+    return { screen, matchId: typeof matchId === 'string' ? matchId : undefined };
+  }
+
   return null;
 }

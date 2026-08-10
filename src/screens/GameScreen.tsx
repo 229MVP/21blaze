@@ -51,6 +51,7 @@ import { trackEvent } from '../monetization/analytics';
 import type { GameScreenProps } from '../navigation/navigationTypes';
 import { blazeHaptics } from '../services/haptics/blazeHaptics';
 import { useGameStore } from '../store/useGameStore';
+import { useLivePvpStore } from '../store/useLivePvpStore';
 import {
   colors as kitColors,
   spacing as kitSpacing,
@@ -90,6 +91,8 @@ export function GameScreen({ navigation }: GameScreenProps) {
   const gameMode = useGameStore((state) => state.gameMode);
   const dailyChallengeSession = useGameStore((state) => state.dailyChallengeSession);
   const asyncDuelSession = useGameStore((state) => state.asyncDuelSession);
+  const livePvpSession = useGameStore((state) => state.livePvpSession);
+  const clearLivePvpMode = useGameStore((state) => state.clearLivePvpMode);
 
   useInterstitialScreenTracking(
     gameMode === 'dailyChallenge' ? 'dailyChallenge' : 'gameplay',
@@ -125,7 +128,7 @@ export function GameScreen({ navigation }: GameScreenProps) {
   useEffect(() => {
     const current = useGameStore.getState();
     // Mode-bound sessions are prepared before navigation — never replace their seed.
-    if (current.gameMode === 'dailyChallenge' || current.gameMode === 'asyncDuel') {
+    if (current.gameMode === 'dailyChallenge' || current.gameMode === 'asyncDuel' || current.gameMode === 'livePvp') {
       return;
     }
     if (
@@ -304,14 +307,29 @@ export function GameScreen({ navigation }: GameScreenProps) {
 
   const performQuitToHome = useCallback(() => {
     setConfirmKind(null);
+    if (useGameStore.getState().gameMode === 'livePvp') {
+      const session = useGameStore.getState().livePvpSession;
+      if (session) {
+        void useLivePvpStore.getState().forfeit(session.matchId);
+      }
+      clearLivePvpMode();
+      navigation.reset({
+        index: 0,
+        routes: [{ name: 'Home' }, { name: 'LivePvpHub' }],
+      });
+      return;
+    }
     quitGame();
     navigation.reset({
       index: 0,
       routes: [{ name: 'Home' }],
     });
-  }, [navigation, quitGame]);
+  }, [clearLivePvpMode, navigation, quitGame]);
 
   const handlePause = () => {
+    if (gameMode === 'livePvp') {
+      return;
+    }
     if (timerStatus === 'running') {
       pauseGame(Date.now());
     }
@@ -323,34 +341,64 @@ export function GameScreen({ navigation }: GameScreenProps) {
 
   const isDailyChallenge = gameMode === 'dailyChallenge';
   const isAsyncDuel = gameMode === 'asyncDuel';
+  const isLivePvp = gameMode === 'livePvp';
   const isDailyRanked =
     isDailyChallenge && dailyChallengeSession?.attemptType === 'ranked';
-  const hideRestart = isDailyRanked || isAsyncDuel;
-  const challengeLabel = isAsyncDuel
-    ? `ASYNC DUEL · vs ${asyncDuelSession?.opponentDisplayName ?? 'Opponent'}`
-    : dailyChallengeSession?.attemptType === 'ranked'
-      ? 'DAILY RANKED'
-      : dailyChallengeSession?.attemptType === 'practice'
-        ? 'DAILY PRACTICE'
-        : null;
+  const hideRestart = isDailyRanked || isAsyncDuel || isLivePvp;
+  const liveConnection = useLivePvpStore((s) => s.connectionState);
+  const opponentPresenceConnected = useLivePvpStore((s) => s.opponentPresenceConnected);
+  const liveSnapshot = useLivePvpStore((s) => s.snapshot);
+  const liveOpponentScore =
+    liveSnapshot?.progress.find(
+      (p) =>
+        p.userId !==
+        (liveSnapshot.participantRole === 'challenger'
+          ? liveSnapshot.challenger.userId
+          : liveSnapshot.opponent.userId),
+    )?.score ?? null;
+  const liveHeaderStatus =
+    liveConnection === 'reconnecting' || liveConnection === 'connecting'
+      ? 'RECONNECTING'
+      : opponentPresenceConnected === false
+        ? 'OPPONENT RECONNECTING'
+        : liveSnapshot?.myAttempt?.status === 'completed'
+          ? 'FINISHED'
+          : 'LIVE';
+  const challengeLabel = isLivePvp
+    ? `LIVE · vs ${livePvpSession?.opponentDisplayName ?? 'Opponent'}`
+    : isAsyncDuel
+      ? `ASYNC DUEL · vs ${asyncDuelSession?.opponentDisplayName ?? 'Opponent'}`
+      : dailyChallengeSession?.attemptType === 'ranked'
+        ? 'DAILY RANKED'
+        : dailyChallengeSession?.attemptType === 'practice'
+          ? 'DAILY PRACTICE'
+          : null;
   const targetScoreLabel =
     isAsyncDuel &&
     asyncDuelSession?.participantRole === 'opponent' &&
     asyncDuelSession.targetScore != null
       ? `TARGET ${asyncDuelSession.targetScore.toLocaleString()}`
-      : null;
-  const countdownTitle = isAsyncDuel
-    ? 'ASYNC DUEL'
-    : isDailyChallenge
-      ? 'DAILY CHALLENGE'
-      : 'GET READY!';
-  const countdownSubtitle = isAsyncDuel
-    ? `vs ${asyncDuelSession?.opponentDisplayName ?? 'Opponent'}`
-    : isDailyChallenge
-      ? dailyChallengeSession?.attemptType === 'ranked'
-        ? 'RANKED ATTEMPT'
-        : 'PRACTICE'
-      : undefined;
+      : isLivePvp && liveOpponentScore != null
+        ? `OPP ${liveOpponentScore.toLocaleString()} · ${liveHeaderStatus}`
+        : isLivePvp
+          ? liveHeaderStatus
+          : null;
+  const countdownTitle = isLivePvp
+    ? 'LIVE PVP'
+    : isAsyncDuel
+      ? 'ASYNC DUEL'
+      : isDailyChallenge
+        ? 'DAILY CHALLENGE'
+        : 'GET READY!';
+  const countdownSubtitle = isLivePvp
+    ? `vs ${livePvpSession?.opponentDisplayName ?? 'Opponent'}`
+    : isAsyncDuel
+      ? `vs ${asyncDuelSession?.opponentDisplayName ?? 'Opponent'}`
+      : isDailyChallenge
+        ? dailyChallengeSession?.attemptType === 'ranked'
+          ? 'RANKED ATTEMPT'
+          : 'PRACTICE'
+        : undefined;
   const isCountdown = timerStatus === 'countdown';
   const isPaused = timerStatus === 'paused';
   const canPlay =
@@ -542,18 +590,18 @@ export function GameScreen({ navigation }: GameScreenProps) {
             layout="row"
             safeAreaEnabled={false}
             primaryAction={{
-              label: 'RESTART',
-              onPress: requestRestartConfirm,
+              label: isLivePvp ? 'LEAVE' : 'RESTART',
+              onPress: isLivePvp ? requestQuitConfirm : requestRestartConfirm,
               variant: 'danger',
-              disabled: hideRestart,
-              accessibilityLabel: 'Restart game',
+              disabled: hideRestart && !isLivePvp,
+              accessibilityLabel: isLivePvp ? 'Leave live match' : 'Restart game',
             }}
             secondaryAction={{
-              label: 'PAUSE',
-              onPress: handlePause,
+              label: isLivePvp ? 'FORFEIT' : 'PAUSE',
+              onPress: isLivePvp ? requestQuitConfirm : handlePause,
               variant: 'secondary',
-              disabled: timerStatus !== 'running',
-              accessibilityLabel: 'Pause game',
+              disabled: isLivePvp ? status !== 'playing' : timerStatus !== 'running',
+              accessibilityLabel: isLivePvp ? 'Forfeit live match' : 'Pause game',
             }}
           />
         </View>
@@ -570,10 +618,14 @@ export function GameScreen({ navigation }: GameScreenProps) {
         />
         <ConfirmationModal
           visible={confirmKind === 'quit'}
-          title="Quit Match"
-          message="Leave this timed run and return home?"
-          confirmLabel="QUIT"
-          cancelLabel="CANCEL"
+          title={isLivePvp ? 'LEAVE LIVE MATCH?' : 'Quit Match'}
+          message={
+            isLivePvp
+              ? 'The official timer will continue. Leaving may forfeit the match.'
+              : 'Leave this timed run and return home?'
+          }
+          confirmLabel={isLivePvp ? 'FORFEIT & LEAVE' : 'QUIT'}
+          cancelLabel={isLivePvp ? 'STAY' : 'CANCEL'}
           danger
           onConfirm={performQuitToHome}
           onCancel={dismissConfirm}
