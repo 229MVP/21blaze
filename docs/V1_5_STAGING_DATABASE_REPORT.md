@@ -1,21 +1,41 @@
-# Version 1.5 Staging Database Report — Exit Gate
+# Version 1.5 Staging Database Report
+
+This file merges exit-gate findings (merged from `cursor/v1-5-release-freeze-1a6b`) with the RC validation branch snapshot. For shared staging promotion results, see `cursor/v1-5-shared-staging-qa-builds-1a6b` when available.
+
+## RC validation branch snapshot (initial attempt)
+
+**Status at RC branch creation:** **UNPERFORMED — staging project not linked**
+
+The RC validation agent could not positively identify the 21 Blaze staging project via available MCP connections. See `docs/V1_5_RC_VALIDATION_REPORT.md` for the full RC decision (`NOT READY — BLOCKERS REMAIN` at that time).
+
+| MCP server | Project URL | 21blaze match |
+|------------|-------------|---------------|
+| `supabase` | `https://qpxtntvnripddmspsckp.supabase.co` | **No** |
+| `DraftsPicks.com` | `https://mgplqovylfaziwnugzvh.supabase.co` | **No** |
+| `Undefeated Draft Picks` | `https://wckflnjvzyppctkzlqkc.supabase.co` | **No** |
+
+**Action required (at RC time):** Link the 21blaze **staging** project before applying v1.5 migrations.
+
+---
+
+## Exit Gate — preview branch replay
 
 **Branch:** `cursor/v1-5-release-freeze-exit-gate-1a6b`  
 **Baseline commit:** `a8ffef0` (from `origin/cursor/v1-5-release-freeze-1a6b`)  
 **Report date:** 2026-08-10  
 **Agent environment:** Cloud (Docker unavailable)
 
-## Environment identity (non-production)
+### Environment identity (non-production)
 
 | Item | Value |
 |------|--------|
-| Parent project | **21 Blaze** — ref `ioxydgrcgtvrvoxjtupr` (hosted staging/production data; **not modified** by this task) |
+| Parent project | **21 Blaze** — ref `ioxydgrcgtvrvoxjtupr` (hosted staging/production data; **not modified** by exit gate) |
 | Disposable preview branch | **v15-exit-gate** — ref `cotjuvmgcsgzuqkaimqa` |
 | Parent proof | Named "21 Blaze" in Supabase dashboard; documented in `docs/DAILY_CHALLENGE_LIVE_VERIFICATION.md` |
 | Preview proof | Branch `v15-exit-gate` with `with_data: false`, parent `ioxydgrcgtvrvoxjtupr`, `ACTIVE_HEALTHY` |
-| Production | **No** `db push`, reset, or migration applied to parent `ioxydgrcgtvrvoxjtupr` |
+| Production | **No** `db push`, reset, or migration applied to parent `ioxydgrcgtvrvoxjtupr` during exit gate |
 
-## Docker / local replay
+### Docker / local replay
 
 | Step | Status | Notes |
 |------|--------|-------|
@@ -23,7 +43,7 @@
 | `supabase start` / `supabase db reset` | **Not executed** | Requires Docker |
 | Fresh migration replay (local) | **Not executed** | Blocked by Docker |
 
-## Remote migration replay (preview branch)
+### Remote migration replay (preview branch)
 
 | Step | Status | Result |
 |------|--------|--------|
@@ -41,48 +61,45 @@
 4. `20260810183000_v1_5_phase3_live_pvp_resilience.sql`
 5. `20260810185335_v1_5_live_pvp_privilege_closure.sql`
 
-## Parent project state (unchanged)
+### Parent project state at exit gate (unchanged)
 
 | Step | Status | Result |
 |------|--------|--------|
 | `npx supabase migration list` on `ioxydgrcgtvrvoxjtupr` | **Executed** | Remote at `0012`; `0013`–`20260810185335` **pending** |
-| `db push` to parent | **Not executed** | Safety rule: no destructive/push to production-linked host without human approval |
-| `db push --dry-run` to parent | **Not executed** | Requires `SUPABASE_DB_PASSWORD` for CLI postgres role |
+| `db push` to parent | **Not executed** | Safety rule during exit gate |
 
-## Upgrade path
-
-| Path | Status | Notes |
-|------|--------|-------|
-| Fresh replay on empty DB | **Executed — passed** | Preview branch `with_data: false` + full push |
-| Upgrade from parent at `0012` | **Executed — passed** | Same push applied delta `0013`–`20260810185335` on preview forked from parent schema at `0012` |
-
-## Database tests and lint
+### Database tests and lint (preview)
 
 | Command | Status | Result |
 |---------|--------|--------|
 | Migration inline assertions | **Executed — passed** | In `20260810185335` during `db push` |
 | `npx supabase db query --linked -f scripts/livePvpPrivilegeVerification.sql` | **Executed — partial** | CLI returns last query only; `pgcrypto` extension confirmed present |
-| `npx supabase db lint --linked` | **Executed — findings** | See security section in `docs/V1_5_PRIVILEGE_VERIFICATION_REPORT.md` |
+| `npx supabase db lint --linked` | **Executed — findings** | See `docs/V1_5_PRIVILEGE_VERIFICATION_REPORT.md` |
 | `npx supabase db advisors --linked` | **Executed — failed** | `SUPABASE_DB_PASSWORD` / `cli_login_postgres` auth failure on preview |
 
-## Warnings captured from `db lint`
+### Warnings captured from `db lint` (preview)
 
 | Function / area | Level | Summary | v1.5 Live PvP relevance |
 |-----------------|-------|---------|-------------------------|
-| `enqueue_player_notification` overload | ERROR | 7-arg vs 9-arg ambiguity in async duel paths | Indirect — async duel notifications; not Live PvP RPC surface |
+| `enqueue_player_notification` overload | ERROR | 7-arg vs 9-arg ambiguity in async duel paths | Fixed in shared-staging promotion (`20260811140153`) |
 | `gen_random_bytes` in `live_pvp_try_schedule_countdown` | ERROR | Static lint cannot resolve `pgcrypto` | **Likely false positive** — `pgcrypto` present on replayed DB |
 | `room_code` ambiguity | ERROR | `try_create_quick_match` / `try_create_ranked_match` | Legacy live match; pre-v1.5 |
 | `get_weekly_leaderboard` | ERROR | `ranked` relation in lint context | Pre-v1.5 daily challenge lint artifact |
-| Many `search_path` / IMMUTABLE warnings | WARN | Broad codebase | Documented; not introduced by v1.5 closure migration |
 
-## Cleanup
+### Expected migration order (22 files)
 
-| Item | Status |
-|------|--------|
-| Delete preview branch `v15-exit-gate` | **Awaiting human** | Retain for RC QA against `cotjuvmgcsgzuqkaimqa` until parent staging is migrated |
+`0001` … `0018` → `20260810143545` → `20260810151826` → `20260810183000` → `20260810185335`
 
-## Human actions required
+Privilege closure SHA-256: `e755e2d97346e6a4123259ebc084a8d86ea65c45948d2be282a7ff6ecefa05fa`
 
-1. Apply pending migrations to shared **21 Blaze** staging (`ioxydgrcgtvrvoxjtupr`) after RC sign-off process — **not** during this exit gate.
-2. Provide `SUPABASE_DB_PASSWORD` (or dashboard SQL) to run full `livePvpPrivilegeVerification.sql` and `db advisors` on the verified environment.
-3. Optionally delete preview branch after parent staging replay is confirmed.
+### Staging verification checklist (when linked)
+
+- [ ] `supabase migration list` matches repo
+- [ ] `has_function_privilege` matrix for Live PvP RPCs
+- [ ] `anon` denied on `finalize_live_pvp_deadlines`
+- [ ] `enqueue_player_notification` overloads service_role only
+- [ ] RLS on all `live_pvp_*` tables
+- [ ] Rematch idempotency + record isolation (two test users)
+- [ ] Realtime participant isolation (A/B join, C rejected)
+- [ ] Seed not in notifications/records before countdown
+- [ ] Service-role finalizer cron on staging
