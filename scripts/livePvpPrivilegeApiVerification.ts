@@ -193,6 +193,58 @@ async function main(): Promise<void> {
     detail: authEventInsert.error?.message ?? 'insert ok (unexpected)',
   });
 
+  // unrelated authenticated user — cannot access another user's match context
+  const unrelatedEmail = `v15privu${Date.now()}@example.com`;
+  const unrelatedPassword = `ExitGate!${Date.now()}u`;
+  const unrelatedCreated = await service.auth.admin.createUser({
+    email: unrelatedEmail,
+    password: unrelatedPassword,
+    email_confirm: true,
+  });
+  if (unrelatedCreated.error || !unrelatedCreated.data.user) {
+    throw new Error(`Failed to create unrelated user: ${unrelatedCreated.error?.message ?? 'no user'}`);
+  }
+  const unrelatedSignIn = await anon.auth.signInWithPassword({
+    email: unrelatedEmail,
+    password: unrelatedPassword,
+  });
+  if (unrelatedSignIn.error || !unrelatedSignIn.data.session) {
+    throw new Error(`Failed to sign in unrelated user: ${unrelatedSignIn.error?.message ?? 'no session'}`);
+  }
+  const unrelated = createClient(url, anonKey, {
+    auth: { persistSession: false, autoRefreshToken: false },
+    global: { headers: { Authorization: `Bearer ${unrelatedSignIn.data.session.access_token}` } },
+  });
+
+  const unrelatedSnapshot = await unrelated.rpc('get_live_pvp_snapshot', { p_match_id: fakeMatchId });
+  const unrelatedDenied =
+    isPermissionDenied(unrelatedSnapshot.error) ||
+    String(unrelatedSnapshot.error?.message ?? '').toLowerCase().includes('not found') ||
+    String(unrelatedSnapshot.error?.message ?? '').toLowerCase().includes('match_not_found') ||
+    String(unrelatedSnapshot.error?.message ?? '').toLowerCase().includes('not a participant');
+  rows.push({
+    role: 'authenticated_unrelated',
+    action: 'get_live_pvp_snapshot (non-participant)',
+    ok: unrelatedDenied,
+    detail: unrelatedSnapshot.error?.message ?? 'data returned (unexpected)',
+  });
+
+  const unrelatedTable = await unrelated.from('live_pvp_matches').select('id').limit(1);
+  rows.push({
+    role: 'authenticated_unrelated',
+    action: 'select live_pvp_matches (direct)',
+    ok: !!unrelatedTable.error,
+    detail: unrelatedTable.error?.message ?? 'rows returned (unexpected)',
+  });
+
+  const unrelatedFinalize = await unrelated.rpc('finalize_live_pvp_deadlines', { p_limit: 1 });
+  rows.push({
+    role: 'authenticated_unrelated',
+    action: 'finalize_live_pvp_deadlines',
+    ok: isPermissionDenied(unrelatedFinalize.error),
+    detail: unrelatedFinalize.error?.message ?? 'no error (unexpected)',
+  });
+
   const failures = rows.filter((r) => !r.ok);
   for (const row of rows) {
     const status = row.ok ? 'PASS' : 'FAIL';

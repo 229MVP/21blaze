@@ -1,88 +1,78 @@
-# Version 1.5 Staging Database Report — Exit Gate
+# Version 1.5 Staging Database Report — Shared Staging Promotion
 
-**Branch:** `cursor/v1-5-release-freeze-exit-gate-1a6b`  
-**Baseline commit:** `a8ffef0` (from `origin/cursor/v1-5-release-freeze-1a6b`)  
-**Report date:** 2026-08-10  
-**Agent environment:** Cloud (Docker unavailable)
+**Branch:** `cursor/v1-5-shared-staging-qa-builds-1a6b`  
+**Report date:** 2026-08-11
 
-## Environment identity (non-production)
+## Environment identity
 
 | Item | Value |
 |------|--------|
-| Parent project | **21 Blaze** — ref `ioxydgrcgtvrvoxjtupr` (hosted staging/production data; **not modified** by this task) |
-| Disposable preview branch | **v15-exit-gate** — ref `cotjuvmgcsgzuqkaimqa` |
-| Parent proof | Named "21 Blaze" in Supabase dashboard; documented in `docs/DAILY_CHALLENGE_LIVE_VERIFICATION.md` |
-| Preview proof | Branch `v15-exit-gate` with `with_data: false`, parent `ioxydgrcgtvrvoxjtupr`, `ACTIVE_HEALTHY` |
-| Production | **No** `db push`, reset, or migration applied to parent `ioxydgrcgtvrvoxjtupr` |
+| Project name | **21 Blaze** |
+| Project ref | `ioxydgrcgtvrvoxjtupr` |
+| API hostname | `https://ioxydgrcgtvrvoxjtupr.supabase.co` |
+| Organization | Draft Picks LLC (`vgcppwnnarfcdxioyyyx`) |
+| Classification | Repository-documented shared hosted backend — **not** a separate disposable preview |
+| Production | No other 21 Blaze Supabase ref in repository; this is the documented hosted target |
+
+## Migration plan (executed)
+
+Pending range before promotion: after remote `0012` through privilege closure, plus forward overload fix.
+
+| Order | Migration | Primary effects |
+|-------|-----------|-----------------|
+| 1 | `0013_v1_3_phase3_leaderboards_streaks_rewards.sql` | Leaderboards, streaks, rewards tables/functions |
+| 2 | `0014_v1_3_phase4_progression.sql` | Progression RPCs and policies |
+| 3 | `0015_v1_4_phase1_async_duel_foundation.sql` | Async duel schema |
+| 4 | `0016_v1_4_phase2_async_duel_playable.sql` | Async duel gameplay RPCs |
+| 5 | `0017_v1_4_phase3_async_duel_notifications.sql` | Notifications, `enqueue_player_notification` (7-arg) |
+| 6 | `0018_v1_4_release_freeze_safeguards.sql` | Async duel safeguards, enqueue update |
+| 7 | `20260810143545_v1_5_phase1_live_pvp_foundation.sql` | Live PvP tables, RLS, Realtime policies, core RPCs |
+| 8 | `20260810151826_v1_5_phase2_live_pvp_playable.sql` | Hub/ops RPCs, enqueue 9-arg overload |
+| 9 | `20260810183000_v1_5_phase3_live_pvp_resilience.sql` | Rematch, records, snapshot hardening |
+| 10 | `20260810185335_v1_5_live_pvp_privilege_closure.sql` | REVOKE/GRANT closure, inline privilege assertions |
+| 11 | `20260811140153_enqueue_player_notification_drop_7arg_overload.sql` | DROP obsolete 7-arg enqueue overload |
+
+**Data-destructive statements:** None in pending v1.5 migrations (DDL additive + grants). No `db reset` on remote.
+
+**Locking risks:** Standard migration locks on new tables/indexes; applied during promotion window.
+
+**Realtime:** Live PvP private channel authorization policies in phase 1 foundation.
+
+**Rollback:** Forward-only; overload fix is additive DROP of duplicate function.
+
+## Promotion result
+
+| Step | Status |
+|------|--------|
+| `npx supabase link --project-ref ioxydgrcgtvrvoxjtupr` | **Passed** |
+| `npx supabase migration list --linked` (pre) | Remote `0012`; pending `0013`–`20260810185335` |
+| `npx supabase db push --linked --yes` | **Passed** — 10 migrations applied |
+| `npx supabase db push` (overload fix) | **Passed** — `20260811140153` applied |
+| Remote migration head | **`20260811140153_enqueue_player_notification_drop_7arg_overload`** |
+| `live_pvp_creation_enabled` default after migration | `true` → **set to `false`** for RC safety |
+
+## Smoke queries (post-promotion)
+
+| Check | Result |
+|-------|--------|
+| `enqueue_player_notification` overload count | **1** (9-arg only) |
+| `pgcrypto` extension | **Present** |
+| `live_pvp_matches` RLS | Enabled; direct client access denied (API tests) |
+
+## Lint (`npx supabase db lint --linked`)
+
+Remaining ERROR-level findings (legacy / static-analysis artifacts):
+
+- `room_code` ambiguity in quick/ranked match functions (pre-v1.5)
+- `ranked` relation in weekly leaderboard lint context
+- `gen_random_bytes` in static lint for async duel / live PvP countdown (`pgcrypto` present at runtime)
+
+`enqueue_player_notification` ambiguity: **resolved** after overload DROP migration.
+
+## Advisors
+
+`npx supabase db advisors --linked`: **Failed** — CLI postgres role password (`SUPABASE_DB_PASSWORD`) not available in agent environment.
 
 ## Docker / local replay
 
-| Step | Status | Notes |
-|------|--------|-------|
-| Docker available | **Not executed** | `docker: command not found` |
-| `supabase start` / `supabase db reset` | **Not executed** | Requires Docker |
-| Fresh migration replay (local) | **Not executed** | Blocked by Docker |
-
-## Remote migration replay (preview branch)
-
-| Step | Status | Result |
-|------|--------|--------|
-| Create preview branch `v15-exit-gate` | **Executed — passed** | Reused existing branch from prior session |
-| `npx supabase link --project-ref cotjuvmgcsgzuqkaimqa` | **Executed — passed** | |
-| `npx supabase migration list --linked` | **Executed — passed** | All local migrations through `20260810185335` match remote |
-| `npx supabase db push --yes` (prior session) | **Executed — passed** | Applied `0013`–`0018` + Live PvP `20260810143545` … `20260810185335` |
-| Privilege closure migration | **Executed — passed** | `20260810185335_v1_5_live_pvp_privilege_closure.sql` applied; inline `has_function_privilege` DO block ran during push |
-
-### Migration chain verified on preview
-
-1. `0001` … `0018` (v1.4 baseline)
-2. `20260810143545_v1_5_phase1_live_pvp_foundation.sql`
-3. `20260810151826_v1_5_phase2_live_pvp_playable.sql`
-4. `20260810183000_v1_5_phase3_live_pvp_resilience.sql`
-5. `20260810185335_v1_5_live_pvp_privilege_closure.sql`
-
-## Parent project state (unchanged)
-
-| Step | Status | Result |
-|------|--------|--------|
-| `npx supabase migration list` on `ioxydgrcgtvrvoxjtupr` | **Executed** | Remote at `0012`; `0013`–`20260810185335` **pending** |
-| `db push` to parent | **Not executed** | Safety rule: no destructive/push to production-linked host without human approval |
-| `db push --dry-run` to parent | **Not executed** | Requires `SUPABASE_DB_PASSWORD` for CLI postgres role |
-
-## Upgrade path
-
-| Path | Status | Notes |
-|------|--------|-------|
-| Fresh replay on empty DB | **Executed — passed** | Preview branch `with_data: false` + full push |
-| Upgrade from parent at `0012` | **Executed — passed** | Same push applied delta `0013`–`20260810185335` on preview forked from parent schema at `0012` |
-
-## Database tests and lint
-
-| Command | Status | Result |
-|---------|--------|--------|
-| Migration inline assertions | **Executed — passed** | In `20260810185335` during `db push` |
-| `npx supabase db query --linked -f scripts/livePvpPrivilegeVerification.sql` | **Executed — partial** | CLI returns last query only; `pgcrypto` extension confirmed present |
-| `npx supabase db lint --linked` | **Executed — findings** | See security section in `docs/V1_5_PRIVILEGE_VERIFICATION_REPORT.md` |
-| `npx supabase db advisors --linked` | **Executed — failed** | `SUPABASE_DB_PASSWORD` / `cli_login_postgres` auth failure on preview |
-
-## Warnings captured from `db lint`
-
-| Function / area | Level | Summary | v1.5 Live PvP relevance |
-|-----------------|-------|---------|-------------------------|
-| `enqueue_player_notification` overload | ERROR | 7-arg vs 9-arg ambiguity in async duel paths | Indirect — async duel notifications; not Live PvP RPC surface |
-| `gen_random_bytes` in `live_pvp_try_schedule_countdown` | ERROR | Static lint cannot resolve `pgcrypto` | **Likely false positive** — `pgcrypto` present on replayed DB |
-| `room_code` ambiguity | ERROR | `try_create_quick_match` / `try_create_ranked_match` | Legacy live match; pre-v1.5 |
-| `get_weekly_leaderboard` | ERROR | `ranked` relation in lint context | Pre-v1.5 daily challenge lint artifact |
-| Many `search_path` / IMMUTABLE warnings | WARN | Broad codebase | Documented; not introduced by v1.5 closure migration |
-
-## Cleanup
-
-| Item | Status |
-|------|--------|
-| Delete preview branch `v15-exit-gate` | **Awaiting human** | Retain for RC QA against `cotjuvmgcsgzuqkaimqa` until parent staging is migrated |
-
-## Human actions required
-
-1. Apply pending migrations to shared **21 Blaze** staging (`ioxydgrcgtvrvoxjtupr`) after RC sign-off process — **not** during this exit gate.
-2. Provide `SUPABASE_DB_PASSWORD` (or dashboard SQL) to run full `livePvpPrivilegeVerification.sql` and `db advisors` on the verified environment.
-3. Optionally delete preview branch after parent staging replay is confirmed.
+**Not executed** — Docker unavailable in agent environment.
