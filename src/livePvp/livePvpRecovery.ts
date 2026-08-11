@@ -78,12 +78,11 @@ export function evaluateLivePvpRecovery(input: {
   if (
     Number.isFinite(deadlineMs) &&
     Number.isFinite(serverNowMs) &&
-    serverNowMs > deadlineMs &&
-    snapshot.status === 'active'
+    serverNowMs >= deadlineMs
   ) {
     return { kind: 'discard', reason: 'past_deadline' };
   }
-  if (!snapshot.seed && snapshot.status !== 'countdown') {
+  if (!snapshot.seed) {
     return { kind: 'discard', reason: 'missing_seed' };
   }
   return { kind: 'resume', checkpoint, snapshot };

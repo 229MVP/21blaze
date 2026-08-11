@@ -2,7 +2,7 @@
   "expo": {
     "name": "21 Blaze",
     "slug": "21-blaze",
-    "version": "1.4.0",
+    "version": "1.5.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "scheme": "twentyoneblaze",
@@ -10,15 +10,12 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.twentyoneblaze.app",
-      "buildNumber": "904",
+      "buildNumber": "909",
       "deploymentTarget": "16.4",
       "infoPlist": {
         "GADApplicationIdentifier": "ca-app-pub-3940256099942544~1458002511",
         "NSUserTrackingUsageDescription": "This identifier is used to deliver personalized ads when you allow tracking. Declining does not block Solo Play.",
         "SKAdNetworkItems": [
-          {
-            "SKAdNetworkIdentifier": "cstr6suwn9.skadnetwork"
-          },
           {
             "SKAdNetworkIdentifier": "cstr6suwn9.skadnetwork"
           }
@@ -28,7 +25,7 @@
     },
     "android": {
       "package": "com.twentyoneblaze.app",
-      "versionCode": 901,
+      "versionCode": 902,
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
         "foregroundImage": "./assets/android-icon-foreground.png",
@@ -37,10 +34,6 @@
       },
       "predictiveBackGestureEnabled": false,
       "permissions": [
-        "android.permission.RECORD_AUDIO",
-        "android.permission.MODIFY_AUDIO_SETTINGS",
-        "android.permission.FOREGROUND_SERVICE",
-        "android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK",
         "android.permission.RECORD_AUDIO",
         "android.permission.MODIFY_AUDIO_SETTINGS",
         "android.permission.FOREGROUND_SERVICE",
@@ -74,17 +67,21 @@
       ],
       "expo-audio",
       "expo-asset",
+      "./plugins/withAndroidKotlinGradle.js",
       [
         "expo-build-properties",
         {
           "ios": {
             "deploymentTarget": "16.4"
+          },
+          "android": {
+            "kotlinVersion": "2.3.0"
           }
         }
       ]
     ],
     "extra": {
-      "rcVersion": "0.9.0",
+      "rcVersion": "1.5.0",
       "note": "EAS projectId is a PLACEHOLDER — replace via `eas init` / EXPO_TOKEN before preview builds. AdMob IDs above are Google TEST IDs (acceptable for Internal Beta preview; forbidden in production store binaries).",
       "eas": {
         "projectId": "0c5db163-a4c0-4a17-9a8a-e12eed3bf511"

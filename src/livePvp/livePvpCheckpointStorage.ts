@@ -1,48 +1,21 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-import type { Card, Lane, TimerStatus } from '../game/types';
-import type { LiveMatchParticipantRole } from './livePvpTypes';
+import { livePvpDiagnostics } from './livePvpDiagnostics';
+import type { LivePvpCheckpointV2 } from './livePvpCheckpointValidate';
+import {
+  LIVE_PVP_CHECKPOINT_SCHEMA_VERSION,
+  validateLivePvpCheckpointPayload,
+  type LivePvpCheckpointLoadResult,
+} from './livePvpCheckpointValidate';
 
-export const LIVE_PVP_CHECKPOINT_SCHEMA_VERSION = 1;
 const STORAGE_KEY = '@21blaze/livePvpCheckpoint';
 
-export type LivePvpCheckpointEngine = {
-  deck: Card[];
-  activeCard: Card | null;
-  lanes: Lane[];
-  score: number;
-  multiplier: number;
-  busts: number;
-  clearedLanes: number;
-  cardsPlayed: number;
-  exact21Count: number;
-  fiveCardClearCount: number;
-  timerStatus: TimerStatus;
-  gameStartedAt: number | null;
-  timeRemainingSeconds: number;
-};
+export type LivePvpCheckpointEngine = LivePvpCheckpointV2['engine'];
+export type LivePvpCheckpoint = LivePvpCheckpointV2;
 
-export type LivePvpCheckpoint = {
-  schemaVersion: typeof LIVE_PVP_CHECKPOINT_SCHEMA_VERSION;
-  userId: string;
-  matchId: string;
-  attemptId: string;
-  participantRole: LiveMatchParticipantRole;
-  protocolVersion: string;
-  rulesVersion: string;
-  deckVersion: string;
-  durationSeconds: number;
-  bustLimit: number;
-  scheduledStartAt: string;
-  gameplayDeadlineAt: string;
-  submissionGraceUntil: string;
-  authoritativeSeed: string;
-  opponentDisplayName: string;
-  lastAcceptedProgressSequence: number;
-  lastAttemptedProgressSequence: number;
-  updatedAtMs: number;
-  engine: LivePvpCheckpointEngine;
-};
+export type LivePvpCheckpointSaveResult =
+  | { ok: true }
+  | { ok: false; reason: string };
 
 let lastWriteMs = 0;
 const MIN_WRITE_INTERVAL_MS = 2000;
@@ -53,19 +26,18 @@ export async function loadLivePvpCheckpoint(): Promise<LivePvpCheckpoint | null>
     if (!raw) {
       return null;
     }
-    const parsed = JSON.parse(raw) as LivePvpCheckpoint;
-    if (
-      parsed?.schemaVersion !== LIVE_PVP_CHECKPOINT_SCHEMA_VERSION ||
-      typeof parsed.userId !== 'string' ||
-      typeof parsed.matchId !== 'string' ||
-      typeof parsed.attemptId !== 'string' ||
-      typeof parsed.authoritativeSeed !== 'string' ||
-      !parsed.engine
-    ) {
+    const parsed = JSON.parse(raw) as unknown;
+    const result = validateLivePvpCheckpointPayload(parsed);
+    if (!result.ok) {
+      livePvpDiagnostics.checkpointDiscarded(result.reason);
+      await AsyncStorage.removeItem(STORAGE_KEY);
       return null;
     }
-    return parsed;
-  } catch {
+    return result.checkpoint;
+  } catch (error) {
+    const reason = error instanceof Error ? error.message : 'read_failed';
+    livePvpDiagnostics.checkpointDiscarded(reason);
+    await AsyncStorage.removeItem(STORAGE_KEY).catch(() => undefined);
     return null;
   }
 }
@@ -73,25 +45,47 @@ export async function loadLivePvpCheckpoint(): Promise<LivePvpCheckpoint | null>
 export async function saveLivePvpCheckpoint(
   checkpoint: LivePvpCheckpoint,
   options?: { force?: boolean },
-): Promise<void> {
+): Promise<LivePvpCheckpointSaveResult> {
+  const validation = validateLivePvpCheckpointPayload(checkpoint);
+  if (!validation.ok) {
+    return { ok: false, reason: validation.reason };
+  }
   const now = Date.now();
   if (!options?.force && now - lastWriteMs < MIN_WRITE_INTERVAL_MS) {
-    return;
+    return { ok: true };
   }
   lastWriteMs = now;
   const payload: LivePvpCheckpoint = {
-    ...checkpoint,
+    ...validation.checkpoint,
     schemaVersion: LIVE_PVP_CHECKPOINT_SCHEMA_VERSION,
     updatedAtMs: now,
   };
-  await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(payload)).catch(() => undefined);
+  try {
+    await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
+    return { ok: true };
+  } catch (error) {
+    const reason = error instanceof Error ? error.message : 'write_failed';
+    livePvpDiagnostics.checkpointDiscarded(reason);
+    return { ok: false, reason };
+  }
 }
 
 export async function clearLivePvpCheckpoint(): Promise<void> {
   lastWriteMs = 0;
-  await AsyncStorage.removeItem(STORAGE_KEY).catch(() => undefined);
+  try {
+    await AsyncStorage.removeItem(STORAGE_KEY);
+  } catch (error) {
+    const reason = error instanceof Error ? error.message : 'clear_failed';
+    livePvpDiagnostics.checkpointDiscarded(reason);
+  }
 }
 
 export function __resetLivePvpCheckpointWriteThrottleForTests(): void {
   lastWriteMs = 0;
+}
+
+export function __validateLivePvpCheckpointForTests(
+  raw: unknown,
+): LivePvpCheckpointLoadResult {
+  return validateLivePvpCheckpointPayload(raw);
 }

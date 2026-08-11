@@ -73,6 +73,7 @@ type LivePvpStore = {
   ) => Promise<LiveMatchSnapshot | null>;
   joinMatchChannel: (matchId: string) => Promise<void>;
   leaveMatchChannel: () => Promise<void>;
+  notifyMatchForeground: () => void;
   evaluateResumeOffer: () => Promise<string | null>;
   createRematch: (sourceMatchId: string) => Promise<LivePvpRematchResult | null>;
   loadPlayerRecord: () => Promise<void>;
@@ -421,6 +422,15 @@ export const useLivePvpStore = create<LivePvpStore>((set, get) => ({
       connectionState: 'closed',
       opponentPresenceConnected: null,
     });
+  },
+
+  notifyMatchForeground: () => {
+    const snapshot = get().snapshot;
+    if (!snapshot?.matchId) {
+      return;
+    }
+    livePvpMatchCoordinator.notifyForegroundActiveMatch();
+    void get().refreshSnapshot(snapshot.matchId);
   },
 }));
 

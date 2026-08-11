@@ -169,8 +169,8 @@ export function runAsyncDuelReleaseFreezeSelfTests(): void {
   // --- Marketing version ---
   const pkg = JSON.parse(readRepo('package.json')) as { version: string };
   const app = JSON.parse(readRepo('app.json')) as { expo: { version: string } };
-  assert(pkg.version === '1.4.0', 'package version 1.4.0');
-  assert(app.expo.version === '1.4.0', 'app.json version 1.4.0');
+  assert(pkg.version === '1.5.0', 'package version 1.5.0');
+  assert(app.expo.version === '1.5.0', 'app.json version 1.5.0');
 }
 
 runAsyncDuelReleaseFreezeSelfTests();

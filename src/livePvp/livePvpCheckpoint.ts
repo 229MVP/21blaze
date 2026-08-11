@@ -27,7 +27,7 @@ export function buildLivePvpCheckpoint(input: {
     timeRemainingSeconds: input.game.timeRemainingSeconds,
   };
   return {
-    schemaVersion: 1,
+    schemaVersion: 2,
     userId: input.userId,
     matchId: input.session.matchId,
     attemptId: input.session.attemptId,
@@ -40,7 +40,6 @@ export function buildLivePvpCheckpoint(input: {
     scheduledStartAt: input.session.scheduledStartAt,
     gameplayDeadlineAt: input.session.gameplayDeadlineAt,
     submissionGraceUntil: input.session.submissionGraceUntil,
-    authoritativeSeed: input.session.authoritativeSeed,
     opponentDisplayName: input.session.opponentDisplayName,
     lastAcceptedProgressSequence: input.lastAcceptedProgressSequence,
     lastAttemptedProgressSequence: input.lastAttemptedProgressSequence,
