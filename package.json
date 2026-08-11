@@ -74,6 +74,7 @@
     "test:live-pvp-phase3": "npx tsx src/livePvp/livePvpPhase3SelfTest.ts",
     "test:live-pvp-release": "npx tsx src/livePvp/livePvpReleaseSelfTest.ts",
     "test:admob-config": "npx tsx src/config/adMobConfigSelfTest.ts",
+    "test:live-pvp-privileges": "npx tsx scripts/livePvpPrivilegeApiVerification.ts",
     "test:daily-challenge-live": "npx tsx scripts/dailyChallengeLiveVerification.ts",
     "validate:visual-assets": "npx tsx scripts/validate-visual-assets.mjs"
   },
