@@ -44,7 +44,7 @@ import {
   useTrackLockerAffordability,
 } from '../cosmetics/useLockerCosmetics';
 import { useInterstitialScreenTracking } from '../hooks/useInterstitialScreenTracking';
-import { APP_VERSION } from '../game/constants';
+import { getAppVersion } from '../services/deviceInfo';
 import type { HomeScreenProps } from '../navigation/navigationTypes';
 import {
   maybeShowInterstitialAfterSoloHome,
@@ -752,7 +752,7 @@ export function HomeScreen({ navigation, route }: HomeScreenProps) {
 
           <View style={styles.footer}>
             <FlameIcon width={10} height={14} />
-            <Text style={styles.version}>v{APP_VERSION}</Text>
+            <Text style={styles.version}>v{getAppVersion()}</Text>
           </View>
         </ScrollView>
       </View>

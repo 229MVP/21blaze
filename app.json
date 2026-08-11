@@ -10,7 +10,7 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.twentyoneblaze.app",
-      "buildNumber": "909",
+      "buildNumber": "910",
       "deploymentTarget": "16.4",
       "infoPlist": {
         "GADApplicationIdentifier": "ca-app-pub-3940256099942544~1458002511",
@@ -25,7 +25,7 @@
     },
     "android": {
       "package": "com.twentyoneblaze.app",
-      "versionCode": 902,
+      "versionCode": 903,
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
         "foregroundImage": "./assets/android-icon-foreground.png",

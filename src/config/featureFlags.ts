@@ -6,9 +6,11 @@
  * explicitly enables them. Core Solo Play is never gated.
  */
 
-function envFlag(name: string, defaultValue: boolean): boolean {
-  const value = process.env[name];
-  if (value === undefined || value === null || value === '') {
+import { readPublicEnv, type PublicEnvName } from './publicEnv';
+
+function envFlag(name: PublicEnvName, defaultValue: boolean): boolean {
+  const value = readPublicEnv(name);
+  if (value === '') {
     return defaultValue;
   }
   const normalized = value.trim().toLowerCase();
@@ -17,7 +19,7 @@ function envFlag(name: string, defaultValue: boolean): boolean {
 
 /** development | preview | production — set by EAS build profiles. */
 export function getAppEnv(): 'development' | 'preview' | 'production' | 'unknown' {
-  const raw = (process.env.EXPO_PUBLIC_APP_ENV ?? '').trim().toLowerCase();
+  const raw = readPublicEnv('EXPO_PUBLIC_APP_ENV').toLowerCase();
   if (raw === 'development' || raw === 'preview' || raw === 'production') {
     return raw;
   }

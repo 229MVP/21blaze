@@ -209,14 +209,42 @@ export function runLivePvpReleaseSelfTests(): void {
   const supabaseClient = readRepo('src/lib/supabase.ts');
   assert(!/SERVICE_ROLE|service_role_key/i.test(supabaseClient), 'no service role in client');
 
+  // --- Expo public environment inlining ---
+  // Expo release bundles only inline static process.env.EXPO_PUBLIC_* reads.
+  const publicEnvSrc = readRepo('src/config/publicEnv.ts');
+  assert(
+    publicEnvSrc.includes('process.env.EXPO_PUBLIC_SUPABASE_URL'),
+    'static Supabase URL env reference',
+  );
+  assert(
+    publicEnvSrc.includes('process.env.EXPO_PUBLIC_ENABLE_LIVE_PVP'),
+    'static Live PvP flag env reference',
+  );
+  for (const path of [
+    'src/config/featureFlags.ts',
+    'src/lib/supabaseConfig.ts',
+    'src/monetization/adUnitIds.ts',
+    'src/monetization/revenueCatClient.ts',
+  ]) {
+    const source = readRepo(path);
+    assert(!source.includes('process.env[name]'), `${path} has no dynamic env lookup`);
+    assert(!/process\.env\s*\[/.test(source), `${path} has no bracket env lookup`);
+  }
+
   // --- Native config ---
   const appJson = readRepo('app.json');
   assert(appJson.includes('"version": "1.5.0"'), 'app version 1.5.0');
-  assert(appJson.includes('"buildNumber": "909"'), 'ios build 909');
-  assert(appJson.includes('"versionCode": 902'), 'android versionCode 902');
+  assert(appJson.includes('"buildNumber": "910"'), 'ios build 910');
+  assert(appJson.includes('"versionCode": 903'), 'android versionCode 903');
   assert(appJson.includes('withAndroidKotlinGradle.js'), 'kotlin plugin');
   assert(appJson.includes('"kotlinVersion": "2.3.0"'), 'kotlin 2.3.0');
   assert(appJson.includes('"rcVersion": "1.5.0"'), 'rcVersion 1.5.0');
+
+  const gameConstants = readRepo('src/game/constants.ts');
+  assert(gameConstants.includes("APP_VERSION = '1.5.0'"), 'visible app version 1.5.0');
+
+  const homeScreen = readRepo('src/screens/HomeScreen.tsx');
+  assert(homeScreen.includes('v{getAppVersion()}'), 'home uses native app version');
 
   const easJson = readRepo('eas.json');
   assert(easJson.includes('live-pvp-qa'), 'live-pvp-qa profile');

@@ -10,21 +10,18 @@
  * lazy `supabase` client proxy, so an unconfigured environment never
  * throws — it safely falls back to `authStatus: 'local'`.
  */
-function readEnv(name: 'EXPO_PUBLIC_SUPABASE_URL' | 'EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY'): string {
-  const value = process.env[name];
-  return value?.trim() ?? '';
-}
+import { readPublicEnv } from '../config/publicEnv';
 
 export function isSupabaseConfigured(): boolean {
   return (
-    readEnv('EXPO_PUBLIC_SUPABASE_URL').length > 0 &&
-    readEnv('EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY').length > 0
+    readPublicEnv('EXPO_PUBLIC_SUPABASE_URL').length > 0 &&
+    readPublicEnv('EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY').length > 0
   );
 }
 
 export function getSupabaseConfiguredEnv(): { url: string; publishableKey: string } {
   return {
-    url: readEnv('EXPO_PUBLIC_SUPABASE_URL'),
-    publishableKey: readEnv('EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY'),
+    url: readPublicEnv('EXPO_PUBLIC_SUPABASE_URL'),
+    publishableKey: readPublicEnv('EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY'),
   };
 }

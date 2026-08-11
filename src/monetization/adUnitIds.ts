@@ -1,6 +1,7 @@
 import { Platform } from 'react-native';
 
 import { isAdMobTestModeForced } from '../config/featureFlags';
+import { readPublicEnv } from '../config/publicEnv';
 import { resolveAdUnitId, type AdSupportedPlatform } from './adUnitResolution';
 
 /** Google sample / test IDs — used whenever production IDs are not configured. */
@@ -12,11 +13,6 @@ export const ADMOB_TEST = {
   interstitialAndroid: 'ca-app-pub-3940256099942544/1033173712',
   interstitialIos: 'ca-app-pub-3940256099942544/4411468910',
 } as const;
-
-function readEnv(name: string): string {
-  const value = process.env[name];
-  return typeof value === 'string' ? value.trim() : '';
-}
 
 function currentPlatform(): AdSupportedPlatform | null {
   if (Platform.OS === 'ios' || Platform.OS === 'android') {
@@ -35,8 +31,8 @@ export function getAdMobAppId(): string | null {
     isTestModeForced: isAdMobTestModeForced(),
     configuredValue:
       platform === 'ios'
-        ? readEnv('EXPO_PUBLIC_ADMOB_IOS_APP_ID')
-        : readEnv('EXPO_PUBLIC_ADMOB_ANDROID_APP_ID'),
+        ? readPublicEnv('EXPO_PUBLIC_ADMOB_IOS_APP_ID')
+        : readPublicEnv('EXPO_PUBLIC_ADMOB_ANDROID_APP_ID'),
     testValue: platform === 'ios' ? ADMOB_TEST.iosAppId : ADMOB_TEST.androidAppId,
   });
 }
@@ -51,8 +47,8 @@ export function getRewardedAdUnitId(): string | null {
     isTestModeForced: isAdMobTestModeForced(),
     configuredValue:
       platform === 'ios'
-        ? readEnv('EXPO_PUBLIC_ADMOB_REWARDED_IOS_ID')
-        : readEnv('EXPO_PUBLIC_ADMOB_REWARDED_ANDROID_ID'),
+        ? readPublicEnv('EXPO_PUBLIC_ADMOB_REWARDED_IOS_ID')
+        : readPublicEnv('EXPO_PUBLIC_ADMOB_REWARDED_ANDROID_ID'),
     testValue: platform === 'ios' ? ADMOB_TEST.rewardedIos : ADMOB_TEST.rewardedAndroid,
   });
 }
@@ -67,8 +63,8 @@ export function getInterstitialAdUnitId(): string | null {
     isTestModeForced: isAdMobTestModeForced(),
     configuredValue:
       platform === 'ios'
-        ? readEnv('EXPO_PUBLIC_ADMOB_INTERSTITIAL_IOS_ID')
-        : readEnv('EXPO_PUBLIC_ADMOB_INTERSTITIAL_ANDROID_ID'),
+        ? readPublicEnv('EXPO_PUBLIC_ADMOB_INTERSTITIAL_IOS_ID')
+        : readPublicEnv('EXPO_PUBLIC_ADMOB_INTERSTITIAL_ANDROID_ID'),
     testValue:
       platform === 'ios' ? ADMOB_TEST.interstitialIos : ADMOB_TEST.interstitialAndroid,
   });

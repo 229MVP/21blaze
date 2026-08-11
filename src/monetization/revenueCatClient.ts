@@ -5,11 +5,7 @@ import {
   isProductionBuild,
   isStorePurchasesEnabled,
 } from '../config/featureFlags';
-
-function readEnv(name: string): string {
-  const value = process.env[name];
-  return typeof value === 'string' ? value.trim() : '';
-}
+import { readPublicEnv } from '../config/publicEnv';
 
 function isTestStoreApiKey(key: string): boolean {
   return key.startsWith('test_');
@@ -32,11 +28,11 @@ export function getRevenueCatApiKey(): string | null {
     return null;
   }
 
-  const shared = readEnv('EXPO_PUBLIC_REVENUECAT_API_KEY');
+  const shared = readPublicEnv('EXPO_PUBLIC_REVENUECAT_API_KEY');
   const platformKey =
     Platform.OS === 'ios'
-      ? readEnv('EXPO_PUBLIC_REVENUECAT_IOS_API_KEY')
-      : readEnv('EXPO_PUBLIC_REVENUECAT_ANDROID_API_KEY');
+      ? readPublicEnv('EXPO_PUBLIC_REVENUECAT_IOS_API_KEY')
+      : readPublicEnv('EXPO_PUBLIC_REVENUECAT_ANDROID_API_KEY');
 
   if (isProductionBuild()) {
     if (platformKey.length > 0 && !isTestStoreApiKey(platformKey)) {
