@@ -22,6 +22,7 @@ const MESSAGES: Record<LiveMatchErrorCode, string> = {
   SUBMISSION_TOO_LATE: 'The official match deadline passed.',
   MATCH_ALREADY_SETTLED: 'This match is already complete.',
   PROTOCOL_VERSION_UNSUPPORTED: 'Update 21 Blaze to play this Live match.',
+  REMATCH_NOT_ELIGIBLE: 'This match cannot be rematched.',
   NOT_AUTHENTICATED: 'Sign in to play Live PvP.',
   UNKNOWN: 'Something went wrong. Please try again.',
 };

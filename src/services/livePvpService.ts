@@ -1,10 +1,13 @@
 import { supabase } from '../lib/supabase';
-import { mapLivePvpErrorCode, mapLivePvpSnapshot } from '../livePvp/livePvpProtocol';
+import { mapLivePvpErrorCode, mapLivePvpHeadToHeadRecord, mapLivePvpPlayerRecord, mapLivePvpRematchResult, mapLivePvpSnapshot } from '../livePvp/livePvpProtocol';
 import type {
   LiveMatchErrorCode,
   LiveMatchProgressInput,
   LiveMatchResultInput,
   LiveMatchSnapshot,
+  LivePvpHeadToHeadRecord,
+  LivePvpPlayerRecord,
+  LivePvpRematchResult,
 } from '../livePvp/livePvpTypes';
 
 const TIMEOUT_MS = 12000;
@@ -273,4 +276,22 @@ export async function getLivePvpOpsStatus(): Promise<{
     configActive: Boolean(data.configActive),
     protocolVersion: String(data.protocolVersion ?? '1'),
   };
+}
+
+export async function createLivePvpRematch(sourceMatchId: string): Promise<LivePvpRematchResult> {
+  return mapLivePvpRematchResult(
+    await rpcJson('create_live_pvp_rematch', { p_source_match_id: sourceMatchId }),
+  );
+}
+
+export async function getLivePvpPlayerRecord(): Promise<LivePvpPlayerRecord> {
+  return mapLivePvpPlayerRecord(await rpcJson('get_live_pvp_player_record'));
+}
+
+export async function getLivePvpHeadToHeadRecord(
+  opponentId: string,
+): Promise<LivePvpHeadToHeadRecord> {
+  return mapLivePvpHeadToHeadRecord(
+    await rpcJson('get_live_pvp_head_to_head_record', { p_opponent_id: opponentId }),
+  );
 }

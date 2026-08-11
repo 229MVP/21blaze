@@ -119,3 +119,12 @@ Log matchId / eventId / error codes only — never seeds, tokens, or service-rol
 - Server creation kill switch via `get_live_pvp_ops_status` / config flags.
 - Manual two-device matrix: `docs/LIVE_PVP_PHASE_2_QA.md` (do not mark unrun cases Pass).
 - Dev harness remains available under Settings when `__DEV__`.
+
+## Phase 3 operations
+
+- Apply `20260810183000_v1_5_phase3_live_pvp_resilience.sql` after Phase 2.
+- Confirm `has_function_privilege('authenticated', 'finalize_live_pvp_deadlines(integer)', 'EXECUTE')` is false.
+- Schedule finalizer with **service_role** only (cron / Edge Function).
+- Recovery policy: `docs/LIVE_PVP_RECOVERY_POLICY.md`
+- QA matrix: `docs/LIVE_PVP_PHASE_3_QA.md`
+- Diagnostics: `livePvpDiagnostics.getRecent()` (dev) — no tokens/seeds logged.

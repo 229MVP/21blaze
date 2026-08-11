@@ -15,6 +15,9 @@ import {
 import type { LivePvpSession } from '../livePvp/livePvpSession';
 import type { LivePvpLobbyScreenProps } from '../navigation/navigationTypes';
 import { useGameStore } from '../store/useGameStore';
+import { useAuthStore } from '../store/useAuthStore';
+import { loadLivePvpCheckpoint } from '../livePvp/livePvpCheckpointStorage';
+import { evaluateLivePvpRecovery } from '../livePvp/livePvpRecovery';
 import { useLivePvpStore } from '../store/useLivePvpStore';
 import { colors } from '../theme/colors';
 import { spacing } from '../theme/spacing';
@@ -120,6 +123,10 @@ export function LivePvpLobbyScreen({ navigation, route }: LivePvpLobbyScreenProp
   const setReady = useLivePvpStore((s) => s.setReady);
   const refreshSnapshot = useLivePvpStore((s) => s.refreshSnapshot);
   const prepareLivePvpGame = useGameStore((s) => s.prepareLivePvpGame);
+  const prepareLivePvpGameFromCheckpoint = useGameStore(
+    (s) => s.prepareLivePvpGameFromCheckpoint,
+  );
+  const userId = useAuthStore((s) => s.user?.id);
   const [tick, setTick] = useState(0);
   const startedRef = useRef(false);
   const busy = mutationStatus === 'pending';
@@ -171,10 +178,33 @@ export function LivePvpLobbyScreen({ navigation, route }: LivePvpLobbyScreenProp
     startedRef.current = true;
     trackEvent('live_match_started');
     void (async () => {
-      await prepareLivePvpGame(session);
+      const checkpoint = await loadLivePvpCheckpoint();
+      const evaluation = evaluateLivePvpRecovery({
+        checkpoint,
+        userId: userId ?? '',
+        snapshot,
+      });
+      if (
+        evaluation.kind === 'resume' &&
+        evaluation.checkpoint.matchId === matchId &&
+        userId
+      ) {
+        await prepareLivePvpGameFromCheckpoint(session, evaluation.checkpoint);
+      } else {
+        await prepareLivePvpGame(session);
+      }
       navigation.replace('Game');
     })();
-  }, [cd.phase, matchId, navigation, prepareLivePvpGame, serverNowMs, snapshot]);
+  }, [
+    cd.phase,
+    matchId,
+    navigation,
+    prepareLivePvpGame,
+    prepareLivePvpGameFromCheckpoint,
+    serverNowMs,
+    snapshot,
+    userId,
+  ]);
 
   const myReady = snapshot ? livePvpMyReady(snapshot) : false;
   const oppReady = snapshot ? livePvpOpponentReady(snapshot) : false;

@@ -71,6 +71,7 @@
     "test:async-duel-release": "npx tsx src/asyncDuel/asyncDuelReleaseFreezeSelfTest.ts",
     "test:live-pvp-phase1": "npx tsx src/livePvp/livePvpPhase1SelfTest.ts",
     "test:live-pvp-phase2": "npx tsx src/livePvp/livePvpPhase2SelfTest.ts",
+    "test:live-pvp-phase3": "npx tsx src/livePvp/livePvpPhase3SelfTest.ts",
     "test:daily-challenge-live": "npx tsx scripts/dailyChallengeLiveVerification.ts",
     "validate:visual-assets": "npx tsx scripts/validate-visual-assets.mjs"
   },

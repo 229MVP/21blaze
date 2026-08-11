@@ -83,3 +83,12 @@ Server does not reconstruct full card-action replay. Clients can inflate scores/
 - Account switch clears Live store + coordinator.
 - No Live PvP rewards / XP / coins / public records.
 - Hub and snapshot RPCs remain the only participant read paths.
+
+## Phase 3 security notes
+
+- `finalize_live_pvp_deadlines` revoked from `authenticated` — service_role and internal DEFiner callers only.
+- Client checkpoints are untrusted; resume requires server snapshot reconciliation.
+- `myLatestProgressSequence` exposed only for caller recovery; opponent private metadata not leaked.
+- Private records RPCs aggregate terminal matches for `auth.uid()` only — no public leaderboard.
+- Rematch RPC derives opponent server-side; `rematch_of_match_id` uniqueness prevents duplicate rematches.
+- New RPCs use `SET search_path = ''` with fully qualified object names.

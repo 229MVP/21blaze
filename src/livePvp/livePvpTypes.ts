@@ -137,6 +137,7 @@ export type LiveMatchSnapshot = {
   completionReason: LiveMatchCompletionReason | null;
   settledAt: string | null;
   myAttempt: LiveMatchAttempt | null;
+  myLatestProgressSequence: number;
   progress: LiveMatchProgress[];
   serverNow: string;
   gameplayEligible: boolean;
@@ -196,8 +197,58 @@ export type LiveMatchErrorCode =
   | 'SUBMISSION_TOO_LATE'
   | 'MATCH_ALREADY_SETTLED'
   | 'PROTOCOL_VERSION_UNSUPPORTED'
+  | 'REMATCH_NOT_ELIGIBLE'
   | 'NOT_AUTHENTICATED'
   | 'UNKNOWN';
+
+export type LivePvpPlayerRecord = {
+  completedMatches: number;
+  wins: number;
+  losses: number;
+  ties: number;
+  noContests: number;
+  forfeitsAgainst: number;
+  timeouts: number;
+  winRate: number;
+  recentForm: LivePvpRecordFormEntry[];
+  serverNow: string;
+};
+
+export type LivePvpHeadToHeadRecord = {
+  opponentId: string;
+  opponent: LiveMatchPublicParticipant;
+  completedMatches: number;
+  wins: number;
+  losses: number;
+  ties: number;
+  noContests: number;
+  winRate: number;
+  recentForm: LivePvpRecordFormEntry[];
+  serverNow: string;
+};
+
+export type LivePvpRecordFormEntry = {
+  matchId: string;
+  outcome: LiveMatchOutcome | null;
+  winnerUserId: string | null;
+  completionReason: LiveMatchCompletionReason | null;
+  settledAt: string | null;
+  perspective: 'win' | 'loss' | 'tie' | 'no_contest' | 'unknown';
+};
+
+export type LivePvpRematchResult = {
+  matchId: string;
+  status: string;
+  realtimeTopic: string;
+  protocolVersion: string;
+  stateVersion: number;
+  expiresAt: string;
+  participantRole: LiveMatchParticipantRole;
+  opponent: LiveMatchPublicParticipant;
+  rematchOfMatchId: string;
+  alreadyExisted: boolean;
+  serverNow: string;
+};
 
 export type LiveMatchProgressInput = {
   sequence: number;

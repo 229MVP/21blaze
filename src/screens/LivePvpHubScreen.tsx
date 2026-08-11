@@ -58,6 +58,10 @@ export function LivePvpHubScreen({ navigation }: LivePvpHubScreenProps) {
   const creationEnabled = useLivePvpStore((s) => s.creationEnabled);
   const refreshHub = useLivePvpStore((s) => s.refreshHub);
   const refreshOps = useLivePvpStore((s) => s.refreshOps);
+  const resumeMatchId = useLivePvpStore((s) => s.resumeMatchId);
+  const evaluateResumeOffer = useLivePvpStore((s) => s.evaluateResumeOffer);
+  const loadPlayerRecord = useLivePvpStore((s) => s.loadPlayerRecord);
+  const playerRecord = useLivePvpStore((s) => s.playerRecord);
   const [showIntro, setShowIntro] = useState(false);
 
   const refresh = useCallback(() => {
@@ -71,6 +75,8 @@ export function LivePvpHubScreen({ navigation }: LivePvpHubScreenProps) {
         return;
       }
       refresh();
+      void evaluateResumeOffer();
+      void loadPlayerRecord();
       trackEvent('live_pvp_hub_viewed');
       void hasAcknowledgedLivePvpIntro().then((ack) => {
         if (!ack) {
@@ -150,6 +156,27 @@ export function LivePvpHubScreen({ navigation }: LivePvpHubScreenProps) {
       >
         <ScreenHeader title="LIVE PVP" />
         <Text style={styles.subtitle}>Same deck. Same timer. One winner.</Text>
+
+        {playerRecord ? (
+          <Text style={styles.recordMeta}>
+            Record {playerRecord.wins}-{playerRecord.losses}
+            {playerRecord.ties > 0 ? `-${playerRecord.ties}` : ''}
+            {' · '}
+            {playerRecord.completedMatches === 0
+              ? 'No matches yet'
+              : `${Math.round(playerRecord.winRate * 100)}% win rate`}
+          </Text>
+        ) : null}
+
+        {resumeMatchId ? (
+          <BlazeButton
+            title="RESUME LIVE MATCH"
+            onPress={() =>
+              navigation.navigate('LivePvpLobby', { matchId: resumeMatchId })
+            }
+            fullWidth
+          />
+        ) : null}
 
         {!creationEnabled ? (
           <Text style={styles.unavailable}>
@@ -270,6 +297,12 @@ const styles = StyleSheet.create({
   },
   title: { fontFamily: fontFamilies.display, fontSize: 36, color: colors.gold, textAlign: 'center' },
   subtitle: { ...typography.body, color: colors.textSecondary },
+  recordMeta: {
+    ...typography.body,
+    color: colors.textMuted,
+    textAlign: 'center',
+    fontSize: 13,
+  },
   body: { ...typography.body, color: colors.textSecondary },
   tabs: { flexDirection: 'row', gap: spacing.sm },
   tab: {

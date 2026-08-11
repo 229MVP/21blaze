@@ -2,6 +2,7 @@ import type { RealtimeChannel, SupabaseClient } from '@supabase/supabase-js';
 
 import { supabase } from '../lib/supabase';
 import { LIVE_PVP_CONFIG, livePvpTopicForMatch } from './livePvpConfig';
+import { livePvpDiagnostics } from './livePvpDiagnostics';
 import {
   estimateServerClockOffset,
   serverNowEstimateMs,
@@ -20,6 +21,7 @@ export type LivePvpAppChannelStatus =
   | 'connecting'
   | 'subscribed'
   | 'reconnecting'
+  | 'recovered'
   | 'timed_out'
   | 'channel_error'
   | 'closed';
@@ -39,6 +41,10 @@ type Listener = {
   onPresence?: (rows: LivePvpPresenceView[]) => void;
   onClock?: (estimate: ClockOffsetEstimate | null) => void;
 };
+
+const MAX_RECONNECT_ATTEMPTS = 5;
+const RECONNECT_BASE_MS = 500;
+const RECONNECT_CAP_MS = 8000;
 
 /**
  * One private channel per (userId, matchId). Survives screen remounts.
@@ -63,6 +69,8 @@ class LivePvpMatchCoordinator {
     | ((sequence: number, fingerprint: string) => Promise<void>)
     | null = null;
   private disposed = false;
+  private reconnectChainId = 0;
+  private reconnectInFlight: Promise<boolean> | null = null;
 
   getChannelStatus(): LivePvpAppChannelStatus {
     return this.status;
@@ -82,6 +90,18 @@ class LivePvpMatchCoordinator {
 
   estimatedServerNowMs(localNow = Date.now()): number {
     return serverNowEstimateMs(this.clockEstimate, localNow);
+  }
+
+  syncProgressSequenceFromSnapshot(snapshot: LiveMatchSnapshot, userId: string): void {
+    const serverSeq =
+      snapshot.myLatestProgressSequence ??
+      snapshot.progress.find((row) => row.userId === userId)?.sequence ??
+      0;
+    const next = Math.max(1, serverSeq + 1);
+    if (next > this.progressSequence) {
+      this.progressSequence = next;
+      livePvpDiagnostics.progressSequenceResync(next);
+    }
   }
 
   subscribe(listener: Listener): () => void {
@@ -104,10 +124,25 @@ class LivePvpMatchCoordinator {
   }
 
   private emitSnapshot(snapshot: LiveMatchSnapshot): void {
+    if (
+      this.snapshot &&
+      snapshot.matchId === this.snapshot.matchId &&
+      snapshot.stateVersion < this.snapshot.stateVersion
+    ) {
+      return;
+    }
     this.snapshot = snapshot;
+    if (this.userId) {
+      this.syncProgressSequenceFromSnapshot(snapshot, this.userId);
+    }
     for (const listener of this.listeners) {
       listener.onSnapshot?.(snapshot);
     }
+  }
+
+  cancelReconnect(): void {
+    this.reconnectChainId += 1;
+    livePvpDiagnostics.reconnectOutcome('cancelled');
   }
 
   async ensureJoined(input: {
@@ -122,6 +157,7 @@ class LivePvpMatchCoordinator {
       return;
     }
     if (this.key && this.key !== nextKey) {
+      this.cancelReconnect();
       await this.leave({ reason: 'switch_match' });
     }
     this.disposed = false;
@@ -141,6 +177,8 @@ class LivePvpMatchCoordinator {
       return;
     }
     this.emitStatus('connecting');
+    const joinStarted = Date.now();
+    livePvpDiagnostics.channelJoinStarted(this.matchId);
     await this.sampleClock();
 
     const topic = livePvpTopicForMatch(this.matchId);
@@ -161,7 +199,14 @@ class LivePvpMatchCoordinator {
       for (const listener of this.listeners) {
         listener.onEvent?.(parsed);
       }
-      const action = reconcileLivePvpEvent(this.snapshot?.stateVersion ?? 0, parsed);
+      const currentVersion = this.snapshot?.stateVersion ?? 0;
+      const action = reconcileLivePvpEvent(currentVersion, parsed);
+      if (action === 'refetch') {
+        const gap = parsed.stateVersion - currentVersion;
+        if (gap > 1) {
+          livePvpDiagnostics.stateVersionGap(gap);
+        }
+      }
       if (action === 'apply' || action === 'refetch') {
         void this.refreshSnapshot();
       }
@@ -208,6 +253,7 @@ class LivePvpMatchCoordinator {
           }
           settled = true;
           clearTimeout(timer);
+          livePvpDiagnostics.channelJoinLatency(Date.now() - joinStarted);
           this.emitStatus('subscribed');
           if (LIVE_PVP_CONFIG.presenceEnabled) {
             try {
@@ -249,11 +295,15 @@ class LivePvpMatchCoordinator {
         void this.refreshSnapshot();
       }
       if (event === 'SIGNED_OUT') {
+        this.cancelReconnect();
         void this.leave({ reason: 'logout' });
       }
     }).data.subscription;
 
     await this.refreshSnapshot();
+    if (this.snapshot) {
+      livePvpDiagnostics.snapshotRecovered(this.snapshot.stateVersion);
+    }
   }
 
   async refreshSnapshot(): Promise<LiveMatchSnapshot | null> {
@@ -262,6 +312,9 @@ class LivePvpMatchCoordinator {
     }
     try {
       const snapshot = await getLiveMatchSnapshot(this.matchId);
+      if (snapshot.matchId !== this.matchId) {
+        return this.snapshot;
+      }
       this.emitSnapshot(snapshot);
       return snapshot;
     } catch {
@@ -301,6 +354,45 @@ class LivePvpMatchCoordinator {
     const matchId = this.matchId;
     await this.leave({ reason: 'reconnect', soft: true });
     await this.ensureJoined({ userId, matchId });
+    this.emitStatus('recovered');
+  }
+
+  async reconnectWithBackoff(reason: string): Promise<boolean> {
+    if (this.reconnectInFlight) {
+      return this.reconnectInFlight;
+    }
+    const chainId = ++this.reconnectChainId;
+    this.reconnectInFlight = (async () => {
+      for (let attempt = 0; attempt < MAX_RECONNECT_ATTEMPTS; attempt += 1) {
+        if (chainId !== this.reconnectChainId || this.disposed) {
+          livePvpDiagnostics.reconnectOutcome('cancelled');
+          return false;
+        }
+        livePvpDiagnostics.reconnectAttempt(attempt + 1, reason);
+        try {
+          const session = await supabase.auth.getSession();
+          const token = session.data.session?.access_token;
+          if (token) {
+            await supabase.realtime.setAuth(token);
+          }
+          await this.sampleClock();
+          await this.reconnect();
+          livePvpDiagnostics.reconnectOutcome('success');
+          return true;
+        } catch {
+          const exp = Math.min(RECONNECT_CAP_MS, RECONNECT_BASE_MS * 2 ** attempt);
+          const jitter = Math.floor(Math.random() * 250);
+          await new Promise((resolve) => setTimeout(resolve, exp + jitter));
+        }
+      }
+      livePvpDiagnostics.reconnectOutcome('failed');
+      return false;
+    })();
+    try {
+      return await this.reconnectInFlight;
+    } finally {
+      this.reconnectInFlight = null;
+    }
   }
 
   startProgressScheduler(
@@ -322,7 +414,7 @@ class LivePvpMatchCoordinator {
     if (!this.progressSubmitter || !this.lastProgressFingerprint) {
       return;
     }
-    if (this.status !== 'subscribed') {
+    if (this.status !== 'subscribed' && this.status !== 'recovered') {
       return;
     }
     const fingerprint = this.lastProgressFingerprint;
@@ -330,8 +422,16 @@ class LivePvpMatchCoordinator {
     try {
       await this.progressSubmitter(sequence, fingerprint);
       this.progressSequence = sequence + 1;
-    } catch {
-      // Keep sequence; retry newest consolidated state next tick.
+    } catch (error) {
+      if (
+        error instanceof Error &&
+        error.message.toUpperCase().includes('STALE_PROGRESS_SEQUENCE')
+      ) {
+        const refreshed = await this.refreshSnapshot();
+        if (refreshed && this.userId) {
+          this.syncProgressSequenceFromSnapshot(refreshed, this.userId);
+        }
+      }
     }
   }
 
@@ -357,6 +457,7 @@ class LivePvpMatchCoordinator {
       this.channel = null;
     }
     if (!options?.soft) {
+      this.cancelReconnect();
       this.key = null;
       this.matchId = null;
       this.userId = null;

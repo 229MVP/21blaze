@@ -12,17 +12,23 @@ import {
   cancelLiveMatch,
   completeLiveMatchAttempt,
   createLiveMatchInvite,
+  createLivePvpRematch,
   declineLiveMatch,
   forfeitLiveMatch,
   getLiveMatchHub,
   getLiveMatchSnapshot,
   getLivePvpOpsStatus,
+  getLivePvpPlayerRecord,
   LivePvpServiceError,
   setLiveMatchReady,
   submitLiveMatchProgress,
   type LivePvpHubItem,
   type LivePvpHubSection,
 } from '../services/livePvpService';
+import { clearLivePvpCheckpoint, loadLivePvpCheckpoint } from '../livePvp/livePvpCheckpointStorage';
+import { evaluateLivePvpRecovery } from '../livePvp/livePvpRecovery';
+import { livePvpDiagnostics } from '../livePvp/livePvpDiagnostics';
+import type { LivePvpPlayerRecord, LivePvpRematchResult } from '../livePvp/livePvpTypes';
 import { useAuthStore } from './useAuthStore';
 
 type MutationKind = 'idle' | 'pending' | 'success' | 'error';
@@ -40,6 +46,8 @@ type LivePvpStore = {
   isLoadingHub: boolean;
   mutationStatus: MutationKind;
   errorMessage: string | null;
+  playerRecord: LivePvpPlayerRecord | null;
+  resumeMatchId: string | null;
   setHubTab: (tab: LivePvpHubSection) => void;
   refreshHub: () => Promise<void>;
   refreshOps: () => Promise<void>;
@@ -65,6 +73,9 @@ type LivePvpStore = {
   ) => Promise<LiveMatchSnapshot | null>;
   joinMatchChannel: (matchId: string) => Promise<void>;
   leaveMatchChannel: () => Promise<void>;
+  evaluateResumeOffer: () => Promise<string | null>;
+  createRematch: (sourceMatchId: string) => Promise<LivePvpRematchResult | null>;
+  loadPlayerRecord: () => Promise<void>;
   clearError: () => void;
   resetForAccountSwitch: () => void;
 };
@@ -116,6 +127,8 @@ export const useLivePvpStore = create<LivePvpStore>((set, get) => ({
   isLoadingHub: false,
   mutationStatus: 'idle',
   errorMessage: null,
+  playerRecord: null,
+  resumeMatchId: null,
 
   setHubTab: (tab) => set({ hubTab: tab }),
   clearError: () => set({ errorMessage: null }),
@@ -123,7 +136,10 @@ export const useLivePvpStore = create<LivePvpStore>((set, get) => ({
   resetForAccountSwitch: () => {
     coordinatorUnsub?.();
     coordinatorUnsub = null;
+    livePvpMatchCoordinator.cancelReconnect();
     void livePvpMatchCoordinator.leave({ reason: 'account_switch' });
+    void clearLivePvpCheckpoint();
+    livePvpDiagnostics.clear();
     set({
       hubTab: 'incoming',
       incoming: [],
@@ -136,6 +152,8 @@ export const useLivePvpStore = create<LivePvpStore>((set, get) => ({
       isLoadingHub: false,
       mutationStatus: 'idle',
       errorMessage: null,
+      playerRecord: null,
+      resumeMatchId: null,
     });
   },
 
@@ -327,10 +345,73 @@ export const useLivePvpStore = create<LivePvpStore>((set, get) => ({
       }
       trackEvent('live_lobby_joined');
     } catch (error) {
+      const code = errCode(error);
       set({
-        errorMessage: errCode(error) === 'UNKNOWN' ? 'CHANNEL_AUTH_FAILED' : errCode(error),
+        errorMessage: code === 'UNKNOWN' ? 'CHANNEL_AUTH_FAILED' : code,
         connectionState: livePvpMatchCoordinator.getChannelStatus(),
       });
+      void livePvpMatchCoordinator.reconnectWithBackoff('join_failed');
+    }
+  },
+
+  evaluateResumeOffer: async () => {
+    const userId = useAuthStore.getState().user?.id;
+    if (!userId) {
+      set({ resumeMatchId: null });
+      return null;
+    }
+    const checkpoint = await loadLivePvpCheckpoint();
+    if (!checkpoint) {
+      set({ resumeMatchId: null });
+      return null;
+    }
+    try {
+      const snapshot = await getLiveMatchSnapshot(checkpoint.matchId);
+      const evaluation = evaluateLivePvpRecovery({ checkpoint, userId, snapshot });
+      if (evaluation.kind === 'discard') {
+        livePvpDiagnostics.checkpointDiscarded(evaluation.reason);
+        void clearLivePvpCheckpoint();
+        set({ resumeMatchId: null });
+        return null;
+      }
+      livePvpDiagnostics.checkpointAccepted(checkpoint.matchId);
+      set({ resumeMatchId: checkpoint.matchId });
+      return checkpoint.matchId;
+    } catch {
+      livePvpDiagnostics.checkpointDiscarded('snapshot_fetch_failed');
+      void clearLivePvpCheckpoint();
+      set({ resumeMatchId: null });
+      return null;
+    }
+  },
+
+  createRematch: async (sourceMatchId) => {
+    if (get().mutationStatus === 'pending') {
+      return null;
+    }
+    set({ mutationStatus: 'pending', errorMessage: null });
+    try {
+      const result = await createLivePvpRematch(sourceMatchId);
+      livePvpDiagnostics.rematchOutcome(
+        result.alreadyExisted ? 'existing' : 'created',
+      );
+      set({ mutationStatus: 'success' });
+      trackEvent('live_rematch_created', { alreadyExisted: result.alreadyExisted });
+      return result;
+    } catch (error) {
+      const code = errCode(error);
+      livePvpDiagnostics.rematchOutcome(code);
+      set({ mutationStatus: 'error', errorMessage: code });
+      return null;
+    }
+  },
+
+  loadPlayerRecord: async () => {
+    try {
+      const record = await getLivePvpPlayerRecord();
+      set({ playerRecord: record });
+    } catch {
+      set({ playerRecord: null });
     }
   },
 
