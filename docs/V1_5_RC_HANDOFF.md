@@ -6,11 +6,17 @@
 
 ## Final decision
 
-### `READY WITH DOCUMENTED RISKS — FLAGS REMAIN OFF`
+### `READY FOR TWO-DEVICE RC QA`
 
-Shared staging promotion, privilege verification, overload fix, and EAS preview configuration **passed**. Internal `live-pvp-qa` builds were **submitted** but were **in progress** at report time — install artifacts not yet confirmed. CLI security advisors on 21 Blaze remain blocked without database password. Staging match-creation kill switch is **OFF**.
+Shared staging promotion, privilege verification, overload fix, EAS preview
+configuration, both internal builds, and the refreshed local regression suite
+**passed**. CLI security advisors on 21 Blaze remain blocked without a securely
+supplied database password and are retained as a production sign-off item.
+Staging match creation remains **OFF** until the physical RC session begins.
 
-**Two-device RC validation:** **May begin** after confirming at least one installable build artifact (Android APK and/or iOS Ad Hoc) and optionally enabling `live_pvp_creation_enabled` on staging.
+**Two-device RC validation:** **May begin** after installing the completed builds
+and explicitly enabling `live_pvp_creation_enabled` on shared staging for the
+test window.
 
 ## Completed gates
 
@@ -22,7 +28,8 @@ Shared staging promotion, privilege verification, overload fix, and EAS preview 
 | EAS preview Supabase URL + publishable key | **Configured** |
 | Automated app checks | **Passed** |
 | Expo Doctor | **Passed** (20/20) |
-| `live-pvp-qa` builds submitted | **In progress** |
+| Android and iOS `live-pvp-qa` builds | **Passed** — both finished |
+| RC branch local regression refresh | **Passed** |
 | `db advisors` on 21 Blaze | **Failed** (credentials) |
 | Physical two-device QA | **Not executed** |
 
@@ -41,19 +48,19 @@ Shared staging promotion, privilege verification, overload fix, and EAS preview 
 
 ## Build IDs (see EAS dashboard for install URLs)
 
-| Platform | Build ID | Status at report |
+| Platform | Build ID | Status |
 |----------|----------|------------------|
-| Android | `efe8bfe8-2d8e-4376-81d8-5b74fad9bf41` | In progress |
-| iOS | `25ac6125-bec1-48eb-8a28-8b7a9dd20bf5` | In progress |
+| Android | `efe8bfe8-2d8e-4376-81d8-5b74fad9bf41` | Finished — installable APK |
+| iOS | `25ac6125-bec1-48eb-8a28-8b7a9dd20bf5` | Finished — Ad Hoc IPA |
 
 Detail: `docs/V1_5_QA_BUILD_REPORT.md`
 
 ## Human actions before two-device RC
 
-1. Confirm EAS builds finished and install APK / iOS Ad Hoc on test devices.
-2. Run `UPDATE app_configuration SET value = 'true'::jsonb WHERE key = 'live_pvp_creation_enabled'` on staging when starting RC.
-3. Provide `SUPABASE_DB_PASSWORD` to run `db advisors` if required for sign-off.
-4. Complete two-device matrix (separate task).
+1. Install the completed APK and/or iOS Ad Hoc IPA on two physical devices.
+2. Run `UPDATE app_configuration SET value = 'true'::jsonb WHERE key = 'live_pvp_creation_enabled'` on shared staging only when starting RC.
+3. Execute `docs/V1_5_TWO_DEVICE_TEST_MATRIX.md` with distinct test accounts.
+4. Supply the database password through a secure local prompt to run `db advisors` before production sign-off; never commit or paste it into reports.
 
 ## Related documents
 

@@ -52,14 +52,19 @@ Configured with `eas env:create` (preview environment). No service-role or secre
 | Core automated tests | **Passed** (game, monetization, progression, async-duel-release, live-pvp phases 1–3 + release, visual assets) |
 | Secret material in public config | **None observed** |
 
-## Internal builds submitted
+## Internal builds completed
 
 Install artifact URLs are **not** committed (access-controlled). Use EAS dashboard with build IDs below.
 
-| Platform | Build ID | Profile | Status at report time | Git commit (EAS metadata) | Version |
+| Platform | Build ID | Profile | Status | Git commit (EAS metadata) | Version |
 |----------|----------|---------|----------------------|---------------------------|---------|
-| Android | `efe8bfe8-2d8e-4376-81d8-5b74fad9bf41` | live-pvp-qa | In progress | `5edc570` | 1.5.0 (902) |
-| iOS | `25ac6125-bec1-48eb-8a28-8b7a9dd20bf5` | live-pvp-qa | In progress | `5edc570` | 1.5.0 (909) |
+| Android | `efe8bfe8-2d8e-4376-81d8-5b74fad9bf41` | live-pvp-qa | **Finished** — installable APK | `5edc570` | 1.5.0 (902) |
+| iOS | `25ac6125-bec1-48eb-8a28-8b7a9dd20bf5` | live-pvp-qa | **Finished** — Ad Hoc IPA | `5edc570` | 1.5.0 (909) |
+
+Statuses were re-verified with EAS on 2026-08-11. Both builds expire on
+2026-11-09. Their EAS Git metadata points to `5edc570`; the later shared-staging
+commit changes verification scripts, reports, and the forward-only database
+migration, but does not change the bundled mobile application.
 
 ### iOS credentials (at submit)
 
@@ -100,6 +105,6 @@ WHERE key = 'live_pvp_creation_enabled';
 | `enqueue_player_notification` overload fix | **Passed** (new migration applied) |
 | Security advisors (CLI) | **Failed** — `SUPABASE_DB_PASSWORD` required for `db advisors` |
 | EAS preview Supabase config | **Passed** |
-| Android internal build | **In progress** at report time |
-| iOS internal build | **In progress** at report time |
+| Android internal build | **Passed** — finished installable APK |
+| iOS internal build | **Passed** — finished Ad Hoc IPA |
 | Physical two-device QA | **Not executed** |

@@ -6,9 +6,13 @@
 
 ## Release decision
 
-### `READY WITH DOCUMENTED RISKS — FLAGS REMAIN OFF`
+### `READY FOR TWO-DEVICE RC QA`
 
-Shared staging promoted; privilege checks passed; EAS configured; internal builds in progress. See `docs/V1_5_RC_HANDOFF.md`.
+Shared staging is promoted, privilege checks passed, both EAS internal builds
+finished, and the local RC regression suite passed. Physical two-device results
+remain unexecuted and production flags remain off. Database advisors still
+require a securely supplied database password and remain a production sign-off
+item. See `docs/V1_5_RC_HANDOFF.md`.
 
 ## Phase 1 — Baseline
 
@@ -54,8 +58,26 @@ Shared staging promoted; privilege checks passed; EAS configured; internal build
 | Check | Result |
 |-------|--------|
 | Preview env Supabase URL + publishable key | CONFIGURED |
-| Android `live-pvp-qa` build | IN PROGRESS |
-| iOS `live-pvp-qa` build | IN PROGRESS |
+| Android `live-pvp-qa` build | PASS — finished APK (`efe8bfe8-2d8e-4376-81d8-5b74fad9bf41`) |
+| iOS `live-pvp-qa` build | PASS — finished IPA (`25ac6125-bec1-48eb-8a28-8b7a9dd20bf5`) |
+
+## RC branch regression refresh
+
+Run on `cursor/v1-5-rc-validation-1a6b` on 2026-08-11:
+
+| Check | Result |
+|-------|--------|
+| TypeScript (`tsc --noEmit`) | PASS |
+| Expo dependency compatibility | PASS |
+| Expo Doctor | PASS (20/20) |
+| Game, ranked, monetization, progression | PASS |
+| Version 1.3 release and Async Duel release | PASS |
+| Live PvP phases 1-3 and release suite | PASS |
+| Visual asset validation | PASS |
+
+The clean strict dependency install exposed a missing direct declaration for
+`expo-constants`, which is imported by `src/services/deviceInfo.ts`. It is now
+declared at the Expo SDK 57-compatible range and the type check passes.
 
 ## Phase 7 — Flags
 
