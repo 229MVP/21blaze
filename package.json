@@ -1,6 +1,6 @@
 {
   "name": "21-blaze",
-  "version": "1.5.0",
+  "version": "1.5.1",
   "main": "index.ts",
   "dependencies": {
     "@expo-google-fonts/anton": "^0.4.2",

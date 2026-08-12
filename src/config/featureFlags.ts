@@ -233,5 +233,11 @@ export function isAsyncDuelEnabled(): boolean {
  * Defaults OFF. Server kill switch remains authoritative.
  */
 export function isLivePvpEnabled(): boolean {
-  return envFlag('EXPO_PUBLIC_ENABLE_LIVE_PVP', false);
+  // Internal Live PvP builds must always expose the test surface. Keeping a
+  // dedicated, client-visible profile marker prevents an accidentally missing
+  // flag or stale preview environment from producing a Solo-only QA binary.
+  return (
+    readPublicEnv('EXPO_PUBLIC_BUILD_PROFILE') === 'live-pvp-qa' ||
+    envFlag('EXPO_PUBLIC_ENABLE_LIVE_PVP', false)
+  );
 }

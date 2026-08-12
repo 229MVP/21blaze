@@ -220,6 +220,15 @@ export function runLivePvpReleaseSelfTests(): void {
     publicEnvSrc.includes('process.env.EXPO_PUBLIC_ENABLE_LIVE_PVP'),
     'static Live PvP flag env reference',
   );
+  assert(
+    publicEnvSrc.includes('process.env.EXPO_PUBLIC_BUILD_PROFILE'),
+    'static QA build profile env reference',
+  );
+  const qaEasJson = readRepo('eas.json');
+  assert(
+    qaEasJson.includes('"EXPO_PUBLIC_BUILD_PROFILE": "live-pvp-qa"'),
+    'Live PvP QA profile marker',
+  );
   for (const path of [
     'src/config/featureFlags.ts',
     'src/lib/supabaseConfig.ts',
@@ -233,15 +242,15 @@ export function runLivePvpReleaseSelfTests(): void {
 
   // --- Native config ---
   const appJson = readRepo('app.json');
-  assert(appJson.includes('"version": "1.5.0"'), 'app version 1.5.0');
-  assert(appJson.includes('"buildNumber": "910"'), 'ios build 910');
-  assert(appJson.includes('"versionCode": 903'), 'android versionCode 903');
+  assert(appJson.includes('"version": "1.5.1"'), 'app version 1.5.1');
+  assert(appJson.includes('"buildNumber": "911"'), 'ios build 911');
+  assert(appJson.includes('"versionCode": 904'), 'android versionCode 904');
   assert(appJson.includes('withAndroidKotlinGradle.js'), 'kotlin plugin');
   assert(appJson.includes('"kotlinVersion": "2.3.0"'), 'kotlin 2.3.0');
-  assert(appJson.includes('"rcVersion": "1.5.0"'), 'rcVersion 1.5.0');
+  assert(appJson.includes('"rcVersion": "1.5.1"'), 'rcVersion 1.5.1');
 
   const gameConstants = readRepo('src/game/constants.ts');
-  assert(gameConstants.includes("APP_VERSION = '1.5.0'"), 'visible app version 1.5.0');
+  assert(gameConstants.includes("APP_VERSION = '1.5.1'"), 'visible app version 1.5.1');
 
   const homeScreen = readRepo('src/screens/HomeScreen.tsx');
   assert(homeScreen.includes('v{getAppVersion()}'), 'home uses native app version');

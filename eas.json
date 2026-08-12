@@ -94,6 +94,7 @@
       },
       "env": {
         "EAS_BUILD_PROFILE": "live-pvp-qa",
+        "EXPO_PUBLIC_BUILD_PROFILE": "live-pvp-qa",
         "EXPO_PUBLIC_APP_ENV": "preview",
         "EXPO_PUBLIC_ENABLE_LIVE_DUEL": "false",
         "EXPO_PUBLIC_ENABLE_QUICK_MATCH": "false",
