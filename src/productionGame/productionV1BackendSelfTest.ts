@@ -1,5 +1,5 @@
 import { readFileSync } from 'node:fs';
-const sql=readFileSync('supabase/migrations/20260812193000_production_v1_authoritative_matches.sql','utf8').toLowerCase();
+const sql=readFileSync('supabase/migrations/20260812192922_production_v1_authoritative_matches.sql','utf8').toLowerCase();
 function assert(value:unknown,message:string):asserts value{if(!value)throw new Error(`production-v1 backend: ${message}`);}
 for(const table of ['production_v1_matches','production_v1_participants','production_v1_actions']){
   assert(sql.includes(`alter table public.${table} enable row level security`),`${table} RLS`);
