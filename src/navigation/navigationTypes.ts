@@ -5,6 +5,7 @@ import type { GameOverReason } from '../game/types';
 export type RootStackParamList = {
   Home: { fromSoloComplete?: boolean } | undefined;
   Game: undefined;
+  ProductionPractice: undefined;
   Results: {
     score?: number;
     highScore?: number;
@@ -75,6 +76,10 @@ export type RootStackParamList = {
 
 export type HomeScreenProps = NativeStackScreenProps<RootStackParamList, 'Home'>;
 export type GameScreenProps = NativeStackScreenProps<RootStackParamList, 'Game'>;
+export type ProductionPracticeScreenProps = NativeStackScreenProps<
+  RootStackParamList,
+  'ProductionPractice'
+>;
 export type ResultsScreenProps = NativeStackScreenProps<RootStackParamList, 'Results'>;
 export type HowToPlayScreenProps = NativeStackScreenProps<
   RootStackParamList,

@@ -531,6 +531,13 @@ export function HomeScreen({ navigation, route }: HomeScreenProps) {
               onPress={() => navigation.navigate('Game')}
               accessibilityLabel="Solo play 21 Blaze"
             />
+            <BlazeButton
+              label="PRODUCTION PRACTICE"
+              size="lg"
+              variant="secondary"
+              onPress={() => navigation.navigate('ProductionPractice')}
+              accessibilityLabel="Practice the new production rules"
+            />
             {dailyChallengeEnabled ? (
               <DailyBlazeHomeCard
                 uiStatus={dailyUiStatus}
