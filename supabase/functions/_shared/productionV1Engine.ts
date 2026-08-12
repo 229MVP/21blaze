@@ -1,0 +1,14 @@
+export type Rank='A'|'2'|'3'|'4'|'5'|'6'|'7'|'8'|'9'|'10'|'J'|'Q'|'K';
+export type Suit='hearts'|'diamonds'|'clubs'|'spades';
+export type Card={id:string;rank:Rank;suit:Suit;cycle:number;index:number};
+export type Lane={cards:Card[];total:number;status:'open'|'full'|'blazed'|'bust'};
+export type State={rulesVersion:'production-v1';cycle:number;deck:Card[];cursor:number;lanes:[Lane,Lane,Lane,Lane];bonusScore:number;energy:number;streak:number;multiplier:1|2|3|4};
+const suits:Suit[]=['hearts','diamonds','clubs','spades']; const ranks:Rank[]=['A','2','3','4','5','6','7','8','9','10','J','Q','K'];
+function hash(text:string){let h=2166136261;for(let i=0;i<text.length;i++){h^=text.charCodeAt(i);h=Math.imul(h,16777619);}return h>>>0;}
+function random(seed:string){let value=hash(seed);return()=>{value+=0x6d2b79f5;let t=value;t=Math.imul(t^(t>>>15),t|1);t^=t+Math.imul(t^(t>>>7),t|61);return((t^(t>>>14))>>>0)/4294967296;};}
+export function deck(seed:string,cycle=0):Card[]{const cards=suits.flatMap(suit=>ranks.map(rank=>({id:`${cycle}:${suit}:${rank}`,rank,suit,cycle,index:0})));const rng=random(`${seed}:${cycle}`);for(let i=cards.length-1;i>0;i--){const j=Math.floor(rng()*(i+1));[cards[i],cards[j]]=[cards[j],cards[i]];}return cards.map((card,index)=>({...card,index}));}
+export function total(cards:readonly Card[]){let value=0,aces=0;for(const card of cards){if(card.rank==='A'){value+=11;aces++;}else if(['J','Q','K'].includes(card.rank))value+=10;else value+=Number(card.rank);}while(value>21&&aces>0){value-=10;aces--;}return value;}
+function lane(cards:Card[]):Lane{const value=total(cards);return{cards,total:value,status:value>21?'bust':value===21?'blazed':cards.length===5?'full':'open'};}
+export function createState(seed:string):State{const empty=()=>lane([]);return{rulesVersion:'production-v1',cycle:0,deck:deck(seed),cursor:0,lanes:[empty(),empty(),empty(),empty()],bonusScore:0,energy:0,streak:0,multiplier:1};}
+function multiplier(streak:number):1|2|3|4{return streak>=10?4:streak>=6?3:streak>=3?2:1;}
+export function place(state:State,laneIndex:0|1|2|3,seed:string):State{const before=state.lanes[laneIndex];if(before.cards.length>=5)throw new Error('LANE_FULL');const after=lane([...before.cards,state.deck[state.cursor]]);const streak=after.status==='bust'?0:state.streak+1;const mult=multiplier(streak);let bonus=0,energy=3;if(after.total===21){bonus+=150;energy+=20;if(after.cards.length===5){bonus+=100;energy+=15;}}else if(after.cards.length===5&&after.total>=16&&after.total<=20){bonus+=50;energy+=8;}const lanes=[...state.lanes] as State['lanes'];lanes[laneIndex]=after;const exhausted=state.cursor+1>=state.deck.length;const cycle=exhausted?state.cycle+1:state.cycle;return{...state,lanes,streak,multiplier:mult,bonusScore:state.bonusScore+bonus*mult,energy:Math.min(100,state.energy+energy),cycle,deck:exhausted?deck(seed,cycle):state.deck,cursor:exhausted?0:state.cursor+1};}
