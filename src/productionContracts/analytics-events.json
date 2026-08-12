@@ -1,0 +1,19 @@
+{
+  "schemaVersion": 1,
+  "commonRequired": ["eventId", "occurredAt", "sessionId", "clientVersion", "platform"],
+  "matchRequired": ["matchId", "mode", "rulesVersion", "matchRevision", "elapsedMs"],
+  "events": [
+    "app_opened", "session_started", "session_ended", "screen_viewed",
+    "auth_started", "auth_completed", "guest_started",
+    "tutorial_step_started", "tutorial_step_completed", "tutorial_abandoned",
+    "mode_selected", "loadout_changed", "matchmaking_started", "matchmaking_cancelled", "match_found",
+    "match_started", "match_completed", "match_forfeited", "match_invalidated",
+    "card_revealed", "card_placed", "card_auto_routed",
+    "lane_reached_21", "lane_busted", "lane_five_card_completed",
+    "power_activated", "power_blocked", "power_cleansed", "power_expired",
+    "connection_lost", "connection_restored", "reconnect_failed",
+    "mission_completed", "reward_claimed", "level_up",
+    "shop_viewed", "item_previewed", "purchase_started", "purchase_completed", "purchase_failed", "purchase_restored",
+    "settings_changed", "accessibility_changed", "report_submitted", "support_opened"
+  ]
+}

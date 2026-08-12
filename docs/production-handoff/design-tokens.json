@@ -1,0 +1,25 @@
+{
+  "$schema": "https://design-tokens.github.io/community-group/format/",
+  "gameplay": {
+    "lane": {
+      "capacity": { "$type": "number", "$value": 5 },
+      "slotGap": { "$type": "dimension", "$value": { "value": 2, "unit": "px" } },
+      "minimumTapTarget": { "$type": "dimension", "$value": { "value": 44, "unit": "px" } },
+      "defaultRadius": { "$type": "dimension", "$value": { "value": 9, "unit": "px" } }
+    },
+    "card": {
+      "aspectRatio": { "$type": "number", "$value": 0.69 },
+      "surface": { "$type": "color", "$value": "#F5EEDF" },
+      "ink": { "$type": "color", "$value": "#17191D" },
+      "redSuit": { "$type": "color", "$value": "#C51922" }
+    },
+    "motion": {
+      "selection": { "$type": "duration", "$value": "140ms" },
+      "bust": { "$type": "duration", "$value": "700ms" }
+    }
+  },
+  "viewport": {
+    "oneXWidth": { "$type": "dimension", "$value": { "value": 427, "unit": "px" } },
+    "oneXHeight": { "$type": "dimension", "$value": { "value": 922, "unit": "px" } }
+  }
+}

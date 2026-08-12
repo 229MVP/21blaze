@@ -1,0 +1,203 @@
+{
+  "version": "1.0.0",
+  "coordinateSystem": {
+    "viewport": "427x922",
+    "origin": "top-left",
+    "lanePosition": "center percentages",
+    "capacity": 5
+  },
+  "themes": [
+    {
+      "number": 1,
+      "id": "molten-coliseum",
+      "name": "Molten Coliseum",
+      "art": "01-molten-coliseum.png",
+      "layout": "radial",
+      "accent": "#FF5B16",
+      "accent2": "#FFC04D",
+      "currentCard": { "x": 50, "y": 50 },
+      "lanes": [
+        { "x": 50, "y": 29, "width": 64, "height": 16, "rotation": 0 },
+        { "x": 77, "y": 49, "width": 43, "height": 17, "rotation": 0 },
+        { "x": 50, "y": 69, "width": 58, "height": 16, "rotation": 0 },
+        { "x": 23, "y": 49, "width": 43, "height": 17, "rotation": 0 }
+      ]
+    },
+    {
+      "number": 2,
+      "id": "chromatic-overdrive",
+      "name": "Chromatic Overdrive",
+      "art": "02-chromatic-overdrive.png",
+      "layout": "stacked",
+      "accent": "#FF4D15",
+      "accent2": "#00D9FF",
+      "currentCard": { "x": 50, "y": 81 },
+      "lanes": [
+        { "x": 52, "y": 28, "width": 86, "height": 12, "rotation": 0 },
+        { "x": 52, "y": 41, "width": 86, "height": 12, "rotation": 0 },
+        { "x": 52, "y": 54, "width": 86, "height": 12, "rotation": 0 },
+        { "x": 52, "y": 67, "width": 86, "height": 12, "rotation": 0 }
+      ]
+    },
+    {
+      "number": 3,
+      "id": "solar-flare-broadcast",
+      "name": "Solar Flare Broadcast",
+      "art": "03-solar-flare-broadcast.png",
+      "layout": "chevrons",
+      "accent": "#FF3D00",
+      "accent2": "#FFD500",
+      "currentCard": { "x": 20, "y": 55 },
+      "lanes": [
+        { "x": 66, "y": 28, "width": 67, "height": 12, "rotation": -6 },
+        { "x": 68, "y": 41, "width": 66, "height": 12, "rotation": -3 },
+        { "x": 70, "y": 54, "width": 64, "height": 12, "rotation": 0 },
+        { "x": 66, "y": 69, "width": 68, "height": 12, "rotation": 5 }
+      ]
+    },
+    {
+      "number": 4,
+      "id": "glasshouse-ember",
+      "name": "Glasshouse Ember",
+      "art": "04-glasshouse-ember.png",
+      "layout": "towers",
+      "accent": "#D8D2C7",
+      "accent2": "#FF7A24",
+      "currentCard": { "x": 50, "y": 78 },
+      "lanes": [
+        { "x": 14, "y": 46, "width": 22, "height": 45, "rotation": 0 },
+        { "x": 38, "y": 46, "width": 22, "height": 45, "rotation": 0 },
+        { "x": 62, "y": 46, "width": 22, "height": 45, "rotation": 0 },
+        { "x": 86, "y": 46, "width": 22, "height": 45, "rotation": 0 }
+      ]
+    },
+    {
+      "number": 5,
+      "id": "graphic-inferno",
+      "name": "Graphic Inferno",
+      "art": "05-graphic-inferno.png",
+      "layout": "comic",
+      "accent": "#FF3B1F",
+      "accent2": "#FFD43B",
+      "currentCard": { "x": 50, "y": 82 },
+      "lanes": [
+        { "x": 27, "y": 35, "width": 45, "height": 27, "rotation": -2 },
+        { "x": 73, "y": 35, "width": 45, "height": 27, "rotation": 2 },
+        { "x": 27, "y": 63, "width": 45, "height": 25, "rotation": 2 },
+        { "x": 73, "y": 63, "width": 45, "height": 25, "rotation": -2 }
+      ]
+    },
+    {
+      "number": 6,
+      "id": "streetfire-league",
+      "name": "Streetfire League",
+      "art": "06-streetfire-league.png",
+      "layout": "street",
+      "accent": "#FF671A",
+      "accent2": "#42EBFF",
+      "currentCard": { "x": 50, "y": 29 },
+      "lanes": [
+        { "x": 28, "y": 54, "width": 43, "height": 22, "rotation": 0 },
+        { "x": 72, "y": 54, "width": 43, "height": 22, "rotation": 0 },
+        { "x": 28, "y": 75, "width": 43, "height": 20, "rotation": 0 },
+        { "x": 72, "y": 75, "width": 43, "height": 20, "rotation": 0 }
+      ]
+    },
+    {
+      "number": 7,
+      "id": "blaze-reactor",
+      "name": "Blaze Reactor",
+      "art": "07-blaze-reactor.png",
+      "layout": "reactor",
+      "accent": "#FF7A00",
+      "accent2": "#12DFFF",
+      "currentCard": { "x": 50, "y": 54 },
+      "lanes": [
+        { "x": 27, "y": 43, "width": 42, "height": 20, "rotation": 0 },
+        { "x": 73, "y": 43, "width": 42, "height": 20, "rotation": 0 },
+        { "x": 27, "y": 68, "width": 42, "height": 20, "rotation": 0 },
+        { "x": 73, "y": 68, "width": 42, "height": 20, "rotation": 0 }
+      ]
+    },
+    {
+      "number": 8,
+      "id": "royal-ember-atelier",
+      "name": "Royal Ember Atelier",
+      "art": "08-royal-ember-atelier.png",
+      "layout": "deco",
+      "accent": "#D89B32",
+      "accent2": "#35D5A1",
+      "currentCard": { "x": 50, "y": 26 },
+      "lanes": [
+        { "x": 29, "y": 52, "width": 43, "height": 19, "rotation": -6 },
+        { "x": 71, "y": 52, "width": 43, "height": 19, "rotation": 6 },
+        { "x": 29, "y": 71, "width": 43, "height": 19, "rotation": 4 },
+        { "x": 71, "y": 71, "width": 43, "height": 19, "rotation": -4 }
+      ]
+    },
+    {
+      "number": 9,
+      "id": "icefire-clash",
+      "name": "Icefire Clash",
+      "art": "09-icefire-clash.png",
+      "layout": "icefire",
+      "accent": "#16D9FF",
+      "accent2": "#FF4B14",
+      "currentCard": { "x": 50, "y": 53 },
+      "lanes": [
+        { "x": 28, "y": 35, "width": 43, "height": 22, "rotation": 0 },
+        { "x": 72, "y": 35, "width": 43, "height": 22, "rotation": 0 },
+        { "x": 28, "y": 73, "width": 43, "height": 22, "rotation": 0 },
+        { "x": 72, "y": 73, "width": 43, "height": 22, "rotation": 0 }
+      ]
+    },
+    {
+      "number": 10,
+      "id": "paper-flame",
+      "name": "Paper Flame",
+      "art": "10-paper-flame.png",
+      "layout": "paper",
+      "accent": "#DF4C27",
+      "accent2": "#E8B847",
+      "currentCard": { "x": 52, "y": 86 },
+      "lanes": [
+        { "x": 56, "y": 30, "width": 74, "height": 14, "rotation": -5 },
+        { "x": 48, "y": 44, "width": 72, "height": 14, "rotation": 3 },
+        { "x": 52, "y": 58, "width": 72, "height": 14, "rotation": -3 },
+        { "x": 57, "y": 72, "width": 72, "height": 14, "rotation": 4 }
+      ]
+    },
+    {
+      "number": 11,
+      "id": "mecha-pit",
+      "name": "Mecha Pit",
+      "art": "11-mecha-pit.png",
+      "layout": "mecha",
+      "accent": "#FF6B16",
+      "accent2": "#FFC132",
+      "currentCard": { "x": 50, "y": 25 },
+      "lanes": [
+        { "x": 28, "y": 50, "width": 42, "height": 20, "rotation": 0 },
+        { "x": 72, "y": 50, "width": 42, "height": 20, "rotation": 0 },
+        { "x": 28, "y": 71, "width": 42, "height": 20, "rotation": 0 },
+        { "x": 72, "y": 71, "width": 42, "height": 20, "rotation": 0 }
+      ]
+    },
+    {
+      "number": 12,
+      "id": "aurora-ember",
+      "name": "Aurora Ember",
+      "art": "12-aurora-ember.png",
+      "layout": "aurora",
+      "accent": "#16DCFF",
+      "accent2": "#A84DFF",
+      "currentCard": { "x": 50, "y": 54 },
+      "lanes": [
+        { "x": 28, "y": 35, "width": 43, "height": 23, "rotation": -5 },
+        { "x": 72, "y": 35, "width": 43, "height": 23, "rotation": 5 },
+        { "x": 28, "y": 73, "width": 43, "height": 23, "rotation": 5 },
+        { "x": 72, "y": 73, "width": 43, "height": 23, "rotation": -5 }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,16 @@
+{
+  "schemaVersion": 1,
+  "maxEquipped": 3,
+  "maxEnergy": 100,
+  "hostileDisableFinalMs": 3000,
+  "powers": [
+    {"id":"ember_shield","name":"Ember Shield","cost":35,"cooldownMs":12000,"durationMs":10000,"target":"self","hostile":false,"unlockLevel":1},
+    {"id":"frost_lock","name":"Frost Lock","cost":45,"cooldownMs":16000,"durationMs":5000,"target":"opponent_lane","hostile":true,"unlockLevel":7},
+    {"id":"swap_spark","name":"Swap Spark","cost":30,"cooldownMs":10000,"durationMs":0,"target":"two_self_lanes","hostile":false,"unlockLevel":3},
+    {"id":"scorch_mark","name":"Scorch Mark","cost":40,"cooldownMs":14000,"durationMs":6000,"target":"opponent_lane","hostile":true,"magnitude":3,"unlockLevel":9},
+    {"id":"wild_shift","name":"Wild Shift","cost":50,"cooldownMs":18000,"durationMs":0,"target":"current_card","hostile":false,"unlockLevel":12},
+    {"id":"redirect","name":"Redirect","cost":55,"cooldownMs":20000,"durationMs":8000,"target":"opponent","hostile":true,"unlockLevel":16},
+    {"id":"cleanse","name":"Cleanse","cost":30,"cooldownMs":12000,"durationMs":0,"target":"self","hostile":false,"unlockLevel":5},
+    {"id":"double_blaze","name":"Double Blaze","cost":60,"cooldownMs":24000,"durationMs":10000,"target":"self","hostile":false,"unlockLevel":20}
+  ]
+}
