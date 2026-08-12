@@ -538,6 +538,13 @@ export function HomeScreen({ navigation, route }: HomeScreenProps) {
               onPress={() => navigation.navigate('ProductionPractice')}
               accessibilityLabel="Practice the new production rules"
             />
+            <BlazeButton
+              label="PRODUCTION LIVE PVP"
+              size="lg"
+              variant="secondary"
+              onPress={() => navigation.navigate('ProductionLobby')}
+              accessibilityLabel="Open Production Live PvP internal test lobby"
+            />
             {dailyChallengeEnabled ? (
               <DailyBlazeHomeCard
                 uiStatus={dailyUiStatus}
