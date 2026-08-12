@@ -8,5 +8,8 @@ assert(source.includes('REVISION_ALREADY_QUEUED'),'revision conflict mapped');
 assert(source.includes('Never replay an intent automatically'),'no unsafe automatic replay');
 assert(source.includes("type: 'card.place'"),'typed card intent');
 assert(source.includes("type: 'power.activate'"),'typed power intent');
+assert(source.includes('createProductionV1PrivateMatch'),'private match creation bridge');
+assert(source.includes('acceptProductionV1PrivateMatch'),'private match acceptance bridge');
+assert(source.includes('PRODUCTION_V1_DISABLED'),'creation kill switch mapped');
 assert(!/service[_-]?role/i.test(source),'no service role in client');
 console.log('production-v1 client service self-tests passed.');

@@ -27,6 +27,14 @@ export type ProductionV1IntentReceipt = {
   serverNow?: string;
 };
 
+export type ProductionV1PrivateMatch = {
+  matchId: string;
+  status: string;
+  rulesVersion: 'production-v1';
+  revision: number;
+  seedCommitment?: string;
+  serverNow: string;
+};
 export class ProductionV1ServiceError extends Error {
   constructor(readonly code: string, message?: string) {
     super(message ?? code);
@@ -47,6 +55,8 @@ function errorCode(error: { message?: string; details?: string; code?: string } 
     'STALE_REVISION', 'REVISION_ALREADY_QUEUED', 'NOT_PARTICIPANT',
     'NOT_AUTHENTICATED', 'MATCH_NOT_FOUND', 'MATCH_TERMINAL',
     'RULES_VERSION_MISMATCH', 'INVALID_ACTION_ID', 'INVALID_INTENT',
+    'PRODUCTION_V1_DISABLED', 'INVALID_OPPONENT', 'OPPONENT_NOT_FOUND',
+    'ACTIVE_MATCH_LIMIT', 'ONLY_OPPONENT_ACCEPTS', 'INVALID_MATCH_STATE',
   ]) if (text.includes(code)) return code;
   return error?.code === '40001' ? 'STALE_REVISION' : 'UNKNOWN';
 }
@@ -57,6 +67,30 @@ async function rpc(name: string, args: Record<string, unknown>): Promise<Record<
   return record(data);
 }
 
+function privateMatch(data: Record<string, unknown>): ProductionV1PrivateMatch {
+  if (data.rulesVersion !== 'production-v1') throw new ProductionV1ServiceError('RULES_VERSION_MISMATCH');
+  return {
+    matchId: String(data.matchId), status: String(data.status), rulesVersion: 'production-v1',
+    revision: Number(data.revision),
+    seedCommitment: data.seedCommitment == null ? undefined : String(data.seedCommitment),
+    serverNow: String(data.serverNow),
+  };
+}
+
+export async function createProductionV1PrivateMatch(opponentId: string): Promise<ProductionV1PrivateMatch> {
+  return privateMatch(await rpc('create_production_v1_private_match', { p_opponent_id: opponentId }));
+}
+
+export async function acceptProductionV1PrivateMatch(matchId: string): Promise<ProductionV1Snapshot> {
+  const data = await rpc('accept_production_v1_private_match', { p_match_id: matchId });
+  if (data.rulesVersion !== 'production-v1') throw new ProductionV1ServiceError('RULES_VERSION_MISMATCH');
+  return {
+    matchId: String(data.matchId), status: String(data.status), rulesVersion: 'production-v1',
+    revision: Number(data.revision), state: record(data.state),
+    startedAt: data.startedAt == null ? null : String(data.startedAt),
+    endsAt: data.endsAt == null ? null : String(data.endsAt), serverNow: String(data.serverNow),
+  };
+}
 export async function getProductionV1Snapshot(matchId: string): Promise<ProductionV1Snapshot> {
   const data = await rpc('get_production_v1_snapshot', { p_match_id: matchId });
   if (data.rulesVersion !== 'production-v1') throw new ProductionV1ServiceError('RULES_VERSION_MISMATCH');
