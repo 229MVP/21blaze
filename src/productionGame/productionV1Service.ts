@@ -125,6 +125,12 @@ export async function enqueueProductionV1Intent(input: {
   };
 }
 
+export async function syncProductionV1Match(matchId: string): Promise<void> {
+  const { error } = await supabase.functions.invoke('production-v1-resolver', {
+    body: { matchId, sync: true },
+  });
+  if (error) throw new ProductionV1ServiceError('SYNC_FAILED', error.message);
+}
 export async function resolveProductionV1Action(actionId: string): Promise<Record<string, unknown>> {
   const { data, error } = await supabase.functions.invoke('production-v1-resolver', {
     body: { actionId },
