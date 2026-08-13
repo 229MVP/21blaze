@@ -7,6 +7,7 @@ export type RootStackParamList = {
   Game: undefined;
   ProductionPractice: undefined;
   ProductionLobby: undefined;
+  ProductionLiveGame: { matchId: string };
   Results: {
     score?: number;
     highScore?: number;
@@ -84,7 +85,11 @@ export type ProductionPracticeScreenProps = NativeStackScreenProps<
 export type ProductionLobbyScreenProps = NativeStackScreenProps<
   RootStackParamList,
   'ProductionLobby'
->;export type ResultsScreenProps = NativeStackScreenProps<RootStackParamList, 'Results'>;
+>;export type ProductionLiveGameScreenProps = NativeStackScreenProps<
+  RootStackParamList,
+  'ProductionLiveGame'
+>;
+export type ResultsScreenProps = NativeStackScreenProps<RootStackParamList, 'Results'>;
 export type HowToPlayScreenProps = NativeStackScreenProps<
   RootStackParamList,
   'HowToPlay'

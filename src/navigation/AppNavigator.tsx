@@ -58,6 +58,7 @@ import { RankedSearchScreen } from '../screens/RankedSearchScreen';
 import { ResultsScreen } from '../screens/ResultsScreen';
 import { ProductionPracticeScreen } from '../productionGame/ProductionPracticeScreen';
 import { ProductionLobbyScreen } from '../productionGame/ProductionLobbyScreen';
+import { ProductionLiveGameScreen } from '../productionGame/ProductionLiveGameScreen';
 import { SettingsScreen } from '../screens/SettingsScreen';
 import { ThemePreviewScreen } from '../screens/dev/ThemePreviewScreen';
 import { colors } from '../theme/colors';
@@ -81,6 +82,7 @@ export function AppNavigator() {
       <Stack.Screen name="Game" component={GameScreen} />
       <Stack.Screen name="ProductionPractice" component={ProductionPracticeScreen} />
       <Stack.Screen name="ProductionLobby" component={ProductionLobbyScreen} />
+      <Stack.Screen name="ProductionLiveGame" component={ProductionLiveGameScreen} />
       <Stack.Screen name="Results" component={ResultsScreen} />
       <Stack.Screen name="HowToPlay" component={HowToPlayScreen} />
       <Stack.Screen name="Settings" component={SettingsScreen} />

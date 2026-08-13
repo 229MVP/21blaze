@@ -125,6 +125,33 @@ export async function enqueueProductionV1Intent(input: {
   };
 }
 
+export async function resolveProductionV1Action(actionId: string): Promise<Record<string, unknown>> {
+  const { data, error } = await supabase.functions.invoke('production-v1-resolver', {
+    body: { actionId },
+  });
+  if (error) {
+    const context = (error as { context?: { json?: () => Promise<unknown> } }).context;
+    let code = 'RESOLVER_FAILED';
+    try {
+      const body = context?.json ? record(await context.json()) : null;
+      if (body?.error) code = String(body.error);
+    } catch { /* Keep the safe generic error. */ }
+    throw new ProductionV1ServiceError(code, error.message);
+  }
+  return record(data);
+}
+
+export async function submitProductionV1Intent(input: {
+  matchId: string; snapshot: ProductionV1Snapshot; intent: ProductionV1Intent;
+}): Promise<ProductionV1Snapshot> {
+  const receipt = await enqueueProductionV1Intent({
+    matchId: input.matchId,
+    expectedRevision: input.snapshot.revision,
+    intent: input.intent,
+  });
+  await resolveProductionV1Action(receipt.actionId);
+  return getProductionV1Snapshot(input.matchId);
+}
 export async function enqueueWithRevisionRecovery(input: {
   matchId: string; snapshot: ProductionV1Snapshot; intent: ProductionV1Intent; clientActionId?: string;
 }): Promise<{ receipt: ProductionV1IntentReceipt | null; snapshot: ProductionV1Snapshot }> {

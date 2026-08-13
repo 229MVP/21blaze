@@ -53,6 +53,7 @@ export function ProductionLobbyScreen({ navigation }: ProductionLobbyScreenProps
     try {
       const match = await createProductionV1PrivateMatch(opponent.userId);
       setCreatedMatchId(match.matchId);
+      navigation.navigate('ProductionLiveGame', { matchId: match.matchId });
     } catch (reason) { setError(messageFor(reason)); }
     finally { setBusy(false); }
   };
@@ -63,6 +64,7 @@ export function ProductionLobbyScreen({ navigation }: ProductionLobbyScreenProps
     try {
       const snapshot = await acceptProductionV1PrivateMatch(code);
       setCreatedMatchId(snapshot.matchId);
+      navigation.navigate('ProductionLiveGame', { matchId: snapshot.matchId });
     } catch (reason) { setError(messageFor(reason)); }
     finally { setBusy(false); }
   };
@@ -75,7 +77,8 @@ export function ProductionLobbyScreen({ navigation }: ProductionLobbyScreenProps
         <Text style={styles.title}>MATCH READY</Text>
         <Text selectable style={styles.code}>{createdMatchId}</Text>
         <BlazeButton title="COPY MATCH CODE" onPress={() => void Clipboard.setStringAsync(createdMatchId)} fullWidth />
-        <Text style={styles.body}>Share this code with the challenged player. The match screen will be connected next.</Text>
+        <Text style={styles.body}>Share this code with the challenged player, then open the match.</Text>
+        <BlazeButton title="OPEN MATCH" onPress={() => navigation.navigate('ProductionLiveGame', { matchId: createdMatchId })} fullWidth />
       </View> : <>
         <Text style={styles.heading}>CHALLENGE A PLAYER</Text>
         <TextInput style={styles.input} value={query} onChangeText={setQuery} placeholder="Search display name" placeholderTextColor={colors.textSecondary} autoCapitalize="none" />
