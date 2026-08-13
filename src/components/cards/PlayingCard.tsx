@@ -132,7 +132,7 @@ export const PlayingCard = memo(function PlayingCard({
     width: d.w,
     height: d.h,
     opacity: disabled ? 0.45 : 1,
-    backgroundColor: isMidnight ? '#141414' : undefined,
+    backgroundColor: isMidnight ? '#141414' : '#F7F3EA',
     borderColor: selected || highlighted
       ? colors.border.active
       : isMidnight

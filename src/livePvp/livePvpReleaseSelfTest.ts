@@ -242,15 +242,15 @@ export function runLivePvpReleaseSelfTests(): void {
 
   // --- Native config ---
   const appJson = readRepo('app.json');
-  assert(appJson.includes('"version": "1.5.1"'), 'app version 1.5.1');
-  assert(appJson.includes('"buildNumber": "911"'), 'ios build 911');
-  assert(appJson.includes('"versionCode": 904'), 'android versionCode 904');
+  assert(appJson.includes('"version": "1.6.1"'), 'app version 1.6.1');
+  assert(appJson.includes('"buildNumber": "913"'), 'ios build 913');
+  assert(appJson.includes('"versionCode": 906'), 'android versionCode 906');
   assert(appJson.includes('withAndroidKotlinGradle.js'), 'kotlin plugin');
   assert(appJson.includes('"kotlinVersion": "2.3.0"'), 'kotlin 2.3.0');
-  assert(appJson.includes('"rcVersion": "1.5.1"'), 'rcVersion 1.5.1');
+  assert(appJson.includes('"rcVersion": "1.6.1"'), 'rcVersion 1.6.1');
 
   const gameConstants = readRepo('src/game/constants.ts');
-  assert(gameConstants.includes("APP_VERSION = '1.5.1'"), 'visible app version 1.5.1');
+  assert(gameConstants.includes("APP_VERSION = '1.6.1'"), 'visible app version 1.6.1');
 
   const homeScreen = readRepo('src/screens/HomeScreen.tsx');
   assert(homeScreen.includes('v{getAppVersion()}'), 'home uses native app version');

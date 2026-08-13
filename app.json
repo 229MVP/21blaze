@@ -2,7 +2,7 @@
   "expo": {
     "name": "21 Blaze",
     "slug": "21-blaze",
-    "version": "1.6.0",
+    "version": "1.6.1",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "scheme": "twentyoneblaze",
@@ -10,7 +10,7 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.twentyoneblaze.app",
-      "buildNumber": "912",
+      "buildNumber": "913",
       "deploymentTarget": "16.4",
       "infoPlist": {
         "GADApplicationIdentifier": "ca-app-pub-3940256099942544~1458002511",
@@ -25,7 +25,7 @@
     },
     "android": {
       "package": "com.twentyoneblaze.app",
-      "versionCode": 905,
+      "versionCode": 906,
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
         "foregroundImage": "./assets/android-icon-foreground.png",
@@ -81,7 +81,7 @@
       ]
     ],
     "extra": {
-      "rcVersion": "1.6.0",
+      "rcVersion": "1.6.1",
       "note": "EAS projectId is a PLACEHOLDER — replace via `eas init` / EXPO_TOKEN before preview builds. AdMob IDs above are Google TEST IDs (acceptable for Internal Beta preview; forbidden in production store binaries).",
       "eas": {
         "projectId": "0c5db163-a4c0-4a17-9a8a-e12eed3bf511"
